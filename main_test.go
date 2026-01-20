@@ -12,8 +12,8 @@ import (
 
 	. "github.com/bsm/ginkgo/v2"
 	. "github.com/bsm/gomega"
-	"github.com/redis/go-redis/v9"
-	"github.com/redis/go-redis/v9/logging"
+	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzoai/kv-go/v9/logging"
 )
 
 const (

@@ -1,12 +1,12 @@
-module github.com/redis/go-redis/extra/redisprometheus/v9
+module github.com/hanzoai/kv-go/extra/redisprometheus/v9
 
 go 1.21
 
-replace github.com/redis/go-redis/v9 => ../..
+replace github.com/hanzoai/kv-go/v9 => ../..
 
 require (
 	github.com/prometheus/client_golang v1.14.0
-	github.com/redis/go-redis/v9 v9.18.0-beta.2
+	github.com/hanzoai/kv-go/v9 v9.18.0-beta.2
 )
 
 require (

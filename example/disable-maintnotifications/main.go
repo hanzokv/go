@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-	"github.com/redis/go-redis/v9/maintnotifications"
+	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzoai/kv-go/v9/maintnotifications"
 )
 
 func main() {
@@ -140,5 +140,5 @@ func main() {
 	fmt.Println("  - You want to minimize client-side overhead")
 	fmt.Println("  - The Redis server doesn't support CLIENT MAINT_NOTIFICATIONS")
 	fmt.Printf("\nFor more information, see:\n")
-	fmt.Println("  https://github.com/redis/go-redis/tree/master/maintnotifications")
+	fmt.Println("  https://github.com/hanzoai/kv-go/tree/master/maintnotifications")
 }

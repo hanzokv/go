@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal"
-	"github.com/redis/go-redis/v9/internal/maintnotifications/logs"
-	"github.com/redis/go-redis/v9/internal/proto"
+	"github.com/hanzoai/kv-go/v9/internal"
+	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
+	"github.com/hanzoai/kv-go/v9/internal/proto"
 )
 
 var noDeadline = time.Time{}

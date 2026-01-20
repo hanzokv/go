@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal/hashtag"
-	"github.com/redis/go-redis/v9/internal/routing"
+	"github.com/hanzoai/kv-go/v9/internal/hashtag"
+	"github.com/hanzoai/kv-go/v9/internal/routing"
 )
 
 var (

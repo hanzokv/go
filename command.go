@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal"
-	"github.com/redis/go-redis/v9/internal/hscan"
-	"github.com/redis/go-redis/v9/internal/proto"
-	"github.com/redis/go-redis/v9/internal/routing"
-	"github.com/redis/go-redis/v9/internal/util"
+	"github.com/hanzoai/kv-go/v9/internal"
+	"github.com/hanzoai/kv-go/v9/internal/hscan"
+	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzoai/kv-go/v9/internal/routing"
+	"github.com/hanzoai/kv-go/v9/internal/util"
 )
 
 // keylessCommands contains Redis commands that have empty key specifications (9th slot empty)

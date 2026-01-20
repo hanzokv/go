@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal/pool"
+	"github.com/hanzoai/kv-go/v9/internal/pool"
 )
 
 // TestReAuthOnlyWhenIdle verifies that re-authentication only happens when

@@ -15,15 +15,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/redis/go-redis/v9/auth"
-	"github.com/redis/go-redis/v9/internal"
-	"github.com/redis/go-redis/v9/internal/hashtag"
-	"github.com/redis/go-redis/v9/internal/pool"
-	"github.com/redis/go-redis/v9/internal/proto"
-	"github.com/redis/go-redis/v9/internal/rand"
-	"github.com/redis/go-redis/v9/internal/routing"
-	"github.com/redis/go-redis/v9/maintnotifications"
-	"github.com/redis/go-redis/v9/push"
+	"github.com/hanzoai/kv-go/v9/auth"
+	"github.com/hanzoai/kv-go/v9/internal"
+	"github.com/hanzoai/kv-go/v9/internal/hashtag"
+	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzoai/kv-go/v9/internal/rand"
+	"github.com/hanzoai/kv-go/v9/internal/routing"
+	"github.com/hanzoai/kv-go/v9/maintnotifications"
+	"github.com/hanzoai/kv-go/v9/push"
 )
 
 const (

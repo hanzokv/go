@@ -16,7 +16,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/hanzoai/kv-go/v9"
 )
 
 type providerFunc func(name string, opts ...trace.TracerOption) trace.TracerProvider

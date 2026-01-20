@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal/hashtag"
+	"github.com/hanzoai/kv-go/v9/internal/hashtag"
 )
 
 type HashCmdable interface {

@@ -1,4 +1,4 @@
-module github.com/redis/go-redis/v9
+module github.com/hanzoai/kv-go/v9
 
 go 1.21
 
@@ -10,10 +10,7 @@ require (
 	github.com/zeebo/xxh3 v1.0.2
 )
 
-require (
-	github.com/dgryski/go-xxh3 v0.0.0-20190317160639-1675ae87ac49
-	go.uber.org/atomic v1.11.0
-)
+require go.uber.org/atomic v1.11.0
 
 require github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 

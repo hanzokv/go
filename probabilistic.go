@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/redis/go-redis/v9/internal/proto"
+	"github.com/hanzoai/kv-go/v9/internal/proto"
 )
 
 type ProbabilisticCmdable interface {

@@ -4,10 +4,10 @@ import (
 	"context"
 	"slices"
 
-	"github.com/redis/go-redis/v9/internal"
-	"github.com/redis/go-redis/v9/internal/maintnotifications/logs"
-	"github.com/redis/go-redis/v9/internal/pool"
-	"github.com/redis/go-redis/v9/push"
+	"github.com/hanzoai/kv-go/v9/internal"
+	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
+	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzoai/kv-go/v9/push"
 )
 
 // LoggingHook is an example hook implementation that logs all notifications.

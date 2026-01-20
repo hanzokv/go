@@ -1,12 +1,12 @@
-module github.com/redis/go-redis/example/scan-struct
+module github.com/hanzoai/kv-go/example/scan-struct
 
 go 1.21
 
-replace github.com/redis/go-redis/v9 => ../..
+replace github.com/hanzoai/kv-go/v9 => ../..
 
 require (
 	github.com/davecgh/go-spew v1.1.1
-	github.com/redis/go-redis/v9 v9.18.0-beta.2
+	github.com/hanzoai/kv-go/v9 v9.18.0-beta.2
 )
 
 require (

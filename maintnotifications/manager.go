@@ -9,11 +9,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal"
-	"github.com/redis/go-redis/v9/internal/interfaces"
-	"github.com/redis/go-redis/v9/internal/maintnotifications/logs"
-	"github.com/redis/go-redis/v9/internal/pool"
-	"github.com/redis/go-redis/v9/push"
+	"github.com/hanzoai/kv-go/v9/internal"
+	"github.com/hanzoai/kv-go/v9/internal/interfaces"
+	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
+	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzoai/kv-go/v9/push"
 )
 
 // Push notification type constants for maintenance
