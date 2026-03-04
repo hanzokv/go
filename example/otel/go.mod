@@ -1,6 +1,6 @@
 module github.com/hanzoai/kv-go/example/otel
 
-go 1.23.0
+go 1.26
 
 toolchain go1.24.1
 

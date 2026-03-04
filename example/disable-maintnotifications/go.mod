@@ -1,6 +1,6 @@
 module github.com/hanzoai/kv-go/example/disable-maintnotifications
 
-go 1.23
+go 1.26
 
 replace github.com/hanzoai/kv-go/v9 => ../..
 

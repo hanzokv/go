@@ -1,6 +1,6 @@
 module github.com/hanzoai/kv-go/example/del-keys-without-ttl
 
-go 1.21
+go 1.26
 
 replace github.com/hanzoai/kv-go/v9 => ../..
 

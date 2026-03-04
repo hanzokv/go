@@ -1,6 +1,6 @@
 module github.com/hanzoai/kv-go/v9
 
-go 1.21
+go 1.26
 
 require (
 	github.com/bsm/ginkgo/v2 v2.12.0
