@@ -1,8 +1,8 @@
 module github.com/hanzoai/kv-go/example/otel
 
-go 1.26
+go 1.26.3
 
-toolchain go1.24.1
+toolchain go1.26.3
 
 replace github.com/hanzoai/kv-go/v9 => ../..
 

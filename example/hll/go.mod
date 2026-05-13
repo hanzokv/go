@@ -1,6 +1,6 @@
 module github.com/hanzoai/kv-go/example/hll
 
-go 1.26
+go 1.26.3
 
 replace github.com/hanzoai/kv-go/v9 => ../..
 

@@ -1,6 +1,6 @@
 module github.com/hanzoai/kv-go/internal/customvet
 
-go 1.26
+go 1.26.3
 
 require golang.org/x/tools v0.5.0
 
