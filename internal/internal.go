@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/hanzoai/kv-go/v9/internal/rand"

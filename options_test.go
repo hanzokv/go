@@ -5,8 +5,11 @@ package redis
 import (
 	"crypto/tls"
 	"errors"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/redis/go-redis/v9/maintnotifications"
 )
 
 func TestParseURL(t *testing.T) {
@@ -332,4 +335,105 @@ func TestMaxConcurrentDialsOptions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClusterOptionsDialerRetries(t *testing.T) {
+	clusterOpt := &ClusterOptions{
+		DialerRetries:      10,
+		DialerRetryTimeout: 200 * time.Millisecond,
+	}
+
+	opt := clusterOpt.clientOptions()
+
+	if opt.DialerRetries != 10 {
+		t.Errorf("expected DialerRetries=10, got %d", opt.DialerRetries)
+	}
+	if opt.DialerRetryTimeout != 200*time.Millisecond {
+		t.Errorf("expected DialerRetryTimeout=200ms, got %v", opt.DialerRetryTimeout)
+	}
+}
+
+func TestRingOptionsDialerRetries(t *testing.T) {
+	ringOpt := &RingOptions{
+		DialerRetries:      10,
+		DialerRetryTimeout: 200 * time.Millisecond,
+	}
+
+	opt := ringOpt.clientOptions()
+
+	if opt.DialerRetries != 10 {
+		t.Errorf("expected DialerRetries=10, got %d", opt.DialerRetries)
+	}
+	if opt.DialerRetryTimeout != 200*time.Millisecond {
+		t.Errorf("expected DialerRetryTimeout=200ms, got %v", opt.DialerRetryTimeout)
+	}
+}
+
+func TestFailoverOptionsDialerRetries(t *testing.T) {
+	failoverOpt := &FailoverOptions{
+		DialerRetries:      10,
+		DialerRetryTimeout: 200 * time.Millisecond,
+	}
+
+	opt := failoverOpt.clientOptions()
+
+	if opt.DialerRetries != 10 {
+		t.Errorf("expected DialerRetries=10, got %d", opt.DialerRetries)
+	}
+	if opt.DialerRetryTimeout != 200*time.Millisecond {
+		t.Errorf("expected DialerRetryTimeout=200ms, got %v", opt.DialerRetryTimeout)
+	}
+
+	// Also verify sentinelOptions passes them through
+	sentinelOpt := failoverOpt.sentinelOptions("localhost:26379")
+	if sentinelOpt.DialerRetries != 10 {
+		t.Errorf("expected sentinel DialerRetries=10, got %d", sentinelOpt.DialerRetries)
+	}
+	if sentinelOpt.DialerRetryTimeout != 200*time.Millisecond {
+		t.Errorf("expected sentinel DialerRetryTimeout=200ms, got %v", sentinelOpt.DialerRetryTimeout)
+	}
+}
+
+// TestOptionsCloneMaintNotificationsRace verifies that cloning options via
+// baseClient is safe when initConn concurrently writes MaintNotificationsConfig.Mode.
+// Run with -race to detect the data race.
+func TestOptionsCloneMaintNotificationsRace(t *testing.T) {
+	opt := &Options{
+		Addr: "localhost:6379",
+		MaintNotificationsConfig: &maintnotifications.Config{
+			Mode: maintnotifications.ModeAuto,
+		},
+	}
+
+	bc := baseClient{opt: opt}
+
+	var wg sync.WaitGroup
+	const iterations = 1000
+
+	// Writer: simulates initConn toggling MaintNotificationsConfig.Mode under optLock
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			bc.optLock.Lock()
+			bc.opt.MaintNotificationsConfig.Mode = maintnotifications.ModeDisabled
+			bc.optLock.Unlock()
+
+			bc.optLock.Lock()
+			bc.opt.MaintNotificationsConfig.Mode = maintnotifications.ModeAuto
+			bc.optLock.Unlock()
+		}
+	}()
+
+	// Reader: simulates newTx / withTimeout calling cloneOpt() (acquires RLock)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			cloned := bc.cloneOpt()
+			_ = cloned
+		}
+	}()
+
+	wg.Wait()
 }
