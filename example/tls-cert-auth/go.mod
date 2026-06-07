@@ -1,6 +1,6 @@
 module github.com/redis/go-redis/example/tls-cert-auth
 
-go 1.24
+go 1.26.4
 
 replace github.com/redis/go-redis/v9 => ../..
 

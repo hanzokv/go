@@ -1,6 +1,6 @@
 module github.com/redis/go-redis/extra/redisotel-native/v9
 
-go 1.25.0
+go 1.26.4
 
 replace github.com/redis/go-redis/v9 => ../..
 
