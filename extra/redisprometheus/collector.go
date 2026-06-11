@@ -1,7 +1,7 @@
 package redisprometheus
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
+	metric "github.com/luxfi/metric"
 
 	"github.com/hanzoai/kv-go/v9"
 )
@@ -12,18 +12,18 @@ type StatGetter interface {
 }
 
 // Collector collects statistics from a redis client.
-// It implements the prometheus.Collector interface.
+// It implements the metric.Collector interface.
 type Collector struct {
 	getter      StatGetter
-	hitDesc     *prometheus.Desc
-	missDesc    *prometheus.Desc
-	timeoutDesc *prometheus.Desc
-	totalDesc   *prometheus.Desc
-	idleDesc    *prometheus.Desc
-	staleDesc   *prometheus.Desc
+	hitDesc     *metric.Desc
+	missDesc    *metric.Desc
+	timeoutDesc *metric.Desc
+	totalDesc   *metric.Desc
+	idleDesc    *metric.Desc
+	staleDesc   *metric.Desc
 }
 
-var _ prometheus.Collector = (*Collector)(nil)
+var _ metric.Collector = (*Collector)(nil)
 
 // NewCollector returns a new Collector based on the provided StatGetter.
 // The given namespace and subsystem are used to build the fully qualified metric name,
@@ -38,41 +38,41 @@ var _ prometheus.Collector = (*Collector)(nil)
 func NewCollector(namespace, subsystem string, getter StatGetter) *Collector {
 	return &Collector{
 		getter: getter,
-		hitDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "pool_hit_total"),
+		hitDesc: metric.NewDesc(
+			metric.BuildFQName(namespace, subsystem, "pool_hit_total"),
 			"Number of times a connection was found in the pool",
 			nil, nil,
 		),
-		missDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "pool_miss_total"),
+		missDesc: metric.NewDesc(
+			metric.BuildFQName(namespace, subsystem, "pool_miss_total"),
 			"Number of times a connection was not found in the pool",
 			nil, nil,
 		),
-		timeoutDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "pool_timeout_total"),
+		timeoutDesc: metric.NewDesc(
+			metric.BuildFQName(namespace, subsystem, "pool_timeout_total"),
 			"Number of times a timeout occurred when looking for a connection in the pool",
 			nil, nil,
 		),
-		totalDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "pool_conn_total_current"),
+		totalDesc: metric.NewDesc(
+			metric.BuildFQName(namespace, subsystem, "pool_conn_total_current"),
 			"Current number of connections in the pool",
 			nil, nil,
 		),
-		idleDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "pool_conn_idle_current"),
+		idleDesc: metric.NewDesc(
+			metric.BuildFQName(namespace, subsystem, "pool_conn_idle_current"),
 			"Current number of idle connections in the pool",
 			nil, nil,
 		),
-		staleDesc: prometheus.NewDesc(
-			prometheus.BuildFQName(namespace, subsystem, "pool_conn_stale_total"),
+		staleDesc: metric.NewDesc(
+			metric.BuildFQName(namespace, subsystem, "pool_conn_stale_total"),
 			"Number of times a connection was removed from the pool because it was stale",
 			nil, nil,
 		),
 	}
 }
 
-// Describe implements the prometheus.Collector interface.
-func (s *Collector) Describe(descs chan<- *prometheus.Desc) {
+// Describe implements the metric.Collector interface.
+func (s *Collector) Describe(descs chan<- *metric.Desc) {
 	descs <- s.hitDesc
 	descs <- s.missDesc
 	descs <- s.timeoutDesc
@@ -81,37 +81,37 @@ func (s *Collector) Describe(descs chan<- *prometheus.Desc) {
 	descs <- s.staleDesc
 }
 
-// Collect implements the prometheus.Collector interface.
-func (s *Collector) Collect(metrics chan<- prometheus.Metric) {
+// Collect implements the metric.Collector interface.
+func (s *Collector) Collect(metrics chan<- metric.Metric) {
 	stats := s.getter.PoolStats()
-	metrics <- prometheus.MustNewConstMetric(
+	metrics <- metric.MustNewConstMetric(
 		s.hitDesc,
-		prometheus.CounterValue,
+		metric.CounterValue,
 		float64(stats.Hits),
 	)
-	metrics <- prometheus.MustNewConstMetric(
+	metrics <- metric.MustNewConstMetric(
 		s.missDesc,
-		prometheus.CounterValue,
+		metric.CounterValue,
 		float64(stats.Misses),
 	)
-	metrics <- prometheus.MustNewConstMetric(
+	metrics <- metric.MustNewConstMetric(
 		s.timeoutDesc,
-		prometheus.CounterValue,
+		metric.CounterValue,
 		float64(stats.Timeouts),
 	)
-	metrics <- prometheus.MustNewConstMetric(
+	metrics <- metric.MustNewConstMetric(
 		s.totalDesc,
-		prometheus.GaugeValue,
+		metric.GaugeValue,
 		float64(stats.TotalConns),
 	)
-	metrics <- prometheus.MustNewConstMetric(
+	metrics <- metric.MustNewConstMetric(
 		s.idleDesc,
-		prometheus.GaugeValue,
+		metric.GaugeValue,
 		float64(stats.IdleConns),
 	)
-	metrics <- prometheus.MustNewConstMetric(
+	metrics <- metric.MustNewConstMetric(
 		s.staleDesc,
-		prometheus.CounterValue,
+		metric.CounterValue,
 		float64(stats.StaleConns),
 	)
 }

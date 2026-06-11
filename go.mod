@@ -14,6 +14,7 @@ require go.uber.org/atomic v1.11.0
 
 require (
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
+	github.com/luxfi/metric v1.5.8
 	golang.org/x/sys v0.42.0 // indirect
 )
 
