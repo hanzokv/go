@@ -1,4 +1,4 @@
-# LLM.md - Hanzo Kv Go
+# Hanzo Kv Go
 
 ## Overview
 Go module: github.com/hanzoai/kv-go/v9
