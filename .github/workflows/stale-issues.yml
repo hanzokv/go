@@ -16,7 +16,7 @@ env:
 
 jobs:
   stale:
-    runs-on: ubuntu-latest
+    runs-on: hanzo-build-linux-amd64
     steps:
       # First step: Handle regular issues (excluding needs-information)
       - name: Mark regular issues as stale
