@@ -3,7 +3,7 @@ package redis
 import (
 	"time"
 
-	"github.com/redis/go-redis/v9/internal"
+	"github.com/hanzoai/kv-go/v9/internal"
 )
 
 // DialRetryBackoffConstant returns a dial retry backoff function that always returns d.

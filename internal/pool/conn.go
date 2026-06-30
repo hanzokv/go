@@ -14,6 +14,7 @@ import (
 	"github.com/hanzoai/kv-go/v9/internal"
 	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
 	"github.com/hanzoai/kv-go/v9/internal/proto"
+	uberatomic "go.uber.org/atomic"
 )
 
 var noDeadline = time.Time{}

@@ -3,8 +3,6 @@ package hashtag
 import (
 	"math/rand"
 	"strings"
-
-	"github.com/hanzoai/kv-go/v9/internal/rand"
 )
 
 const slotNumber = 16384

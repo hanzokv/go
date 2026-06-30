@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9"
-	"github.com/redis/go-redis/v9/logging"
-	"github.com/redis/go-redis/v9/maintnotifications"
+	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzoai/kv-go/v9/logging"
+	"github.com/hanzoai/kv-go/v9/maintnotifications"
 )
 
 // startBackgroundTraffic starts a background goroutine that continuously sends commands
