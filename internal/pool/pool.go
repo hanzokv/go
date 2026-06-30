@@ -11,7 +11,41 @@ import (
 
 	"github.com/hanzoai/kv-go/v9/internal"
 	"github.com/hanzoai/kv-go/v9/internal/proto"
-	"github.com/hanzoai/kv-go/v9/internal/rand"
+)
+
+// Connection close reason constants for metrics.
+// These are used as the "reason" parameter in CloseConn() calls.
+const (
+	// CloseReasonStale indicates the connection was closed because it exceeded
+	// the idle timeout or max lifetime.
+	CloseReasonStale = "stale"
+
+	// CloseReasonHookError indicates the connection was closed due to an error
+	// in a pool hook (OnGet or OnPut).
+	CloseReasonHookError = "hook_error"
+
+	// CloseReasonAuthError indicates the connection was closed due to an
+	// authentication error during re-authentication.
+	CloseReasonAuthError = "auth_error"
+
+	// CloseReasonTest is used in tests when closing connections.
+	CloseReasonTest = "test"
+
+	// CloseReasonFailover indicates the connection was closed due to a failover event.
+	CloseReasonFailover = "failover"
+)
+
+// Metric state constants for connection state tracking.
+// These represent the logical state of a connection from a metrics perspective,
+// not the internal state machine state (ConnState).
+const (
+	// MetricStateIdle indicates the connection is idle in the pool,
+	// ready to be acquired.
+	MetricStateIdle = "idle"
+
+	// MetricStateUsed indicates the connection is currently being used
+	// by a client operation.
+	MetricStateUsed = "used"
 )
 
 var (

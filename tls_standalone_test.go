@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"testing"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/hanzoai/kv-go/v9"
 )
 
 // TestTLSStandalone tests TLS connection to standalone Redis

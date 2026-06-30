@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/redis/go-redis/v9/internal/proto"
+	"github.com/hanzoai/kv-go/v9/internal/proto"
 )
 
 func TestVectorFP32_Value(t *testing.T) {
@@ -761,7 +761,7 @@ func TestVIsMember(t *testing.T) {
 	cmd := m.lastCmd.(*BoolCmd)
 	if cmd.args[0] != "vismember" || cmd.args[1] != "k" || cmd.args[2] != "e" {
 		t.Errorf("unexpected args: %v", cmd.args)
-  }
+	}
 }
 
 // TestVectorScoreSliceCmdReadReply tests that VectorScoreSliceCmd.readReply handles

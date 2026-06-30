@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hanzoai/kv-go/v9/auth"
 	"github.com/hanzoai/kv-go/v9/internal/pool"
 	"github.com/hanzoai/kv-go/v9/internal/proto"
 
@@ -1181,4 +1182,3 @@ func TestPubSubConn_PassesPersistedChannelsToNewConn(t *testing.T) {
 		})
 	}
 }
-

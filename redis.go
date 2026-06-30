@@ -13,6 +13,7 @@ import (
 	"github.com/hanzoai/kv-go/v9/internal"
 	"github.com/hanzoai/kv-go/v9/internal/auth/streaming"
 	"github.com/hanzoai/kv-go/v9/internal/hscan"
+	"github.com/hanzoai/kv-go/v9/internal/otel"
 	"github.com/hanzoai/kv-go/v9/internal/pool"
 	"github.com/hanzoai/kv-go/v9/internal/proto"
 	"github.com/hanzoai/kv-go/v9/maintnotifications"

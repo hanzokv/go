@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzoai/kv-go/v9/internal/util"
 )
 
 type TimeseriesCmdable interface {

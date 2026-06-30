@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal/pool"
+	"github.com/hanzoai/kv-go/v9/internal/pool"
 )
 
 // generateUniqueID generates a short unique identifier for pool names.
