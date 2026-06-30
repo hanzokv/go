@@ -17,7 +17,6 @@ import (
 	"github.com/hanzoai/kv-go/v9/auth"
 	"github.com/hanzoai/kv-go/v9/internal"
 	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/internal/rand"
 	"github.com/hanzoai/kv-go/v9/maintnotifications"
 	"github.com/hanzoai/kv-go/v9/push"
 )

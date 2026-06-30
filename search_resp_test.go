@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/redis/go-redis/v9"
+	"github.com/hanzoai/kv-go/v9"
 )
 
 // TestSearchCommandsRESP2AndRESP3Equivalence tests that search commands
@@ -118,9 +118,9 @@ func TestSearchCommandsRESP2AndRESP3Equivalence(t *testing.T) {
 		// the data is silently lost. Assert both that the RESP3 value is
 		// non-empty and that it matches the RESP2 value.
 		avgFields := []struct {
-			name        string
-			resp2Val    string
-			resp3Val    string
+			name     string
+			resp2Val string
+			resp3Val string
 		}{
 			{"BytesPerRecordAvg", info2.BytesPerRecordAvg, info3.BytesPerRecordAvg},
 			{"RecordsPerDocAvg", info2.RecordsPerDocAvg, info3.RecordsPerDocAvg},
@@ -148,7 +148,7 @@ func TestSearchCommandsRESP2AndRESP3Equivalence(t *testing.T) {
 		// (see src/fork_gc/fork_gc.c statsCb) but typed as int in GCStats.
 		// Compare each individually so a regression surfaces with a precise message.
 		gcFields := []struct {
-			name             string
+			name         string
 			resp2, resp3 int
 		}{
 			{"BytesCollected", info2.GCStats.BytesCollected, info3.GCStats.BytesCollected},

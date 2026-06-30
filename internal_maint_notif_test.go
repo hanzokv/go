@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/redis/go-redis/v9/internal/pool"
-	"github.com/redis/go-redis/v9/maintnotifications"
+	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzoai/kv-go/v9/maintnotifications"
 )
 
 // TestInitConnNilMaintNotificationsConfig is a regression test for
@@ -99,7 +99,6 @@ func TestInitConnNilMaintNotificationsConfig(t *testing.T) {
 
 	_ = c.initConn(context.Background(), cn)
 }
-
 
 // mockRESP2Server is a minimal RESP server used to exercise the HELLO
 // fallback path in initConn. It replies with a Redis protocol error to
@@ -210,7 +209,6 @@ func startMockRESP2Server(t *testing.T) *mockRESP2Server {
 	}()
 	return s
 }
-
 
 // assertNoMaintNotifications fails the test if a CLIENT MAINT_NOTIFICATIONS
 // command was observed by srv.

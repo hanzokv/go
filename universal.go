@@ -8,6 +8,7 @@ import (
 
 	"github.com/hanzoai/kv-go/v9/auth"
 	"github.com/hanzoai/kv-go/v9/maintnotifications"
+	"github.com/hanzoai/kv-go/v9/push"
 )
 
 // UniversalOptions information is required by UniversalClient to establish
