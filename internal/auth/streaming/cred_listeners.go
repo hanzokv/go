@@ -3,7 +3,7 @@ package streaming
 import (
 	"sync"
 
-	"github.com/hanzoai/kv-go/v9/auth"
+	"github.com/hanzokv/go/v9/auth"
 )
 
 // CredentialsListeners is a thread-safe collection of credentials listeners

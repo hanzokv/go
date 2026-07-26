@@ -3,7 +3,7 @@ package redisotel
 import (
 	"strings"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"

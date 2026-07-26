@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 type redisHook struct{}

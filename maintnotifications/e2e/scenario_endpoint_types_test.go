@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	logs2 "github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
-	"github.com/hanzoai/kv-go/v9/logging"
-	"github.com/hanzoai/kv-go/v9/maintnotifications"
+	"github.com/hanzokv/go/v9/internal"
+	logs2 "github.com/hanzokv/go/v9/internal/maintnotifications/logs"
+	"github.com/hanzokv/go/v9/logging"
+	"github.com/hanzokv/go/v9/maintnotifications"
 )
 
 // TestEndpointTypesPushNotifications tests push notifications with different endpoint types

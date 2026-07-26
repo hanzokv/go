@@ -1,11 +1,11 @@
-module github.com/hanzoai/kv-go/example/del-keys-without-ttl
+module github.com/hanzokv/go/example/del-keys-without-ttl
 
 go 1.26
 
-replace github.com/hanzoai/kv-go/v9 => ../..
+replace github.com/hanzokv/go/v9 => ../..
 
 require (
-	github.com/hanzoai/kv-go/v9 v9.18.0-beta.2
+	github.com/hanzokv/go/v9 v9.18.0-beta.2
 	go.uber.org/zap v1.24.0
 )
 

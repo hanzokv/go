@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 // commandRecorder records the last N commands executed by a Redis client.

@@ -1,8 +1,8 @@
 package streaming
 
 import (
-	"github.com/hanzoai/kv-go/v9/auth"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/auth"
+	"github.com/hanzokv/go/v9/internal/pool"
 )
 
 // ConnReAuthCredentialsListener is a credentials listener for a specific connection

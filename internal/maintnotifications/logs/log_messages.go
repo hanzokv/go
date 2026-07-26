@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/hanzoai/kv-go/v9/internal"
+	"github.com/hanzokv/go/v9/internal"
 )
 
 // appendJSONIfDebug appends JSON data to a message only if the global log level is Debug

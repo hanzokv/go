@@ -6,8 +6,8 @@ import (
 
 	"go.opencensus.io/trace"
 
-	"github.com/hanzoai/kv-go/extra/rediscmd/v9"
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/extra/rediscmd/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 type TracingHook struct{}

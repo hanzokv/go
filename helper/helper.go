@@ -1,7 +1,7 @@
 package helper
 
 import (
-	"github.com/hanzoai/kv-go/v9/internal/util"
+	"github.com/hanzokv/go/v9/internal/util"
 	"github.com/zeebo/xxh3"
 )
 

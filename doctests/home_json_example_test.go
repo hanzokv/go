@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 // STEP_END

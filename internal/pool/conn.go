@@ -11,9 +11,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/maintnotifications/logs"
+	"github.com/hanzokv/go/v9/internal/proto"
 )
 
 var noDeadline = time.Time{}

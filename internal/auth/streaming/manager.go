@@ -4,8 +4,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/auth"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/auth"
+	"github.com/hanzokv/go/v9/internal/pool"
 )
 
 // Manager coordinates streaming credentials and re-authentication for a connection pool.

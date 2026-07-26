@@ -3,8 +3,8 @@ package push
 import (
 	"context"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/proto"
 )
 
 // NotificationProcessor defines the interface for push notification processors.

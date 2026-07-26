@@ -6,7 +6,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal/proto"
 )
 
 func BenchmarkReader_ParseReply_Status(b *testing.B) {

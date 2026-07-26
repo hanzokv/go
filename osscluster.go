@@ -15,15 +15,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/auth"
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/hashtag"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
-	"github.com/hanzoai/kv-go/v9/internal/rand"
-	"github.com/hanzoai/kv-go/v9/internal/routing"
-	"github.com/hanzoai/kv-go/v9/maintnotifications"
-	"github.com/hanzoai/kv-go/v9/push"
+	"github.com/hanzokv/go/v9/auth"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/hashtag"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal/rand"
+	"github.com/hanzokv/go/v9/internal/routing"
+	"github.com/hanzokv/go/v9/maintnotifications"
+	"github.com/hanzokv/go/v9/push"
 )
 
 const (

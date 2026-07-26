@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"github.com/hanzoai/kv-go/v9/push"
+	"github.com/hanzokv/go/v9/push"
 )
 
 // NewPushNotificationProcessor creates a new push notification processor

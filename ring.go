@@ -13,13 +13,13 @@ import (
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/dgryski/go-rendezvous" //nolint
-	"github.com/hanzoai/kv-go/v9/auth"
+	"github.com/hanzokv/go/v9/auth"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/hashtag"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
-	"github.com/hanzoai/kv-go/v9/internal/rand"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/hashtag"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal/rand"
 )
 
 var errRingShardsDown = errors.New("redis: all ring shards are down")

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/maintnotifications/logs"
 )
 
 // Mode represents the maintenance notifications mode

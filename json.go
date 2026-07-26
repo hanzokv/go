@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/hanzoai/kv-go/v9/internal/proto"
-	"github.com/hanzoai/kv-go/v9/internal/util"
+	"github.com/hanzokv/go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal/util"
 )
 
 // -------------------------------------------

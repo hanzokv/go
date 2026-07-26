@@ -1,4 +1,4 @@
-module github.com/hanzoai/kv-go/internal/customvet
+module github.com/hanzokv/go/internal/customvet
 
 go 1.26
 

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal/util"
+	"github.com/hanzokv/go/v9/internal/util"
 )
 
 func AppendArg(b []byte, v interface{}) []byte {

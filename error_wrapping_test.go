@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hanzoai/kv-go/v9"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzokv/go/v9"
+	"github.com/hanzokv/go/v9/internal/proto"
 )
 
 // TestTypedErrorsWithHookWrapping demonstrates that typed errors work correctly

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal/util"
+	"github.com/hanzokv/go/v9/internal/util"
 )
 
 func Sleep(ctx context.Context, dur time.Duration) error {

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9"
-	"github.com/hanzoai/kv-go/v9/logging"
+	"github.com/hanzokv/go/v9"
+	"github.com/hanzokv/go/v9/logging"
 )
 
 // Global log collector

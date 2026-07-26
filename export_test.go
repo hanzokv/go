@@ -6,9 +6,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/hashtag"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/hashtag"
+	"github.com/hanzokv/go/v9/internal/pool"
 )
 
 func (c *baseClient) Pool() pool.Pooler {

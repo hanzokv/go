@@ -12,11 +12,11 @@ import (
 
 	"github.com/uptrace/uptrace-go/uptrace"
 
-	"github.com/hanzoai/kv-go/extra/redisotel/v9"
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/extra/redisotel/v9"
+	"github.com/hanzokv/go/v9"
 )
 
-var tracer = otel.Tracer("github.com/hanzoai/kv-go/example/otel")
+var tracer = otel.Tracer("github.com/hanzokv/go/example/otel")
 
 func main() {
 	ctx := context.Background()

@@ -7,9 +7,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal/proto"
 )
 
 // ErrClosed performs any operation on the closed client will return this error.
