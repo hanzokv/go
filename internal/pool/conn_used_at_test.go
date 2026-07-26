@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal/proto"
 )
 
 // TestConn_UsedAtUpdatedOnRead verifies that usedAt is updated when reading from connection

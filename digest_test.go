@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hanzoai/kv-go/v9"
-	"github.com/hanzoai/kv-go/v9/helper"
+	"github.com/hanzokv/go/v9"
+	"github.com/hanzokv/go/v9/helper"
 )
 
 func init() {

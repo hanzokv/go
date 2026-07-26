@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/auth"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
-	"github.com/hanzoai/kv-go/v9/internal/util"
-	"github.com/hanzoai/kv-go/v9/maintnotifications"
-	"github.com/hanzoai/kv-go/v9/push"
+	"github.com/hanzokv/go/v9/auth"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/internal/util"
+	"github.com/hanzokv/go/v9/maintnotifications"
+	"github.com/hanzokv/go/v9/push"
 )
 
 // Limiter is the interface of a rate limiter or a circuit breaker.

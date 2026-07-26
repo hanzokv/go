@@ -1,7 +1,7 @@
 # LLM.md - Hanzo Kv Go
 
 ## Overview
-Go module: github.com/hanzoai/kv-go/v9
+Go module: github.com/hanzokv/go/v9
 
 ## Tech Stack
 - **Language**: Go

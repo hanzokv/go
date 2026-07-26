@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal/hashtag"
+	"github.com/hanzokv/go/v9/internal/hashtag"
 )
 
 type SortedSetCmdable interface {

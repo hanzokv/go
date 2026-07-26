@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal/interfaces"
+	"github.com/hanzokv/go/v9/internal/interfaces"
 )
 
 // MockClient implements interfaces.ClientInterface for testing

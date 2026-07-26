@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/push"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/maintnotifications/logs"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/push"
 )
 
 // contextKey is a custom type for context keys to avoid collisions

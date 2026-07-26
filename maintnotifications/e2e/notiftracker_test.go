@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/maintnotifications"
-	"github.com/hanzoai/kv-go/v9/push"
+	"github.com/hanzokv/go/v9"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/maintnotifications"
+	"github.com/hanzokv/go/v9/push"
 )
 
 // DiagnosticsEvent represents a notification event

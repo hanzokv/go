@@ -3,7 +3,7 @@ package redis
 import (
 	"context"
 
-	"github.com/hanzoai/kv-go/v9/internal/hashtag"
+	"github.com/hanzokv/go/v9/internal/hashtag"
 )
 
 // SetCmdable is an interface for Redis set commands.

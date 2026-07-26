@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal/pool"
 )
 
 type poolGetPutBenchmark struct {

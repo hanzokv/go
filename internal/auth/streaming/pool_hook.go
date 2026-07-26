@@ -5,8 +5,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/pool"
 )
 
 // ReAuthPoolHook is a pool hook that manages background re-authentication of connections

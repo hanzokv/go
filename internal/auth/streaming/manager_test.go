@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/auth"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/auth"
+	"github.com/hanzokv/go/v9/internal/pool"
 )
 
 // Test that Listener returns the newly created listener, not nil

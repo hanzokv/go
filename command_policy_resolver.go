@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/hanzoai/kv-go/v9/internal/routing"
+	"github.com/hanzokv/go/v9/internal/routing"
 )
 
 type (

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/logging"
-	"github.com/hanzoai/kv-go/v9/maintnotifications"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/logging"
+	"github.com/hanzokv/go/v9/maintnotifications"
 )
 
 // mockNetConn implements net.Conn for testing

@@ -3,7 +3,7 @@ package redisprometheus
 import (
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 // StatGetter provides a method to get pool statistics.

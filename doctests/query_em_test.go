@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 func ExampleClient_query_em() {

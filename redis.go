@@ -9,14 +9,14 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/auth"
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/auth/streaming"
-	"github.com/hanzoai/kv-go/v9/internal/hscan"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
-	"github.com/hanzoai/kv-go/v9/internal/proto"
-	"github.com/hanzoai/kv-go/v9/maintnotifications"
-	"github.com/hanzoai/kv-go/v9/push"
+	"github.com/hanzokv/go/v9/auth"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/auth/streaming"
+	"github.com/hanzokv/go/v9/internal/hscan"
+	"github.com/hanzokv/go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal/proto"
+	"github.com/hanzokv/go/v9/maintnotifications"
+	"github.com/hanzokv/go/v9/push"
 )
 
 // Scanner internal/hscan.Scanner exposed interface.

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 func ExampleClient_LPush_and_lrange() {

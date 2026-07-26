@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/hanzoai/kv-go/v9/internal/util"
+	"github.com/hanzokv/go/v9/internal/util"
 )
 
 // structMap contains the map of struct fields for target structs

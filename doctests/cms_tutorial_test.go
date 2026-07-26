@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/hanzoai/kv-go/v9"
+	"github.com/hanzokv/go/v9"
 )
 
 // HIDE_END

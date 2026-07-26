@@ -6,8 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/auth"
-	"github.com/hanzoai/kv-go/v9/maintnotifications"
+	"github.com/hanzokv/go/v9/auth"
+	"github.com/hanzokv/go/v9/maintnotifications"
 )
 
 // UniversalOptions information is required by UniversalClient to establish

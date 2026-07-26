@@ -1,10 +1,10 @@
-module github.com/hanzoai/kv-go/example/cluster-mget
+module github.com/hanzokv/go/example/cluster-mget
 
 go 1.26
 
-replace github.com/hanzoai/kv-go/v9 => ../..
+replace github.com/hanzokv/go/v9 => ../..
 
-require github.com/hanzoai/kv-go/v9 v9.16.0
+require github.com/hanzokv/go/v9 v9.16.0
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

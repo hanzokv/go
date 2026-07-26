@@ -1,4 +1,4 @@
-module github.com/hanzoai/kv-go/v9
+module github.com/hanzokv/go/v9
 
 go 1.26
 

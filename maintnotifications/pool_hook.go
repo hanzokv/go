@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hanzoai/kv-go/v9/internal"
-	"github.com/hanzoai/kv-go/v9/internal/maintnotifications/logs"
-	"github.com/hanzoai/kv-go/v9/internal/pool"
+	"github.com/hanzokv/go/v9/internal"
+	"github.com/hanzokv/go/v9/internal/maintnotifications/logs"
+	"github.com/hanzokv/go/v9/internal/pool"
 )
 
 // OperationsManagerInterface defines the interface for completing handoff operations
