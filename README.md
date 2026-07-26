@@ -477,7 +477,7 @@ func (h MyHook) ProcessHook(next kv.ProcessHook) kv.ProcessHook {
         if err != nil {
             // Wrap with custom error type
             wrappedErr := &AppError{
-                Code:      "REDIS_ERROR",
+                Code:      "KV_ERROR",
                 RequestID: getRequestID(ctx),
                 Err:       err,
             }

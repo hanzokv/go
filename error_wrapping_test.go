@@ -384,7 +384,7 @@ func TestCustomErrorTypeWrapping(t *testing.T) {
 	cmd1 := kv.NewStatusCmd(testCtx, "GET", "key")
 	loadingErr := proto.ParseErrorReply([]byte("-LOADING KV is loading the dataset in memory"))
 	customErr1 := &AppError{
-		Code:      "REDIS_ERROR",
+		Code:      "KV_ERROR",
 		Message:   "Database operation failed",
 		RequestID: "req-12345",
 		Err:       loadingErr,
@@ -398,7 +398,7 @@ func TestCustomErrorTypeWrapping(t *testing.T) {
 
 	// Verify error message contains custom context
 	errMsg := cmd1.Err().Error()
-	if !contains(errMsg, "REDIS_ERROR") || !contains(errMsg, "req-12345") {
+	if !contains(errMsg, "KV_ERROR") || !contains(errMsg, "req-12345") {
 		t.Errorf("Error message missing custom error context: %v", errMsg)
 	}
 
