@@ -7,7 +7,7 @@ replace github.com/hanzoai/kv-go/v9 => ../..
 require (
 	github.com/bsm/ginkgo/v2 v2.12.0
 	github.com/bsm/gomega v1.27.10
-	github.com/hanzoai/kv-go/v9 v9.18.0-beta.2
+	github.com/hanzoai/kv-go/v9 v9.21.0
 )
 
 require (
