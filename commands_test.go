@@ -3516,9 +3516,9 @@ var _ = Describe("Commands", func() {
 			Expect(v.Err()).NotTo(HaveOccurred())
 			Expect(v.Val()).To(HaveLen(0))
 
-			kv, err := client.HRandFieldWithValues(ctx, "hash", 1).Result()
+			kvs, err := client.HRandFieldWithValues(ctx, "hash", 1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(kv).To(Or(
+			Expect(kvs).To(Or(
 				Equal([]kv.KeyValue{{Key: "key1", Value: "hello1"}}),
 				Equal([]kv.KeyValue{{Key: "key2", Value: "hello2"}}),
 			))
@@ -6734,9 +6734,9 @@ var _ = Describe("Commands", func() {
 			Expect(v.Err()).NotTo(HaveOccurred())
 			Expect(v.Val()).To(HaveLen(0))
 
-			kv, err := client.ZRandMemberWithScores(ctx, "zset", 1).Result()
+			kvs, err := client.ZRandMemberWithScores(ctx, "zset", 1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(kv).To(Or(
+			Expect(kvs).To(Or(
 				Equal([]kv.Z{{Member: "one", Score: 1}}),
 				Equal([]kv.Z{{Member: "two", Score: 2}}),
 			))
