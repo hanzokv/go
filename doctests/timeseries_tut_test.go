@@ -26,7 +26,7 @@ func mapKeys[K comparable, V any](m map[K]V) []K {
 func ExampleClient_timeseries_create() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -67,7 +67,7 @@ func ExampleClient_timeseries_create() {
 		"thermometer:2",
 		1,
 		10.8,
-		&redis.TSOptions{
+		&kv.TSOptions{
 			Retention: 100,
 		},
 	).Result()
@@ -91,7 +91,7 @@ func ExampleClient_timeseries_create() {
 		"thermometer:3",
 		1,
 		10.4,
-		&redis.TSOptions{
+		&kv.TSOptions{
 			Labels: map[string]string{
 				"location": "UK",
 				"type":     "Mercury",
@@ -126,7 +126,7 @@ func ExampleClient_timeseries_create() {
 func ExampleClient_timeseries_add() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -173,7 +173,7 @@ func ExampleClient_timeseries_add() {
 func ExampleClient_timeseries_range() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -262,7 +262,7 @@ func ExampleClient_timeseries_range() {
 		"rg:1",
 		0,
 		math.MaxInt64,
-		&redis.TSRangeOptions{
+		&kv.TSRangeOptions{
 			FilterByTS: []int{0, 2, 4},
 		},
 	).Result()
@@ -277,7 +277,7 @@ func ExampleClient_timeseries_range() {
 		"rg:1",
 		0,
 		math.MaxInt64,
-		&redis.TSRevRangeOptions{
+		&kv.TSRevRangeOptions{
 			FilterByTS:    []int{0, 2, 4},
 			FilterByValue: []int{20, 25},
 		},
@@ -293,7 +293,7 @@ func ExampleClient_timeseries_range() {
 		"rg:1",
 		0,
 		math.MaxInt64,
-		&redis.TSRevRangeOptions{
+		&kv.TSRevRangeOptions{
 			FilterByTS:    []int{0, 2, 4},
 			FilterByValue: []int{22, 22},
 		},
@@ -321,7 +321,7 @@ func ExampleClient_timeseries_range() {
 func ExampleClient_timeseries_query_multi() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -337,7 +337,7 @@ func ExampleClient_timeseries_query_multi() {
 	// Create three new "rg:" time series (two in the US
 	// and one in the UK, with different units) and add some
 	// data points.
-	res20, err := rdb.TSCreateWithArgs(ctx, "rg:2", &redis.TSOptions{
+	res20, err := rdb.TSCreateWithArgs(ctx, "rg:2", &kv.TSOptions{
 		Labels: map[string]string{"location": "us", "unit": "cm"},
 	}).Result()
 	if err != nil {
@@ -346,7 +346,7 @@ func ExampleClient_timeseries_query_multi() {
 
 	fmt.Println(res20) // >>> OK
 
-	res21, err := rdb.TSCreateWithArgs(ctx, "rg:3", &redis.TSOptions{
+	res21, err := rdb.TSCreateWithArgs(ctx, "rg:3", &kv.TSOptions{
 		Labels: map[string]string{"location": "us", "unit": "in"},
 	}).Result()
 	if err != nil {
@@ -355,7 +355,7 @@ func ExampleClient_timeseries_query_multi() {
 
 	fmt.Println(res21) // >>> OK
 
-	res22, err := rdb.TSCreateWithArgs(ctx, "rg:4", &redis.TSOptions{
+	res22, err := rdb.TSCreateWithArgs(ctx, "rg:4", &kv.TSOptions{
 		Labels: map[string]string{"location": "uk", "unit": "mm"},
 	}).Result()
 	if err != nil {
@@ -457,7 +457,7 @@ func ExampleClient_timeseries_query_multi() {
 	res29, err := rdb.TSMGetWithArgs(
 		ctx,
 		[]string{"location=us"},
-		&redis.TSMGetOptions{
+		&kv.TSMGetOptions{
 			SelectedLabels: []interface{}{"unit"},
 		},
 	).Result()
@@ -505,7 +505,7 @@ func ExampleClient_timeseries_query_multi() {
 		0,
 		2,
 		[]string{"unit=mm"},
-		&redis.TSMRangeOptions{
+		&kv.TSMRangeOptions{
 			WithLabels: true,
 		},
 	).Result()
@@ -550,7 +550,7 @@ func ExampleClient_timeseries_query_multi() {
 		1,
 		3,
 		[]string{"unit=(cm,mm)"},
-		&redis.TSMRevRangeOptions{
+		&kv.TSMRevRangeOptions{
 			SelectedLabels: []interface{}{"location"},
 		},
 	).Result()
@@ -627,7 +627,7 @@ func ExampleClient_timeseries_query_multi() {
 func ExampleClient_timeseries_aggregation() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -640,7 +640,7 @@ func ExampleClient_timeseries_aggregation() {
 	// REMOVE_END
 
 	// Setup data for aggregation example
-	_, err := rdb.TSCreateWithArgs(ctx, "rg:2", &redis.TSOptions{
+	_, err := rdb.TSCreateWithArgs(ctx, "rg:2", &kv.TSOptions{
 		Labels: map[string]string{"location": "us", "unit": "cm"},
 	}).Result()
 	if err != nil {
@@ -664,8 +664,8 @@ func ExampleClient_timeseries_aggregation() {
 		"rg:2",
 		0,
 		math.MaxInt64,
-		&redis.TSRangeOptions{
-			Aggregator:     redis.Avg,
+		&kv.TSRangeOptions{
+			Aggregator:     kv.Avg,
 			BucketDuration: 2,
 		},
 	).Result()
@@ -683,7 +683,7 @@ func ExampleClient_timeseries_aggregation() {
 func ExampleClient_timeseries_agg_bucket() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -723,8 +723,8 @@ func ExampleClient_timeseries_agg_bucket() {
 		"sensor3",
 		10,
 		70,
-		&redis.TSRangeOptions{
-			Aggregator:     redis.Min,
+		&kv.TSRangeOptions{
+			Aggregator:     kv.Min,
 			BucketDuration: 25,
 		},
 	).Result()
@@ -741,8 +741,8 @@ func ExampleClient_timeseries_agg_bucket() {
 		"sensor3",
 		10,
 		70,
-		&redis.TSRangeOptions{
-			Aggregator:     redis.Min,
+		&kv.TSRangeOptions{
+			Aggregator:     kv.Min,
 			BucketDuration: 25,
 			Align:          "START",
 		},
@@ -764,7 +764,7 @@ func ExampleClient_timeseries_agg_bucket() {
 func ExampleClient_timeseries_aggmulti() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -777,7 +777,7 @@ func ExampleClient_timeseries_aggmulti() {
 	// REMOVE_END
 
 	// STEP_START agg_multi
-	res37, err := rdb.TSCreateWithArgs(ctx, "wind:1", &redis.TSOptions{
+	res37, err := rdb.TSCreateWithArgs(ctx, "wind:1", &kv.TSOptions{
 		Labels: map[string]string{"country": "uk"},
 	}).Result()
 	if err != nil {
@@ -786,7 +786,7 @@ func ExampleClient_timeseries_aggmulti() {
 
 	fmt.Println(res37) // >>> OK
 
-	res38, err := rdb.TSCreateWithArgs(ctx, "wind:2", &redis.TSOptions{
+	res38, err := rdb.TSCreateWithArgs(ctx, "wind:2", &kv.TSOptions{
 		Labels: map[string]string{"country": "uk"},
 	}).Result()
 	if err != nil {
@@ -795,7 +795,7 @@ func ExampleClient_timeseries_aggmulti() {
 
 	fmt.Println(res38) // >>> OK
 
-	res39, err := rdb.TSCreateWithArgs(ctx, "wind:3", &redis.TSOptions{
+	res39, err := rdb.TSCreateWithArgs(ctx, "wind:3", &kv.TSOptions{
 		Labels: map[string]string{"country": "us"},
 	}).Result()
 	if err != nil {
@@ -804,7 +804,7 @@ func ExampleClient_timeseries_aggmulti() {
 
 	fmt.Println(res39) // >>> OK
 
-	res40, err := rdb.TSCreateWithArgs(ctx, "wind:4", &redis.TSOptions{
+	res40, err := rdb.TSCreateWithArgs(ctx, "wind:4", &kv.TSOptions{
 		Labels: map[string]string{"country": "us"},
 	}).Result()
 	if err != nil {
@@ -856,7 +856,7 @@ func ExampleClient_timeseries_aggmulti() {
 		0,
 		math.MaxInt64,
 		[]string{"country=(us,uk)"},
-		&redis.TSMRangeOptions{
+		&kv.TSMRangeOptions{
 			GroupByLabel: "country",
 			Reducer:      "max",
 		},
@@ -904,7 +904,7 @@ func ExampleClient_timeseries_aggmulti() {
 		0,
 		math.MaxInt64,
 		[]string{"country=(us,uk)"},
-		&redis.TSMRangeOptions{
+		&kv.TSMRangeOptions{
 			GroupByLabel: "country",
 			Reducer:      "avg",
 		},
@@ -975,7 +975,7 @@ func ExampleClient_timeseries_aggmulti() {
 func ExampleClient_timeseries_compaction() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -1003,7 +1003,7 @@ func ExampleClient_timeseries_compaction() {
 	fmt.Println(res46) // >>> OK
 
 	res47, err := rdb.TSCreateRule(
-		ctx, "hyg:1", "hyg:compacted", redis.Min, 3,
+		ctx, "hyg:1", "hyg:compacted", kv.Min, 3,
 	).Result()
 	if err != nil {
 		panic(err)
@@ -1079,7 +1079,7 @@ func ExampleClient_timeseries_compaction() {
 func ExampleClient_timeseries_delete() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB

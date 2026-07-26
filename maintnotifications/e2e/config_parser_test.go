@@ -46,12 +46,12 @@ type EnvDatabasesConfig map[string]EnvDatabaseConfig
 
 // EnvConfig represents environment configuration for test scenarios
 type EnvConfig struct {
-	RedisEndpointsConfigPath string
+	KVEndpointsConfigPath string
 	FaultInjectorURL         string
 }
 
-// RedisConnectionConfig represents Redis connection parameters
-type RedisConnectionConfig struct {
+// KVConnectionConfig represents KV connection parameters
+type KVConnectionConfig struct {
 	Host                 string
 	Port                 int
 	Username             string
@@ -64,9 +64,9 @@ type RedisConnectionConfig struct {
 
 // GetEnvConfig reads environment variables required for the test scenario
 func GetEnvConfig() (*EnvConfig, error) {
-	redisConfigPath := os.Getenv("REDIS_ENDPOINTS_CONFIG_PATH")
-	if redisConfigPath == "" {
-		return nil, fmt.Errorf("REDIS_ENDPOINTS_CONFIG_PATH environment variable must be set")
+	kvConfigPath := os.Getenv("KV_ENDPOINTS_CONFIG_PATH")
+	if kvConfigPath == "" {
+		return nil, fmt.Errorf("KV_ENDPOINTS_CONFIG_PATH environment variable must be set")
 	}
 
 	faultInjectorURL := os.Getenv("FAULT_INJECTION_API_URL")
@@ -76,7 +76,7 @@ func GetEnvConfig() (*EnvConfig, error) {
 	}
 
 	return &EnvConfig{
-		RedisEndpointsConfigPath: redisConfigPath,
+		KVEndpointsConfigPath: kvConfigPath,
 		FaultInjectorURL:         faultInjectorURL,
 	}, nil
 }
@@ -96,8 +96,8 @@ func GetDatabaseConfigFromEnv(filePath string) (EnvDatabasesConfig, error) {
 	return config, nil
 }
 
-// GetDatabaseConfig gets Redis connection parameters for a specific database
-func GetDatabaseConfig(databasesConfig EnvDatabasesConfig, databaseName string) (*RedisConnectionConfig, error) {
+// GetDatabaseConfig gets KV connection parameters for a specific database
+func GetDatabaseConfig(databasesConfig EnvDatabasesConfig, databaseName string) (*KVConnectionConfig, error) {
 	var dbConfig EnvDatabaseConfig
 	var exists bool
 
@@ -137,9 +137,9 @@ func GetDatabaseConfig(databasesConfig EnvDatabasesConfig, databaseName string) 
 		if portStr == "" {
 			// Default ports based on scheme
 			switch endpointURL.Scheme {
-			case "redis":
+			case "kv":
 				port = 6379
-			case "rediss":
+			case "kvs":
 				port = 6380
 			default:
 				port = 6379
@@ -152,7 +152,7 @@ func GetDatabaseConfig(databasesConfig EnvDatabasesConfig, databaseName string) 
 		}
 
 		// Override TLS setting based on scheme if not explicitly set
-		if endpointURL.Scheme == "rediss" {
+		if endpointURL.Scheme == "kvs" {
 			dbConfig.TLS = true
 		}
 	} else {
@@ -169,7 +169,7 @@ func GetDatabaseConfig(databasesConfig EnvDatabasesConfig, databaseName string) 
 		bdbId, _ = strconv.Atoi(dbConfig.BdbID.(string))
 	}
 
-	return &RedisConnectionConfig{
+	return &KVConnectionConfig{
 		Host:                 host,
 		Port:                 port,
 		Username:             dbConfig.Username,
@@ -181,8 +181,8 @@ func GetDatabaseConfig(databasesConfig EnvDatabasesConfig, databaseName string) 
 	}, nil
 }
 
-// ConvertEnvDatabaseConfigToRedisConnectionConfig converts EnvDatabaseConfig to RedisConnectionConfig
-func ConvertEnvDatabaseConfigToRedisConnectionConfig(dbConfig EnvDatabaseConfig) (*RedisConnectionConfig, error) {
+// ConvertEnvDatabaseConfigToKVConnectionConfig converts EnvDatabaseConfig to KVConnectionConfig
+func ConvertEnvDatabaseConfigToKVConnectionConfig(dbConfig EnvDatabaseConfig) (*KVConnectionConfig, error) {
 	// Parse connection details from endpoints or raw_endpoints
 	var host string
 	var port int
@@ -204,9 +204,9 @@ func ConvertEnvDatabaseConfigToRedisConnectionConfig(dbConfig EnvDatabaseConfig)
 		if portStr == "" {
 			// Default ports based on scheme
 			switch endpointURL.Scheme {
-			case "redis":
+			case "kv":
 				port = 6379
-			case "rediss":
+			case "kvs":
 				port = 6380
 			default:
 				port = 6379
@@ -219,7 +219,7 @@ func ConvertEnvDatabaseConfigToRedisConnectionConfig(dbConfig EnvDatabaseConfig)
 		}
 
 		// Override TLS setting based on scheme if not explicitly set
-		if endpointURL.Scheme == "rediss" {
+		if endpointURL.Scheme == "kvs" {
 			dbConfig.TLS = true
 		}
 	} else {
@@ -236,7 +236,7 @@ func ConvertEnvDatabaseConfigToRedisConnectionConfig(dbConfig EnvDatabaseConfig)
 		bdbId, _ = strconv.Atoi(dbConfig.BdbID.(string))
 	}
 
-	return &RedisConnectionConfig{
+	return &KVConnectionConfig{
 		Host:                 host,
 		Port:                 port,
 		Username:             dbConfig.Username,
@@ -248,22 +248,22 @@ func ConvertEnvDatabaseConfigToRedisConnectionConfig(dbConfig EnvDatabaseConfig)
 	}, nil
 }
 
-// ClientFactory manages Redis client creation and lifecycle
+// ClientFactory manages KV client creation and lifecycle
 type ClientFactory struct {
-	config  *RedisConnectionConfig
-	clients map[string]redis.UniversalClient
+	config  *KVConnectionConfig
+	clients map[string]kv.UniversalClient
 	mutex   sync.RWMutex
 }
 
 // NewClientFactory creates a new client factory with the specified configuration
-func NewClientFactory(config *RedisConnectionConfig) *ClientFactory {
+func NewClientFactory(config *KVConnectionConfig) *ClientFactory {
 	return &ClientFactory{
 		config:  config,
-		clients: make(map[string]redis.UniversalClient),
+		clients: make(map[string]kv.UniversalClient),
 	}
 }
 
-// CreateClientOptions represents options for creating Redis clients
+// CreateClientOptions represents options for creating KV clients
 type CreateClientOptions struct {
 	Protocol                 int
 	MaintNotificationsConfig *maintnotifications.Config
@@ -277,7 +277,7 @@ type CreateClientOptions struct {
 	WriteTimeout             time.Duration
 }
 
-// DefaultCreateClientOptions returns default options for creating Redis clients
+// DefaultCreateClientOptions returns default options for creating KV clients
 func DefaultCreateClientOptions() *CreateClientOptions {
 	return &CreateClientOptions{
 		Protocol: 3, // RESP3 by default for push notifications
@@ -304,8 +304,8 @@ func (cf *ClientFactory) PrintPoolStats(t *testing.T) {
 	}
 }
 
-// Create creates a new Redis client with the specified options and connects it
-func (cf *ClientFactory) Create(key string, options *CreateClientOptions) (redis.UniversalClient, error) {
+// Create creates a new KV client with the specified options and connects it
+func (cf *ClientFactory) Create(key string, options *CreateClientOptions) (kv.UniversalClient, error) {
 	if options == nil {
 		options = DefaultCreateClientOptions()
 	}
@@ -318,13 +318,13 @@ func (cf *ClientFactory) Create(key string, options *CreateClientOptions) (redis
 		return client, nil
 	}
 
-	var client redis.UniversalClient
+	var client kv.UniversalClient
 	var opts interface{}
 
 	// Determine if this is a cluster configuration
 	if len(cf.config.Endpoints) > 1 || cf.isClusterEndpoint() {
 		// Create cluster client
-		clusterOptions := &redis.ClusterOptions{
+		clusterOptions := &kv.ClusterOptions{
 			Addrs:                    cf.getAddresses(),
 			Username:                 cf.config.Username,
 			Password:                 cf.config.Password,
@@ -351,10 +351,10 @@ func (cf *ClientFactory) Create(key string, options *CreateClientOptions) (redis
 		}
 
 		opts = clusterOptions
-		client = redis.NewClusterClient(clusterOptions)
+		client = kv.NewClusterClient(clusterOptions)
 	} else {
 		// Create single client
-		clientOptions := &redis.Options{
+		clientOptions := &kv.Options{
 			Addr:                     fmt.Sprintf("%s:%d", cf.config.Host, cf.config.Port),
 			Username:                 cf.config.Username,
 			Password:                 cf.config.Password,
@@ -382,11 +382,11 @@ func (cf *ClientFactory) Create(key string, options *CreateClientOptions) (redis
 		}
 
 		opts = clientOptions
-		client = redis.NewClient(clientOptions)
+		client = kv.NewClient(clientOptions)
 	}
 
 	if err := client.Ping(context.Background()).Err(); err != nil {
-		return nil, fmt.Errorf("failed to connect to Redis: %w\nOptions: %+v", err, opts)
+		return nil, fmt.Errorf("failed to connect to KV: %w\nOptions: %+v", err, opts)
 	}
 
 	// Store the client
@@ -396,7 +396,7 @@ func (cf *ClientFactory) Create(key string, options *CreateClientOptions) (redis
 }
 
 // Get retrieves an existing client by key or the first one if no key is provided
-func (cf *ClientFactory) Get(key string) redis.UniversalClient {
+func (cf *ClientFactory) Get(key string) kv.UniversalClient {
 	cf.mutex.RLock()
 	defer cf.mutex.RUnlock()
 
@@ -413,11 +413,11 @@ func (cf *ClientFactory) Get(key string) redis.UniversalClient {
 }
 
 // GetAll returns all created clients
-func (cf *ClientFactory) GetAll() map[string]redis.UniversalClient {
+func (cf *ClientFactory) GetAll() map[string]kv.UniversalClient {
 	cf.mutex.RLock()
 	defer cf.mutex.RUnlock()
 
-	result := make(map[string]redis.UniversalClient)
+	result := make(map[string]kv.UniversalClient)
 	for key, client := range cf.clients {
 		result[key] = client
 	}
@@ -457,7 +457,7 @@ func (cf *ClientFactory) Destroy(key string) error {
 }
 
 // GetConfig returns the connection configuration
-func (cf *ClientFactory) GetConfig() *RedisConnectionConfig {
+func (cf *ClientFactory) GetConfig() *KVConnectionConfig {
 	return cf.config
 }
 
@@ -510,7 +510,7 @@ func CreateTestClientFactory(databaseName string) (*ClientFactory, error) {
 		return nil, fmt.Errorf("failed to get environment config: %w", err)
 	}
 
-	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.RedisEndpointsConfigPath)
+	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.KVEndpointsConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database config: %w", err)
 	}
@@ -531,7 +531,7 @@ func CreateTestClientFactoryWithBdbID(databaseName string, bdbID int) (*ClientFa
 		return nil, fmt.Errorf("failed to get environment config: %w", err)
 	}
 
-	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.RedisEndpointsConfigPath)
+	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.KVEndpointsConfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get database config: %w", err)
 	}
@@ -883,7 +883,7 @@ func SetupTestDatabaseFromEnv(t *testing.T, ctx context.Context, databaseName st
 	}
 
 	// Get database config from environment
-	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.RedisEndpointsConfigPath)
+	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.KVEndpointsConfigPath)
 	if err != nil {
 		t.Fatalf("Failed to get database config: %v", err)
 	}
@@ -973,7 +973,7 @@ func SetupTestDatabaseAndFactory(t *testing.T, ctx context.Context, databaseName
 	}
 
 	// Get database config from environment
-	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.RedisEndpointsConfigPath)
+	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.KVEndpointsConfigPath)
 	if err != nil {
 		t.Fatalf("Failed to get database config: %v", err)
 	}
@@ -1022,15 +1022,15 @@ func SetupTestDatabaseAndFactory(t *testing.T, ctx context.Context, databaseName
 		newEnvConfig.CertificatesLocation = envDbConfig.CertificatesLocation
 	}
 
-	// Convert EnvDatabaseConfig to RedisConnectionConfig
-	redisConfig, err := ConvertEnvDatabaseConfigToRedisConnectionConfig(newEnvConfig)
+	// Convert EnvDatabaseConfig to KVConnectionConfig
+	kvConfig, err := ConvertEnvDatabaseConfigToKVConnectionConfig(newEnvConfig)
 	if err != nil {
 		dbManager.Cleanup(ctx)
 		t.Fatalf("Failed to convert database config: %v", err)
 	}
 
 	// Create client factory with the actual config from fault injector
-	factory = NewClientFactory(redisConfig)
+	factory = NewClientFactory(kvConfig)
 
 	// Combined cleanup function
 	cleanup = func() {
@@ -1054,7 +1054,7 @@ func SetupTestDatabaseAndFactoryWithConfig(t *testing.T, ctx context.Context, da
 	}
 
 	// Get database config from environment
-	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.RedisEndpointsConfigPath)
+	databasesConfig, err := GetDatabaseConfigFromEnv(envConfig.KVEndpointsConfigPath)
 	if err != nil {
 		t.Fatalf("Failed to get database config: %v", err)
 	}
@@ -1097,15 +1097,15 @@ func SetupTestDatabaseAndFactoryWithConfig(t *testing.T, ctx context.Context, da
 		newEnvConfig.CertificatesLocation = envDbConfig.CertificatesLocation
 	}
 
-	// Convert EnvDatabaseConfig to RedisConnectionConfig
-	redisConfig, err := ConvertEnvDatabaseConfigToRedisConnectionConfig(newEnvConfig)
+	// Convert EnvDatabaseConfig to KVConnectionConfig
+	kvConfig, err := ConvertEnvDatabaseConfigToKVConnectionConfig(newEnvConfig)
 	if err != nil {
 		dbManager.Cleanup(ctx)
 		t.Fatalf("Failed to convert database config: %v", err)
 	}
 
 	// Create client factory with the actual config from fault injector
-	factory = NewClientFactory(redisConfig)
+	factory = NewClientFactory(kvConfig)
 
 	// Combined cleanup function
 	cleanup = func() {

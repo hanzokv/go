@@ -1,11 +1,11 @@
-package redis
+package kv
 
 import (
 	"context"
 )
 
 // mockCmdable is a mock implementation of cmdable that records the last command.
-// This is used for unit testing command construction without requiring a Redis server.
+// This is used for unit testing command construction without requiring a KV server.
 type mockCmdable struct {
 	lastCmd   Cmder
 	returnErr error

@@ -14,7 +14,7 @@ import (
 func ExampleClient_ping() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -61,7 +61,7 @@ func ExampleClient_ping() {
 func ExampleClient_bitcount() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -79,7 +79,7 @@ func ExampleClient_bitcount() {
 
 	// STEP_START bitcount
 	res4, err := rdb.BitCount(ctx, "pings:2024-01-01-00:00",
-		&redis.BitCount{
+		&kv.BitCount{
 			Start: 0,
 			End:   456,
 		}).Result()

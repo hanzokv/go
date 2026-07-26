@@ -1,16 +1,16 @@
 # Disable Maintenance Notifications Example
 
-This example demonstrates how to use the go-redis client with maintenance notifications **disabled**.
+This example demonstrates how to use the go-kv client with maintenance notifications **disabled**.
 
 ## What are Maintenance Notifications?
 
-Maintenance notifications are a Redis Cloud feature that allows the server to notify clients about:
+Maintenance notifications are a KV Cloud feature that allows the server to notify clients about:
 - Planned maintenance events
 - Failover operations
 - Node migrations
 - Cluster topology changes
 
-The go-redis client supports three modes:
+The go-kv client supports three modes:
 - **`ModeDisabled`**: Client doesn't send `CLIENT MAINT_NOTIFICATIONS ON` command
 - **`ModeEnabled`**: Client forcefully sends the command, interrupts connection on error
 - **`ModeAuto`** (default): Client tries to send the command, disables feature on error
@@ -19,10 +19,10 @@ The go-redis client supports three modes:
 
 You should disable maintenance notifications when:
 
-1. **Connecting to non-Redis Cloud / Redis Enterprise instances** - Standard Redis servers don't support this feature
+1. **Connecting to non-KV Cloud / KV Enterprise instances** - Standard KV servers don't support this feature
 2. **You want to handle failovers manually** - Your application has custom failover logic
 3. **Minimizing client-side overhead** - You want the simplest possible client behavior
-4. **The Redis server doesn't support the feature** - Older Redis versions or forks
+4. **The KV server doesn't support the feature** - Older KV versions or forks
 
 ## Usage
 
@@ -30,11 +30,11 @@ You should disable maintenance notifications when:
 
 ```go
 import (
-    "github.com/redis/go-redis/v9"
-    "github.com/redis/go-redis/v9/maintnotifications"
+    "github.com/kv/go-kv/v9"
+    "github.com/kv/go-kv/v9/maintnotifications"
 )
 
-rdb := redis.NewClient(&redis.Options{
+rdb := kv.NewClient(&kv.Options{
     Addr: "localhost:6379",
 
     // Explicitly disable maintenance notifications
@@ -48,7 +48,7 @@ defer rdb.Close()
 ### Cluster Client Example
 
 ```go
-rdbCluster := redis.NewClusterClient(&redis.ClusterOptions{
+rdbCluster := kv.NewClusterClient(&kv.ClusterOptions{
     Addrs: []string{"localhost:7000", "localhost:7001", "localhost:7002"},
 
     // Disable maintenance notifications for cluster
@@ -65,7 +65,7 @@ If you don't specify `MaintNotifications`, the client defaults to `ModeAuto`:
 
 ```go
 // This uses ModeAuto by default
-rdb := redis.NewClient(&redis.Options{
+rdb := kv.NewClient(&kv.Options{
     Addr: "localhost:6379",
     // MaintNotificationsConfig: nil means ModeAuto
 })
@@ -78,9 +78,9 @@ With `ModeAuto`, the client will:
 
 ## Running the Example
 
-1. Start a Redis server:
+1. Start a KV server:
    ```bash
-   redis-server --port 6379
+   kv-server --port 6379
    ```
 
 2. Run the example:
@@ -116,10 +116,10 @@ Maintenance notifications can be disabled by setting:
   }
 
 This is useful when:
-  - Connecting to non-Redis Cloud instances
+  - Connecting to non-KV Cloud instances
   - You want to handle failovers manually
   - You want to minimize client-side overhead
-  - The Redis server doesn't support CLIENT MAINT_NOTIFICATIONS
+  - The KV server doesn't support CLIENT MAINT_NOTIFICATIONS
 ```
 
 ## Performance Impact

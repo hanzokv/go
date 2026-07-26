@@ -14,7 +14,7 @@ import (
 func ExampleClient_set_get_all() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -69,10 +69,10 @@ func ExampleClient_set_get_all() {
 	// >>> map[brand:Ergonom model:Deimos price:4972 type:Enduro bikes]
 
 	type BikeInfo struct {
-		Model string `redis:"model"`
-		Brand string `redis:"brand"`
-		Type  string `redis:"type"`
-		Price int    `redis:"price"`
+		Model string `kv:"model"`
+		Brand string `kv:"brand"`
+		Type  string `kv:"type"`
+		Price int    `kv:"price"`
 	}
 
 	var res4a BikeInfo
@@ -97,7 +97,7 @@ func ExampleClient_set_get_all() {
 func ExampleClient_hmget() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -133,10 +133,10 @@ func ExampleClient_hmget() {
 	fmt.Println(res5) // >>> [Deimos 4972]
 
 	type BikeInfo struct {
-		Model string `redis:"model"`
-		Brand string `redis:"-"`
-		Type  string `redis:"-"`
-		Price int    `redis:"price"`
+		Model string `kv:"model"`
+		Brand string `kv:"-"`
+		Type  string `kv:"-"`
+		Price int    `kv:"price"`
 	}
 
 	var res5a BikeInfo
@@ -157,7 +157,7 @@ func ExampleClient_hmget() {
 func ExampleClient_hincrby() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -208,7 +208,7 @@ func ExampleClient_hincrby() {
 func ExampleClient_incrby_get_mget() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB

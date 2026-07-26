@@ -1,4 +1,4 @@
-// Package interfaces provides shared interfaces used by both the main redis package
+// Package interfaces provides shared interfaces used by both the main kv package
 // and the maintnotifications upgrade package to avoid circular dependencies.
 package interfaces
 

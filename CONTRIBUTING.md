@@ -2,7 +2,7 @@
 
 ## Introduction
 
-We appreciate your interest in considering contributing to go-redis.
+We appreciate your interest in considering contributing to go-kv.
 Community contributions mean a lot to us.
 
 ## Contributions we need
@@ -18,7 +18,7 @@ helpful contributions that mean less work for you.
 
 Unsure where to begin contributing? You can start by looking through
 [help-wanted
-issues](https://github.com/redis/go-redis/issues?q=is%3Aopen+is%3Aissue+label%3ahelp-wanted).
+issues](https://github.com/kv/go-kv/issues?q=is%3Aopen+is%3Aissue+label%3ahelp-wanted).
 
 Never contributed to open source before? Here are a couple of friendly
 tutorials:
@@ -30,15 +30,15 @@ tutorials:
 
 Here's how to get started with your code contribution:
 
-1.  Create your own fork of go-redis
+1.  Create your own fork of go-kv
 2.  Do the changes in your fork
 3.  If you need a development environment, run `make docker.start`.
  
 > Note: this clones and builds the docker containers specified in `docker-compose.yml`, to understand more about
 > the infrastructure that will be started you can check the `docker-compose.yml`. You also have the possiblity
-> to specify the redis image that will be pulled with the env variable `CLIENT_LIBS_TEST_IMAGE`.
-> By default the docker image that will be pulled and started is `redislabs/client-libs-test:8.2.1-pre`.
-> If you want to test with newer Redis version, using a newer version of `redislabs/client-libs-test` should work out of the box.
+> to specify the kv image that will be pulled with the env variable `CLIENT_LIBS_TEST_IMAGE`.
+> By default the docker image that will be pulled and started is `kvlabs/client-libs-test:8.2.1-pre`.
+> If you want to test with newer KV version, using a newer version of `kvlabs/client-libs-test` should work out of the box.
 
 4.  While developing, make sure the tests pass by running `make test` (if you have the docker containers running, `make test.ci` may be sufficient).
 > Note: `make test` will try to start all containers, run the tests with `make test.ci` and then stop all containers.
@@ -58,7 +58,7 @@ docker host networks out of the box (e.g. Windows, OSX), you need to set up a do
 Call `make test` to run all tests.
 
 Continuous Integration uses these same wrappers to run all of these
-tests against multiple versions of redis. Feel free to test your
+tests against multiple versions of kv. Feel free to test your
 changes against all the go versions supported, as declared by the
 [build.yml](./.github/workflows/build.yml) file.
 
@@ -72,7 +72,7 @@ that you are using supported versions of Docker and go.
 ### Security Vulnerabilities
 
 **NOTE**: If you find a security vulnerability, do NOT open an issue.
-Email [Redis Open Source (<oss@redis.com>)](mailto:oss@redis.com) instead.
+Email [KV Open Source (<oss@kv.com>)](mailto:oss@kv.com) instead.
 
 In order to determine whether you are dealing with a security issue, ask
 yourself these two questions:
@@ -84,14 +84,14 @@ yourself these two questions:
 If the answer to either of those two questions are *yes*, then you're
 probably dealing with a security issue. Note that even if you answer
 *no*  to both questions, you may still be dealing with a security
-issue, so if you're unsure, just email [us](mailto:oss@redis.com).
+issue, so if you're unsure, just email [us](mailto:oss@kv.com).
 
 ### Everything Else
 
 When filing an issue, make sure to answer these five questions:
 
-1.  What version of go-redis are you using?
-2.  What version of redis are you using?
+1.  What version of go-kv are you using?
+2.  What version of kv are you using?
 3.  What did you do?
 4.  What did you expect to see?
 5.  What did you see instead?

@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 	ctx := context.TODO()
 
-	setupRedisClient := func(protocolVersion int) *redis.Client {
-		return redis.NewClient(&redis.Options{
+	setupKVClient := func(protocolVersion int) *kv.Client {
+		return kv.NewClient(&kv.Options{
 			Addr:     "localhost:6379",
 			DB:       0,
 			Protocol: protocolVersion,
@@ -27,10 +27,10 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 		protocol := protocol // capture loop variable for each context
 
 		Context(fmt.Sprintf("with protocol version %d", protocol), func() {
-			var client *redis.Client
+			var client *kv.Client
 
 			BeforeEach(func() {
-				client = setupRedisClient(protocol)
+				client = setupKVClient(protocol)
 				Expect(client.FlushAll(ctx).Err()).NotTo(HaveOccurred())
 			})
 
@@ -51,7 +51,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					resultInfo, err := client.BFInfo(ctx, "testbf1").Result()
 
 					Expect(err).NotTo(HaveOccurred())
-					Expect(resultInfo).To(BeAssignableToTypeOf(redis.BFInfo{}))
+					Expect(resultInfo).To(BeAssignableToTypeOf(kv.BFInfo{}))
 					Expect(resultInfo.ItemsInserted).To(BeEquivalentTo(int64(1)))
 				})
 
@@ -93,7 +93,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					result, err := client.BFInfo(ctx, "testbf1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(result).To(BeAssignableToTypeOf(redis.BFInfo{}))
+					Expect(result).To(BeAssignableToTypeOf(kv.BFInfo{}))
 					Expect(result.Capacity).To(BeEquivalentTo(int64(2000)))
 				})
 
@@ -126,7 +126,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 				})
 
 				It("should BFInsert", Label("bloom", "bfinsert"), func() {
-					options := &redis.BFInsertOptions{
+					options := &kv.BFInsertOptions{
 						Capacity:   2000,
 						Error:      0.001,
 						Expansion:  3,
@@ -138,7 +138,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("ERR not found"))
 
-					options = &redis.BFInsertOptions{
+					options = &kv.BFInsertOptions{
 						Capacity:   2000,
 						Error:      0.001,
 						Expansion:  3,
@@ -156,7 +156,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					result, err := client.BFInfo(ctx, "testbf1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(result).To(BeAssignableToTypeOf(redis.BFInfo{}))
+					Expect(result).To(BeAssignableToTypeOf(kv.BFInfo{}))
 					Expect(result.Capacity).To(BeEquivalentTo(int64(2000)))
 					Expect(result.ExpansionRate).To(BeEquivalentTo(int64(3)))
 				})
@@ -170,7 +170,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					resultInfo, err := client.BFInfo(ctx, "testbf1").Result()
 
 					Expect(err).NotTo(HaveOccurred())
-					Expect(resultInfo).To(BeAssignableToTypeOf(redis.BFInfo{}))
+					Expect(resultInfo).To(BeAssignableToTypeOf(kv.BFInfo{}))
 					Expect(resultInfo.ItemsInserted).To(BeEquivalentTo(int64(3)))
 					resultAdd2, err := client.BFMAdd(ctx, "testbf1", "item1", "item2", "item4").Result()
 					Expect(err).NotTo(HaveOccurred())
@@ -206,7 +206,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					result, err := client.BFInfo(ctx, "testbf1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(result).To(BeAssignableToTypeOf(redis.BFInfo{}))
+					Expect(result).To(BeAssignableToTypeOf(kv.BFInfo{}))
 					Expect(result.Capacity).To(BeEquivalentTo(int64(2000)))
 					Expect(result.ExpansionRate).To(BeEquivalentTo(int64(3)))
 				})
@@ -226,7 +226,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 						client.BFAdd(ctx, "testbfsd1", i)
 					}
 					infBefore := client.BFInfoSize(ctx, "testbfsd1")
-					fd := []redis.ScanDump{}
+					fd := []kv.ScanDump{}
 					sd, err := client.BFScanDump(ctx, "testbfsd1", 0).Result()
 					for {
 						if sd.Iter == 0 {
@@ -245,7 +245,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 				})
 
 				It("should BFReserveWithArgs", Label("bloom", "bfreserveargs"), func() {
-					options := &redis.BFReserveOptions{
+					options := &kv.BFReserveOptions{
 						Capacity:   2000,
 						Error:      0.001,
 						Expansion:  3,
@@ -256,7 +256,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					result, err := client.BFInfo(ctx, "testbf").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(result).To(BeAssignableToTypeOf(redis.BFInfo{}))
+					Expect(result).To(BeAssignableToTypeOf(kv.BFInfo{}))
 					Expect(result.Capacity).To(BeEquivalentTo(int64(2000)))
 					Expect(result.ExpansionRate).To(BeEquivalentTo(int64(3)))
 				})
@@ -274,7 +274,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					info, err := client.CFInfo(ctx, "testcf1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(info).To(BeAssignableToTypeOf(redis.CFInfo{}))
+					Expect(info).To(BeAssignableToTypeOf(kv.CFInfo{}))
 					Expect(info.NumItemsInserted).To(BeEquivalentTo(int64(1)))
 				})
 
@@ -293,7 +293,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					info, err := client.CFInfo(ctx, "testcf1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(info).To(BeAssignableToTypeOf(redis.CFInfo{}))
+					Expect(info).To(BeAssignableToTypeOf(kv.CFInfo{}))
 					Expect(info.NumItemsInserted).To(BeEquivalentTo(int64(1)))
 				})
 
@@ -340,7 +340,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					result, err := client.CFInfo(ctx, "testcf1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(result).To(BeAssignableToTypeOf(redis.CFInfo{}))
+					Expect(result).To(BeAssignableToTypeOf(kv.CFInfo{}))
 				})
 
 				It("should CFScanDump and CFLoadChunk", Label("bloom", "cfscandump", "cfloadchunk"), func() {
@@ -351,7 +351,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 						client.CFAdd(ctx, "testcfsd1", Item)
 					}
 					infBefore := client.CFInfo(ctx, "testcfsd1")
-					fd := []redis.ScanDump{}
+					fd := []kv.ScanDump{}
 					sd, err := client.CFScanDump(ctx, "testcfsd1", 0).Result()
 					for {
 						if sd.Iter == 0 {
@@ -370,7 +370,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 				})
 
 				It("should CFInfo and CFReserveWithArgs", Label("cuckoo", "cfinfo", "cfreserveargs"), func() {
-					args := &redis.CFReserveOptions{
+					args := &kv.CFReserveOptions{
 						Capacity:      2048,
 						BucketSize:    3,
 						MaxIterations: 15,
@@ -382,14 +382,14 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					result, err := client.CFInfo(ctx, "testcf1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(result).To(BeAssignableToTypeOf(redis.CFInfo{}))
+					Expect(result).To(BeAssignableToTypeOf(kv.CFInfo{}))
 					Expect(result.BucketSize).To(BeEquivalentTo(int64(3)))
 					Expect(result.MaxIteration).To(BeEquivalentTo(int64(15)))
 					Expect(result.ExpansionRate).To(BeEquivalentTo(int64(2)))
 				})
 
 				It("should CFInsert", Label("cuckoo", "cfinsert"), func() {
-					args := &redis.CFInsertOptions{
+					args := &kv.CFInsertOptions{
 						Capacity: 3000,
 						NoCreate: true,
 					}
@@ -397,7 +397,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					_, err := client.CFInsert(ctx, "testcf1", args, "item1", "item2", "item3").Result()
 					Expect(err).To(HaveOccurred())
 
-					args = &redis.CFInsertOptions{
+					args = &kv.CFInsertOptions{
 						Capacity: 3000,
 						NoCreate: false,
 					}
@@ -408,7 +408,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 				})
 
 				It("should CFInsertNX", Label("cuckoo", "cfinsertnx"), func() {
-					args := &redis.CFInsertOptions{
+					args := &kv.CFInsertOptions{
 						Capacity: 3000,
 						NoCreate: true,
 					}
@@ -416,7 +416,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					_, err := client.CFInsertNX(ctx, "testcf1", args, "item1", "item2", "item2").Result()
 					Expect(err).To(HaveOccurred())
 
-					args = &redis.CFInsertOptions{
+					args = &kv.CFInsertOptions{
 						Capacity: 3000,
 						NoCreate: false,
 					}
@@ -463,7 +463,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					info, err := client.CMSInfo(ctx, "testcms1").Result()
 					Expect(err).NotTo(HaveOccurred())
 
-					Expect(info).To(BeAssignableToTypeOf(redis.CMSInfo{}))
+					Expect(info).To(BeAssignableToTypeOf(kv.CMSInfo{}))
 					Expect(info.Width).To(BeEquivalentTo(int64(5)))
 					Expect(info.Depth).To(BeEquivalentTo(int64(10)))
 				})
@@ -474,10 +474,10 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 
 					info, err := client.CMSInfo(ctx, "testcms1").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(info).To(BeAssignableToTypeOf(redis.CMSInfo{}))
+					Expect(info).To(BeAssignableToTypeOf(kv.CMSInfo{}))
 				})
 
-				It("should CMSMerge, CMSMergeWithWeight and CMSQuery", Label("cms", "cmsmerge", "cmsquery", "NonRedisEnterprise"), func() {
+				It("should CMSMerge, CMSMergeWithWeight and CMSQuery", Label("cms", "cmsmerge", "cmsquery", "NonKVEnterprise"), func() {
 					err := client.CMSMerge(ctx, "destCms1", "testcms2", "testcms3").Err()
 					Expect(err).To(HaveOccurred())
 					Expect(err).To(MatchError("CMS: key does not exist"))
@@ -714,7 +714,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					Expect(info.Compression).To(BeEquivalentTo(int64(2000)))
 				})
 
-				It("should TDigestMerge", Label("tdigest", "tmerge", "NonRedisEnterprise"), func() {
+				It("should TDigestMerge", Label("tdigest", "tmerge", "NonKVEnterprise"), func() {
 					err := client.TDigestCreate(ctx, "tdigest1").Err()
 					Expect(err).NotTo(HaveOccurred())
 					err = client.TDigestAdd(ctx, "tdigest1", 10, 20, 30, 40, 50, 60, 70, 80, 90, 100).Err()
@@ -730,7 +730,7 @@ var _ = Describe("Probabilistic commands", Label("probabilistic"), func() {
 					err = client.TDigestAdd(ctx, "tdigest3", 50, 60, 70, 80, 90, 100, 110, 120, 130, 140).Err()
 					Expect(err).NotTo(HaveOccurred())
 
-					options := &redis.TDigestMergeOptions{
+					options := &kv.TDigestMergeOptions{
 						Compression: 1000,
 						Override:    false,
 					}

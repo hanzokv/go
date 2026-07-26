@@ -1,3 +1,3 @@
 package internal
 
-const RedisNull = "<nil>"
+const KVNull = "<nil>"

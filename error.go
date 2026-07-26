@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -22,13 +22,13 @@ var ErrPoolExhausted = pool.ErrPoolExhausted
 // ErrPoolTimeout timed out waiting to get a connection from the connection pool.
 var ErrPoolTimeout = pool.ErrPoolTimeout
 
-// ErrCrossSlot is returned when keys are used in the same Redis command and
-// the keys are not in the same hash slot. This error is returned by Redis
+// ErrCrossSlot is returned when keys are used in the same KV command and
+// the keys are not in the same hash slot. This error is returned by KV
 // Cluster and will be returned by the client when TxPipeline or TxPipelined
 // is used on a ClusterClient with keys in different slots.
-var ErrCrossSlot = proto.RedisError("CROSSSLOT Keys in request don't hash to the same slot")
+var ErrCrossSlot = proto.KVError("CROSSSLOT Keys in request don't hash to the same slot")
 
-// HasErrorPrefix checks if the err is a Redis error and the message contains a prefix.
+// HasErrorPrefix checks if the err is a KV error and the message contains a prefix.
 func HasErrorPrefix(err error, prefix string) bool {
 	var rErr Error
 	if !errors.As(err, &rErr) {
@@ -42,14 +42,14 @@ func HasErrorPrefix(err error, prefix string) bool {
 type Error interface {
 	error
 
-	// RedisError is a no-op function but
-	// serves to distinguish types that are Redis
+	// KVError is a no-op function but
+	// serves to distinguish types that are KV
 	// errors from ordinary errors: a type is a
-	// Redis error if it has a RedisError method.
-	RedisError()
+	// KV error if it has a KVError method.
+	KVError()
 }
 
-var _ Error = proto.RedisError("")
+var _ Error = proto.KVError("")
 
 func isContextError(err error) bool {
 	// Check for wrapped context errors using errors.Is
@@ -105,7 +105,7 @@ func shouldRetry(err error, retryTimeout bool) bool {
 		return true
 	}
 
-	// Check for typed Redis errors using errors.As (works with wrapped errors)
+	// Check for typed KV errors using errors.As (works with wrapped errors)
 	if proto.IsMaxClientsError(err) {
 		return true
 	}
@@ -155,15 +155,15 @@ func shouldRetry(err error, retryTimeout bool) bool {
 	return false
 }
 
-func isRedisError(err error) bool {
+func isKVError(err error) bool {
 	// Check if error implements the Error interface (works with wrapped errors)
-	var redisErr Error
-	if errors.As(err, &redisErr) {
+	var kvErr Error
+	if errors.As(err, &kvErr) {
 		return true
 	}
-	// Also check for proto.RedisError specifically
-	var protoRedisErr proto.RedisError
-	return errors.As(err, &protoRedisErr)
+	// Also check for proto.KVError specifically
+	var protoKVErr proto.KVError
+	return errors.As(err, &protoKVErr)
 }
 
 func isBadConn(err error, allowTimeout bool, addr string) bool {
@@ -181,11 +181,11 @@ func isBadConn(err error, allowTimeout bool, addr string) bool {
 		return true
 	}
 
-	if isRedisError(err) {
+	if isKVError(err) {
 		switch {
 		case isReadOnlyError(err):
 			// Close connections in read only state in case domain addr is used
-			// and domain resolves to a different Redis Server. See #790.
+			// and domain resolves to a different KV Server. See #790.
 			return true
 		case isMovedSameConnAddr(err, addr):
 			// Close connections when we are asked to move to the same addr
@@ -265,43 +265,43 @@ func isMovedSameConnAddr(err error, addr string) bool {
 // Typed error checking functions for public use.
 // These functions work correctly even when errors are wrapped in hooks.
 
-// IsLoadingError checks if an error is a Redis LOADING error, even if wrapped.
-// LOADING errors occur when Redis is loading the dataset in memory.
+// IsLoadingError checks if an error is a KV LOADING error, even if wrapped.
+// LOADING errors occur when KV is loading the dataset in memory.
 func IsLoadingError(err error) bool {
 	return proto.IsLoadingError(err)
 }
 
-// IsReadOnlyError checks if an error is a Redis READONLY error, even if wrapped.
+// IsReadOnlyError checks if an error is a KV READONLY error, even if wrapped.
 // READONLY errors occur when trying to write to a read-only replica.
 func IsReadOnlyError(err error) bool {
 	return proto.IsReadOnlyError(err)
 }
 
-// IsClusterDownError checks if an error is a Redis CLUSTERDOWN error, even if wrapped.
+// IsClusterDownError checks if an error is a KV CLUSTERDOWN error, even if wrapped.
 // CLUSTERDOWN errors occur when the cluster is down.
 func IsClusterDownError(err error) bool {
 	return proto.IsClusterDownError(err)
 }
 
-// IsTryAgainError checks if an error is a Redis TRYAGAIN error, even if wrapped.
+// IsTryAgainError checks if an error is a KV TRYAGAIN error, even if wrapped.
 // TRYAGAIN errors occur when a command cannot be processed and should be retried.
 func IsTryAgainError(err error) bool {
 	return proto.IsTryAgainError(err)
 }
 
-// IsMasterDownError checks if an error is a Redis MASTERDOWN error, even if wrapped.
+// IsMasterDownError checks if an error is a KV MASTERDOWN error, even if wrapped.
 // MASTERDOWN errors occur when the master is down.
 func IsMasterDownError(err error) bool {
 	return proto.IsMasterDownError(err)
 }
 
-// IsMaxClientsError checks if an error is a Redis max clients error, even if wrapped.
+// IsMaxClientsError checks if an error is a KV max clients error, even if wrapped.
 // This error occurs when the maximum number of clients has been reached.
 func IsMaxClientsError(err error) bool {
 	return proto.IsMaxClientsError(err)
 }
 
-// IsMovedError checks if an error is a Redis MOVED error, even if wrapped.
+// IsMovedError checks if an error is a KV MOVED error, even if wrapped.
 // MOVED errors occur in cluster mode when a key has been moved to a different node.
 // Returns the address of the node where the key has been moved and a boolean indicating if it's a MOVED error.
 func IsMovedError(err error) (addr string, ok bool) {
@@ -311,7 +311,7 @@ func IsMovedError(err error) (addr string, ok bool) {
 	return "", false
 }
 
-// IsAskError checks if an error is a Redis ASK error, even if wrapped.
+// IsAskError checks if an error is a KV ASK error, even if wrapped.
 // ASK errors occur in cluster mode when a key is being migrated and the client should ask another node.
 // Returns the address of the node to ask and a boolean indicating if it's an ASK error.
 func IsAskError(err error) (addr string, ok bool) {
@@ -321,34 +321,34 @@ func IsAskError(err error) (addr string, ok bool) {
 	return "", false
 }
 
-// IsAuthError checks if an error is a Redis authentication error, even if wrapped.
+// IsAuthError checks if an error is a KV authentication error, even if wrapped.
 // Authentication errors occur when:
-// - NOAUTH: Redis requires authentication but none was provided
-// - WRONGPASS: Redis authentication failed due to incorrect password
+// - NOAUTH: KV requires authentication but none was provided
+// - WRONGPASS: KV authentication failed due to incorrect password
 // - unauthenticated: Error returned when password changed
 func IsAuthError(err error) bool {
 	return proto.IsAuthError(err)
 }
 
-// IsPermissionError checks if an error is a Redis permission error, even if wrapped.
+// IsPermissionError checks if an error is a KV permission error, even if wrapped.
 // Permission errors (NOPERM) occur when a user does not have permission to execute a command.
 func IsPermissionError(err error) bool {
 	return proto.IsPermissionError(err)
 }
 
-// IsExecAbortError checks if an error is a Redis EXECABORT error, even if wrapped.
+// IsExecAbortError checks if an error is a KV EXECABORT error, even if wrapped.
 // EXECABORT errors occur when a transaction is aborted.
 func IsExecAbortError(err error) bool {
 	return proto.IsExecAbortError(err)
 }
 
-// IsOOMError checks if an error is a Redis OOM (Out Of Memory) error, even if wrapped.
-// OOM errors occur when Redis is out of memory.
+// IsOOMError checks if an error is a KV OOM (Out Of Memory) error, even if wrapped.
+// OOM errors occur when KV is out of memory.
 func IsOOMError(err error) bool {
 	return proto.IsOOMError(err)
 }
 
-// IsNoReplicasError checks if an error is a Redis NOREPLICAS error, even if wrapped.
+// IsNoReplicasError checks if an error is a KV NOREPLICAS error, even if wrapped.
 // NOREPLICAS errors occur when not enough replicas acknowledge a write operation.
 // This typically happens with WAIT/WAITAOF commands or CLUSTER SETSLOT with synchronous
 // replication when the required number of replicas cannot confirm the write within the timeout.

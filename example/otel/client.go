@@ -12,7 +12,7 @@ import (
 
 	"github.com/uptrace/uptrace-go/uptrace"
 
-	"github.com/hanzokv/go/extra/redisotel/v9"
+	"github.com/hanzokv/go/extra/kvotel/v9"
 	"github.com/hanzokv/go/v9"
 )
 
@@ -30,13 +30,13 @@ func main() {
 	)
 	defer uptrace.Shutdown(ctx)
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 	})
-	if err := redisotel.InstrumentTracing(rdb); err != nil {
+	if err := kvotel.InstrumentTracing(rdb); err != nil {
 		panic(err)
 	}
-	if err := redisotel.InstrumentMetrics(rdb); err != nil {
+	if err := kvotel.InstrumentMetrics(rdb); err != nil {
 		panic(err)
 	}
 
@@ -58,7 +58,7 @@ func main() {
 	}
 }
 
-func handleRequest(ctx context.Context, rdb *redis.Client) error {
+func handleRequest(ctx context.Context, rdb *kv.Client) error {
 	if err := rdb.Set(ctx, "First value", "value_1", 0).Err(); err != nil {
 		return err
 	}

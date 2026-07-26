@@ -1,7 +1,7 @@
 //go:build appengine
 // +build appengine
 
-package rediscmd
+package kvcmd
 
 func String(b []byte) string {
 	return string(b)

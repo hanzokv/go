@@ -9,27 +9,27 @@ import (
 )
 
 type Model struct {
-	Str1    string   `redis:"str1"`
-	Str2    string   `redis:"str2"`
-	Str3    *string  `redis:"str3"`
-	Bytes   []byte   `redis:"bytes"`
-	Int     int      `redis:"int"`
-	Int2    *int     `redis:"int2"`
-	Bool    bool     `redis:"bool"`
-	Bool2   *bool    `redis:"bool2"`
-	Ignored struct{} `redis:"-"`
+	Str1    string   `kv:"str1"`
+	Str2    string   `kv:"str2"`
+	Str3    *string  `kv:"str3"`
+	Bytes   []byte   `kv:"bytes"`
+	Int     int      `kv:"int"`
+	Int2    *int     `kv:"int2"`
+	Bool    bool     `kv:"bool"`
+	Bool2   *bool    `kv:"bool2"`
+	Ignored struct{} `kv:"-"`
 }
 
 func main() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 	})
 	_ = rdb.FlushDB(ctx).Err()
 
 	// Set some fields.
-	if _, err := rdb.Pipelined(ctx, func(rdb redis.Pipeliner) error {
+	if _, err := rdb.Pipelined(ctx, func(rdb kv.Pipeliner) error {
 		rdb.HSet(ctx, "key", "str1", "hello")
 		rdb.HSet(ctx, "key", "str2", "world")
 		rdb.HSet(ctx, "key", "str3", "")

@@ -112,7 +112,7 @@ var bicycles = []interface{}{
 			" ground to balance at a stop, and the low step-over frame makes it" +
 			" accessible for all ability and mobility levels. The saddle is" +
 			" very soft, with a wide back to support your hip joints and a" +
-			" cutout in the center to redistribute that pressure. Rim brakes" +
+			" cutout in the center to kvtribute that pressure. Rim brakes" +
 			" deliver satisfactory braking control, and the wide tires provide" +
 			" a smooth, stable ride on paved roads and gravel. Rack and fender" +
 			" mounts facilitate setting up the Roll Low-Entry as your preferred" +
@@ -155,7 +155,7 @@ func ExampleClient_search_qs() {
 	// STEP_START connect
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -168,26 +168,26 @@ func ExampleClient_search_qs() {
 	// REMOVE_END
 
 	// STEP_START create_index
-	schema := []*redis.FieldSchema{
+	schema := []*kv.FieldSchema{
 		{
 			FieldName: "$.brand",
 			As:        "brand",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
 		{
 			FieldName: "$.model",
 			As:        "model",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
 		{
 			FieldName: "$.description",
 			As:        "description",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
 	}
 
 	_, err := rdb.FTCreate(ctx, "idx:bicycle",
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			Prefix: []interface{}{"bicycle:"},
 			OnJSON: true,
 		},

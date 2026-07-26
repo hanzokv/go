@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -31,9 +31,9 @@ const (
 )
 
 var (
-	errClusterNoNodes = errors.New("redis: cluster has no nodes")
-	errNoWatchKeys    = errors.New("redis: Watch requires at least one key")
-	errWatchCrosslot  = errors.New("redis: Watch requires all keys to be in the same slot")
+	errClusterNoNodes = errors.New("kv: cluster has no nodes")
+	errNoWatchKeys    = errors.New("kv: Watch requires at least one key")
+	errWatchCrosslot  = errors.New("kv: Watch requires all keys to be in the same slot")
 )
 
 // ClusterOptions are used to configure a cluster client and should be
@@ -64,7 +64,7 @@ type ClusterOptions struct {
 	RouteRandomly bool
 
 	// Optional function that returns cluster slots information.
-	// It is useful to manually create cluster of standalone Redis servers
+	// It is useful to manually create cluster of standalone KV servers
 	// and load-balance read/write operations between master and slaves.
 	// It can use service like ZooKeeper to maintain configuration information
 	// and Cluster.ReloadState to manually trigger state reloading.
@@ -141,7 +141,7 @@ type ClusterOptions struct {
 
 	IdentitySuffix string // Add suffix to client name. Default is empty.
 
-	// UnstableResp3 enables Unstable mode for Redis Search module with RESP3.
+	// UnstableResp3 enables Unstable mode for KV Search module with RESP3.
 	UnstableResp3 bool
 
 	// PushNotificationProcessor is the processor for handling push notifications.
@@ -229,18 +229,18 @@ func (opt *ClusterOptions) init() {
 	}
 }
 
-// ParseClusterURL parses a URL into ClusterOptions that can be used to connect to Redis.
+// ParseClusterURL parses a URL into ClusterOptions that can be used to connect to KV.
 // The URL must be in the form:
 //
-//	redis://<user>:<password>@<host>:<port>
+//	kv://<user>:<password>@<host>:<port>
 //	or
-//	rediss://<user>:<password>@<host>:<port>
+//	kvs://<user>:<password>@<host>:<port>
 //
 // To add additional addresses, specify the query parameter, "addr" one or more times. e.g:
 //
-//	redis://<user>:<password>@<host>:<port>?addr=<host2>:<port2>&addr=<host3>:<port3>
+//	kv://<user>:<password>@<host>:<port>?addr=<host2>:<port2>&addr=<host3>:<port3>
 //	or
-//	rediss://<user>:<password>@<host>:<port>?addr=<host2>:<port2>&addr=<host3>:<port3>
+//	kvs://<user>:<password>@<host>:<port>?addr=<host2>:<port2>&addr=<host3>:<port3>
 //
 // Most Option fields can be set using query parameters, with the following restrictions:
 //   - field names are mapped using snake-case conversion: to set MaxRetries, use max_retries
@@ -257,17 +257,17 @@ func (opt *ClusterOptions) init() {
 //
 // Example:
 //
-//	redis://user:password@localhost:6789?dial_timeout=3&read_timeout=6s&addr=localhost:6790&addr=localhost:6791
+//	kv://user:password@localhost:6789?dial_timeout=3&read_timeout=6s&addr=localhost:6790&addr=localhost:6791
 //	is equivalent to:
 //	&ClusterOptions{
 //		Addr:        ["localhost:6789", "localhost:6790", "localhost:6791"]
 //		DialTimeout: 3 * time.Second, // no time unit = seconds
 //		ReadTimeout: 6 * time.Second,
 //	}
-func ParseClusterURL(redisURL string) (*ClusterOptions, error) {
+func ParseClusterURL(kvURL string) (*ClusterOptions, error) {
 	o := &ClusterOptions{}
 
-	u, err := url.Parse(redisURL)
+	u, err := url.Parse(kvURL)
 	if err != nil {
 		return nil, err
 	}
@@ -289,13 +289,13 @@ func ParseClusterURL(redisURL string) (*ClusterOptions, error) {
 // setupClusterConn gets the username and password from the URL and the query parameters.
 func setupClusterConn(u *url.URL, host string, o *ClusterOptions) (*ClusterOptions, error) {
 	switch u.Scheme {
-	case "rediss":
+	case "kvs":
 		o.TLSConfig = &tls.Config{ServerName: host}
 		fallthrough
-	case "redis":
+	case "kv":
 		o.Username, o.Password = getUserPassword(u)
 	default:
-		return nil, fmt.Errorf("redis: invalid URL scheme: %s", u.Scheme)
+		return nil, fmt.Errorf("kv: invalid URL scheme: %s", u.Scheme)
 	}
 
 	// retrieve the configuration from the query parameters
@@ -345,7 +345,7 @@ func setupClusterQueryParams(u *url.URL, o *ClusterOptions) (*ClusterOptions, er
 	for _, addr := range addrs {
 		h, p, err := net.SplitHostPort(addr)
 		if err != nil || h == "" || p == "" {
-			return nil, fmt.Errorf("redis: unable to parse addr param: %s", addr)
+			return nil, fmt.Errorf("kv: unable to parse addr param: %s", addr)
 		}
 
 		o.Addrs = append(o.Addrs, net.JoinHostPort(h, p))
@@ -353,7 +353,7 @@ func setupClusterQueryParams(u *url.URL, o *ClusterOptions) (*ClusterOptions, er
 
 	// any parameters left?
 	if r := q.remaining(); len(r) > 0 {
-		return nil, fmt.Errorf("redis: unexpected option: %s", strings.Join(r, ", "))
+		return nil, fmt.Errorf("kv: unexpected option: %s", strings.Join(r, ", "))
 	}
 
 	return o, nil
@@ -923,12 +923,12 @@ func (c *clusterState) slotClosestNode(slot int) (*clusterNode, error) {
 
 	// if all nodes are failing, we will pick the temporarily failing node with lowest latency
 	if minLatency < maximumNodeLatency && closestNode != nil {
-		internal.Logger.Printf(context.TODO(), "redis: all nodes are marked as failed, picking the temporarily failing node with lowest latency")
+		internal.Logger.Printf(context.TODO(), "kv: all nodes are marked as failed, picking the temporarily failing node with lowest latency")
 		return closestNode, nil
 	}
 
 	// If all nodes are having the maximum latency(all pings are failing) - return a random node across the cluster
-	internal.Logger.Printf(context.TODO(), "redis: pings to all nodes are failing, picking a random node across the cluster")
+	internal.Logger.Printf(context.TODO(), "kv: pings to all nodes are failing, picking a random node across the cluster")
 	return c.nodes.Random()
 }
 
@@ -1047,7 +1047,7 @@ func (c *clusterStateHolder) ReloadOrGet(ctx context.Context) (*clusterState, er
 
 //------------------------------------------------------------------------------
 
-// ClusterClient is a Redis Cluster client representing a pool of zero
+// ClusterClient is a KV Cluster client representing a pool of zero
 // or more underlying connections. It's safe for concurrent use by
 // multiple goroutines.
 type ClusterClient struct {
@@ -1060,8 +1060,8 @@ type ClusterClient struct {
 	hooksMixin
 }
 
-// NewClusterClient returns a Redis Cluster client as described in
-// http://redis.io/topics/cluster-spec.
+// NewClusterClient returns a KV Cluster client as described in
+// http://kv.io/topics/cluster-spec.
 func NewClusterClient(opt *ClusterOptions) *ClusterClient {
 	opt.init()
 
@@ -1401,7 +1401,7 @@ func (c *ClusterClient) loadState(ctx context.Context) (*clusterState, error) {
 	/*
 	 * No node is connectable. It's possible that all nodes' IP has changed.
 	 * Clear activeAddrs to let client be able to re-connect using the initial
-	 * setting of the addresses (e.g. [redis-cluster-0:6379, redis-cluster-1:6379]),
+	 * setting of the addresses (e.g. [kv-cluster-0:6379, kv-cluster-1:6379]),
 	 * which might have chance to resolve domain name and get updated IP address.
 	 */
 	c.nodes.mu.Lock()
@@ -1474,7 +1474,7 @@ func (c *ClusterClient) mapCmdsByNode(ctx context.Context, cmdsMap *cmdsMap, cmd
 			}
 			if policy != nil && !policy.CanBeUsedInPipeline() {
 				return fmt.Errorf(
-					"redis: cannot pipeline command %q with request policy ReqAllNodes/ReqAllShards/ReqMultiShard; Note: This behavior is subject to change in the future", cmd.Name(),
+					"kv: cannot pipeline command %q with request policy ReqAllNodes/ReqAllShards/ReqMultiShard; Note: This behavior is subject to change in the future", cmd.Name(),
 				)
 			}
 			slot := c.cmdSlot(cmd, -1)
@@ -1494,7 +1494,7 @@ func (c *ClusterClient) mapCmdsByNode(ctx context.Context, cmdsMap *cmdsMap, cmd
 		}
 		if policy != nil && !policy.CanBeUsedInPipeline() {
 			return fmt.Errorf(
-				"redis: cannot pipeline command %q with request policy ReqAllNodes/ReqAllShards/ReqMultiShard; Note: This behavior is subject to change in the future", cmd.Name(),
+				"kv: cannot pipeline command %q with request policy ReqAllNodes/ReqAllShards/ReqMultiShard; Note: This behavior is subject to change in the future", cmd.Name(),
 			)
 		}
 		slot := c.cmdSlot(cmd, -1)
@@ -1585,7 +1585,7 @@ func (c *ClusterClient) pipelineReadCmds(
 			node.MarkAsFailing()
 		}
 
-		if !isRedisError(err) {
+		if !isKVError(err) {
 			if shouldRetry(err, true) {
 				_ = c.mapCmdsByNode(ctx, failedCmds, cmds)
 			}
@@ -1803,7 +1803,7 @@ func (c *ClusterClient) txPipelineReadQueued(
 	// To be sure there are no buffered push notifications, we process them before reading the reply
 	if err := node.Client.processPendingPushNotificationWithReader(ctx, cn, rd); err != nil {
 		// Log the error but don't fail the command execution
-		// Push notification processing errors shouldn't break normal Redis operations
+		// Push notification processing errors shouldn't break normal KV operations
 		internal.Logger.Printf(ctx, "push: error processing pending notifications before reading reply: %v", err)
 	}
 	if err := statusCmd.readReply(rd); err != nil {
@@ -1814,7 +1814,7 @@ func (c *ClusterClient) txPipelineReadQueued(
 		// To be sure there are no buffered push notifications, we process them before reading the reply
 		if err := node.Client.processPendingPushNotificationWithReader(ctx, cn, rd); err != nil {
 			// Log the error but don't fail the command execution
-			// Push notification processing errors shouldn't break normal Redis operations
+			// Push notification processing errors shouldn't break normal KV operations
 			internal.Logger.Printf(ctx, "push: error processing pending notifications before reading reply: %v", err)
 		}
 		err := statusCmd.readReply(rd)
@@ -1824,7 +1824,7 @@ func (c *ClusterClient) txPipelineReadQueued(
 				continue
 			}
 			cmd.SetErr(err)
-			if !isRedisError(err) {
+			if !isKVError(err) {
 				return err
 			}
 		}
@@ -1833,7 +1833,7 @@ func (c *ClusterClient) txPipelineReadQueued(
 	// To be sure there are no buffered push notifications, we process them before reading the reply
 	if err := node.Client.processPendingPushNotificationWithReader(ctx, cn, rd); err != nil {
 		// Log the error but don't fail the command execution
-		// Push notification processing errors shouldn't break normal Redis operations
+		// Push notification processing errors shouldn't break normal KV operations
 		internal.Logger.Printf(ctx, "push: error processing pending notifications before reading reply: %v", err)
 	}
 	// Parse number of replies.
@@ -1846,7 +1846,7 @@ func (c *ClusterClient) txPipelineReadQueued(
 	}
 
 	if line[0] != proto.RespArray {
-		return fmt.Errorf("redis: expected '*', but got line %q", line)
+		return fmt.Errorf("kv: expected '*', but got line %q", line)
 	}
 
 	return nil
@@ -2203,7 +2203,7 @@ func (c *ClusterClient) slotMasterNode(ctx context.Context, slot int) (*clusterN
 // SlaveForKey gets a client for a replica node to run any command on it.
 // This is especially useful if we want to run a particular lua script which has
 // only read only commands on the replica.
-// This is because other redis commands generally have a flag that points that
+// This is because other kv commands generally have a flag that points that
 // they are read only and automatically run on the replica nodes
 // if ClusterOptions.ReadOnly flag is set to true.
 func (c *ClusterClient) SlaveForKey(ctx context.Context, key string) (*Client, error) {

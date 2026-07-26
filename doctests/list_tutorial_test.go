@@ -14,7 +14,7 @@ import (
 func ExampleClient_queue() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -70,7 +70,7 @@ func ExampleClient_queue() {
 func ExampleClient_stack() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -126,7 +126,7 @@ func ExampleClient_stack() {
 func ExampleClient_llen() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -155,7 +155,7 @@ func ExampleClient_llen() {
 func ExampleClient_lmove_lrange() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -221,7 +221,7 @@ func ExampleClient_lmove_lrange() {
 func ExampleClient_lpush_rpush() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -277,7 +277,7 @@ func ExampleClient_lpush_rpush() {
 func ExampleClient_variadic() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -324,7 +324,7 @@ func ExampleClient_variadic() {
 func ExampleClient_lpop_rpop() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -372,7 +372,7 @@ func ExampleClient_lpop_rpop() {
 	res26, err := rdb.RPop(ctx, "bikes:repairs").Result()
 
 	if err != nil {
-		fmt.Println(err) // >>> redis: nil
+		fmt.Println(err) // >>> kv: nil
 	}
 
 	fmt.Println(res26) // >>> <empty string>
@@ -384,14 +384,14 @@ func ExampleClient_lpop_rpop() {
 	// bike:3
 	// bike:1
 	// bike:2
-	// redis: nil
+	// kv: nil
 	//
 }
 
 func ExampleClient_ltrim() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -438,7 +438,7 @@ func ExampleClient_ltrim() {
 func ExampleClient_ltrim_end_of_list() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -485,7 +485,7 @@ func ExampleClient_ltrim_end_of_list() {
 func ExampleClient_brpop() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -525,7 +525,7 @@ func ExampleClient_brpop() {
 	res36, err := rdb.BRPop(ctx, 1, "bikes:repairs").Result()
 
 	if err != nil {
-		fmt.Println(err) // >>> redis: nil
+		fmt.Println(err) // >>> kv: nil
 	}
 
 	fmt.Println(res36) // >>> []
@@ -535,14 +535,14 @@ func ExampleClient_brpop() {
 	// 2
 	// [bikes:repairs bike:2]
 	// [bikes:repairs bike:1]
-	// redis: nil
+	// kv: nil
 	// []
 }
 
 func ExampleClient_rule1() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -580,7 +580,7 @@ func ExampleClient_rule1() {
 func ExampleClient_rule11() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -627,7 +627,7 @@ func ExampleClient_rule11() {
 func ExampleClient_rule2() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -699,7 +699,7 @@ func ExampleClient_rule2() {
 func ExampleClient_rule3() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -729,7 +729,7 @@ func ExampleClient_rule3() {
 	res50, err := rdb.LPop(ctx, "bikes:repairs").Result()
 
 	if err != nil {
-		fmt.Println(err) // >>> redis: nil
+		fmt.Println(err) // >>> kv: nil
 	}
 
 	fmt.Println(res50) // >>> <empty string>
@@ -738,14 +738,14 @@ func ExampleClient_rule3() {
 	// Output:
 	// 0
 	// 0
-	// redis: nil
+	// kv: nil
 	//
 }
 
 func ExampleClient_ltrim1() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB

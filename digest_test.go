@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -12,34 +12,34 @@ import (
 )
 
 func init() {
-	// Initialize RedisVersion from environment variable for regular Go tests
+	// Initialize KVVersion from environment variable for regular Go tests
 	// (Ginkgo tests initialize this in BeforeSuite)
-	if version := os.Getenv("REDIS_VERSION"); version != "" {
+	if version := os.Getenv("KV_VERSION"); version != "" {
 		if v, err := strconv.ParseFloat(strings.Trim(version, "\""), 64); err == nil && v > 0 {
-			RedisVersion = v
+			KVVersion = v
 		}
 	}
 }
 
-// skipIfRedisBelow84 checks if Redis version is below 8.4 and skips the test if so
-func skipIfRedisBelow84(t *testing.T) {
-	if RedisVersion < 8.4 {
-		t.Skipf("Skipping test: Redis version %.1f < 8.4 (DIGEST command requires Redis 8.4+)", RedisVersion)
+// skipIfKVBelow84 checks if KV version is below 8.4 and skips the test if so
+func skipIfKVBelow84(t *testing.T) {
+	if KVVersion < 8.4 {
+		t.Skipf("Skipping test: KV version %.1f < 8.4 (DIGEST command requires KV 8.4+)", KVVersion)
 	}
 }
 
 // TestDigestBasic validates that the Digest command returns a uint64 value
 func TestDigestBasic(t *testing.T) {
-	skipIfRedisBelow84(t)
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	client.Del(ctx, "digest-test-key")
@@ -74,16 +74,16 @@ func TestDigestBasic(t *testing.T) {
 
 // TestSetIFDEQWithDigest validates the SetIFDEQ command works with digests
 func TestSetIFDEQWithDigest(t *testing.T) {
-	skipIfRedisBelow84(t)
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	client.Del(ctx, "cas-test-key")
@@ -118,8 +118,8 @@ func TestSetIFDEQWithDigest(t *testing.T) {
 
 	// Test 2: SetIFDEQ with wrong digest should fail
 	result = client.SetIFDEQ(ctx, "cas-test-key", "another-value", wrongDigest, 0)
-	if result.Err() != redis.Nil {
-		t.Errorf("SetIFDEQ with wrong digest should return redis.Nil, got: %v", result.Err())
+	if result.Err() != kv.Nil {
+		t.Errorf("SetIFDEQ with wrong digest should return kv.Nil, got: %v", result.Err())
 	} else {
 		t.Logf("✓ SetIFDEQ with wrong digest correctly failed")
 	}
@@ -138,16 +138,16 @@ func TestSetIFDEQWithDigest(t *testing.T) {
 
 // TestSetIFDNEWithDigest validates the SetIFDNE command works with digests
 func TestSetIFDNEWithDigest(t *testing.T) {
-	skipIfRedisBelow84(t)
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	client.Del(ctx, "cad-test-key")
@@ -182,8 +182,8 @@ func TestSetIFDNEWithDigest(t *testing.T) {
 	// Test 2: SetIFDNE with matching digest should fail
 	newDigest := client.Digest(ctx, "cad-test-key").Val()
 	result = client.SetIFDNE(ctx, "cad-test-key", "another-value", newDigest, 0)
-	if result.Err() != redis.Nil {
-		t.Errorf("SetIFDNE with matching digest should return redis.Nil, got: %v", result.Err())
+	if result.Err() != kv.Nil {
+		t.Errorf("SetIFDNE with matching digest should return kv.Nil, got: %v", result.Err())
 	} else {
 		t.Logf("✓ SetIFDNE with matching digest correctly failed")
 	}
@@ -202,16 +202,16 @@ func TestSetIFDNEWithDigest(t *testing.T) {
 
 // TestDelExArgsWithDigest validates DelExArgs works with digest matching
 func TestDelExArgsWithDigest(t *testing.T) {
-	skipIfRedisBelow84(t)
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	client.Del(ctx, "del-test-key")
@@ -228,7 +228,7 @@ func TestDelExArgsWithDigest(t *testing.T) {
 	wrongDigest := uint64(54321)
 
 	// Test 1: Delete with wrong digest should fail
-	deleted := client.DelExArgs(ctx, "del-test-key", redis.DelExArgs{
+	deleted := client.DelExArgs(ctx, "del-test-key", kv.DelExArgs{
 		Mode:        "IFDEQ",
 		MatchDigest: wrongDigest,
 	}).Val()
@@ -246,7 +246,7 @@ func TestDelExArgsWithDigest(t *testing.T) {
 	}
 
 	// Test 2: Delete with correct digest should succeed
-	deleted = client.DelExArgs(ctx, "del-test-key", redis.DelExArgs{
+	deleted = client.DelExArgs(ctx, "del-test-key", kv.DelExArgs{
 		Mode:        "IFDEQ",
 		MatchDigest: correctDigest,
 	}).Val()
@@ -264,19 +264,19 @@ func TestDelExArgsWithDigest(t *testing.T) {
 	}
 }
 
-// TestDigestHelperMatchesRedis validates that helper.DigestString produces
-// the same digest as Redis DIGEST command
-func TestDigestHelperMatchesRedis(t *testing.T) {
-	skipIfRedisBelow84(t)
+// TestDigestHelperMatchesKV validates that helper.DigestString produces
+// the same digest as KV DIGEST command
+func TestDigestHelperMatchesKV(t *testing.T) {
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	testCases := []struct {
@@ -297,24 +297,24 @@ func TestDigestHelperMatchesRedis(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			key := "helper-test-" + tc.name
 
-			// Set value in Redis
+			// Set value in KV
 			err := client.Set(ctx, key, tc.value, 0).Err()
 			if err != nil {
 				t.Fatalf("Failed to set value: %v", err)
 			}
 
-			// Get digest from Redis
-			redisDigest := client.Digest(ctx, key).Val()
+			// Get digest from KV
+			kvDigest := client.Digest(ctx, key).Val()
 
 			// Calculate digest using helper
 			helperDigest := helper.DigestString(tc.value)
 
 			// Compare
-			if redisDigest != helperDigest {
-				t.Errorf("Digest mismatch for %q:\n  Redis:  0x%016x\n  Helper: 0x%016x",
-					tc.value, redisDigest, helperDigest)
+			if kvDigest != helperDigest {
+				t.Errorf("Digest mismatch for %q:\n  KV:  0x%016x\n  Helper: 0x%016x",
+					tc.value, kvDigest, helperDigest)
 			} else {
-				t.Logf("✓ %s: Redis and helper digests match (0x%016x)", tc.name, redisDigest)
+				t.Logf("✓ %s: KV and helper digests match (0x%016x)", tc.name, kvDigest)
 			}
 
 			// Cleanup
@@ -323,19 +323,19 @@ func TestDigestHelperMatchesRedis(t *testing.T) {
 	}
 }
 
-// TestDigestBytesHelperMatchesRedis validates that helper.DigestBytes produces
-// the same digest as Redis DIGEST command for binary data
-func TestDigestBytesHelperMatchesRedis(t *testing.T) {
-	skipIfRedisBelow84(t)
+// TestDigestBytesHelperMatchesKV validates that helper.DigestBytes produces
+// the same digest as KV DIGEST command for binary data
+func TestDigestBytesHelperMatchesKV(t *testing.T) {
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	testCases := []struct {
@@ -353,24 +353,24 @@ func TestDigestBytesHelperMatchesRedis(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			key := "helper-bytes-test-" + tc.name
 
-			// Set value in Redis
+			// Set value in KV
 			err := client.Set(ctx, key, tc.value, 0).Err()
 			if err != nil {
 				t.Fatalf("Failed to set value: %v", err)
 			}
 
-			// Get digest from Redis
-			redisDigest := client.Digest(ctx, key).Val()
+			// Get digest from KV
+			kvDigest := client.Digest(ctx, key).Val()
 
 			// Calculate digest using helper
 			helperDigest := helper.DigestBytes(tc.value)
 
 			// Compare
-			if redisDigest != helperDigest {
-				t.Errorf("Digest mismatch for binary data %v:\n  Redis:  0x%016x\n  Helper: 0x%016x",
-					tc.value, redisDigest, helperDigest)
+			if kvDigest != helperDigest {
+				t.Errorf("Digest mismatch for binary data %v:\n  KV:  0x%016x\n  Helper: 0x%016x",
+					tc.value, kvDigest, helperDigest)
 			} else {
-				t.Logf("✓ %s: Redis and helper digests match (0x%016x)", tc.name, redisDigest)
+				t.Logf("✓ %s: KV and helper digests match (0x%016x)", tc.name, kvDigest)
 			}
 
 			// Cleanup
@@ -382,16 +382,16 @@ func TestDigestBytesHelperMatchesRedis(t *testing.T) {
 // TestDigestHelperWithSetIFDEQ validates end-to-end optimistic locking using
 // client-side digest calculation
 func TestDigestHelperWithSetIFDEQ(t *testing.T) {
-	skipIfRedisBelow84(t)
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	key := "helper-setifdeq-test"
@@ -427,7 +427,7 @@ func TestDigestHelperWithSetIFDEQ(t *testing.T) {
 	// Now try with wrong client-calculated digest (should fail)
 	wrongDigest := helper.DigestString("wrong-value")
 	result = client.SetIFDEQ(ctx, key, "version-3", wrongDigest, 0)
-	if result.Err() != redis.Nil {
+	if result.Err() != kv.Nil {
 		t.Errorf("SetIFDEQ with wrong client digest should fail, got: %v", result.Err())
 	} else {
 		t.Logf("✓ SetIFDEQ with wrong client-calculated digest correctly failed")
@@ -439,16 +439,16 @@ func TestDigestHelperWithSetIFDEQ(t *testing.T) {
 // TestDigestHelperWithDelExArgs validates conditional delete using
 // client-side digest calculation
 func TestDigestHelperWithDelExArgs(t *testing.T) {
-	skipIfRedisBelow84(t)
+	skipIfKVBelow84(t)
 
 	ctx := context.Background()
-	client := redis.NewClient(&redis.Options{
+	client := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer client.Close()
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		t.Skipf("Redis not available: %v", err)
+		t.Skipf("KV not available: %v", err)
 	}
 
 	key := "helper-delexargs-test"
@@ -467,7 +467,7 @@ func TestDigestHelperWithDelExArgs(t *testing.T) {
 
 	// Try to delete with wrong digest (should fail)
 	wrongDigest := helper.DigestString("wrong")
-	deleted := client.DelExArgs(ctx, key, redis.DelExArgs{
+	deleted := client.DelExArgs(ctx, key, kv.DelExArgs{
 		Mode:        "IFDEQ",
 		MatchDigest: wrongDigest,
 	}).Val()
@@ -479,7 +479,7 @@ func TestDigestHelperWithDelExArgs(t *testing.T) {
 	}
 
 	// Delete with correct client-calculated digest (should succeed)
-	deleted = client.DelExArgs(ctx, key, redis.DelExArgs{
+	deleted = client.DelExArgs(ctx, key, kv.DelExArgs{
 		Mode:        "IFDEQ",
 		MatchDigest: clientDigest,
 	}).Val()

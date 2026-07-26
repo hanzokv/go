@@ -13,7 +13,7 @@ type decoderFunc func(reflect.Value, string) error
 // Scanner is the interface implemented by themselves,
 // which will override the decoding behavior of decoderFunc.
 type Scanner interface {
-	ScanRedis(s string) error
+	ScanKV(s string) error
 }
 
 var (
@@ -57,12 +57,12 @@ func Struct(dst interface{}) (StructValue, error) {
 
 	// The destination to scan into should be a struct pointer.
 	if v.Kind() != reflect.Ptr || v.IsNil() {
-		return StructValue{}, fmt.Errorf("redis.Scan(non-pointer %T)", dst)
+		return StructValue{}, fmt.Errorf("kv.Scan(non-pointer %T)", dst)
 	}
 
 	v = v.Elem()
 	if v.Kind() != reflect.Struct {
-		return StructValue{}, fmt.Errorf("redis.Scan(non-struct %T)", dst)
+		return StructValue{}, fmt.Errorf("kv.Scan(non-struct %T)", dst)
 	}
 
 	return StructValue{
@@ -71,8 +71,8 @@ func Struct(dst interface{}) (StructValue, error) {
 	}, nil
 }
 
-// Scan scans the results from a key-value Redis map result set to a destination struct.
-// The Redis keys are matched to the struct's field with the `redis` tag.
+// Scan scans the results from a key-value KV map result set to a destination struct.
+// The KV keys are matched to the struct's field with the `kv` tag.
 func Scan(dst interface{}, keys []interface{}, vals []interface{}) error {
 	if len(keys) != len(vals) {
 		return errors.New("args should have the same number of keys and vals")
@@ -203,5 +203,5 @@ func decodeSlice(f reflect.Value, s string) error {
 }
 
 func decodeUnsupported(v reflect.Value, s string) error {
-	return fmt.Errorf("redis.Scan(unsupported %s)", v.Type())
+	return fmt.Errorf("kv.Scan(unsupported %s)", v.Type())
 }

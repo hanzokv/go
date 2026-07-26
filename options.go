@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -32,7 +32,7 @@ type Limiter interface {
 	ReportResult(result error)
 }
 
-// Options keeps the settings to set up redis connection.
+// Options keeps the settings to set up kv connection.
 type Options struct {
 	// Network type, either tcp or unix.
 	//
@@ -52,20 +52,20 @@ type Options struct {
 	// Hook that is called when new connection is established.
 	OnConnect func(ctx context.Context, cn *Conn) error
 
-	// Protocol 2 or 3. Use the version to negotiate RESP version with redis-server.
+	// Protocol 2 or 3. Use the version to negotiate RESP version with kv-server.
 	//
 	// default: 3.
 	Protocol int
 
 	// Username is used to authenticate the current connection
 	// with one of the connections defined in the ACL list when connecting
-	// to a Redis 6.0 instance, or greater, that is using the Redis ACL system.
+	// to a KV 6.0 instance, or greater, that is using the KV ACL system.
 	Username string
 
 	// Password is an optional password. Must match the password specified in the
-	// `requirepass` server configuration option (if connecting to a Redis 5.0 instance, or lower),
-	// or the User Password when connecting to a Redis 6.0 instance, or greater,
-	// that is using the Redis ACL system.
+	// `requirepass` server configuration option (if connecting to a KV 5.0 instance, or lower),
+	// or the User Password when connecting to a KV 6.0 instance, or greater,
+	// that is using the KV ACL system.
 	Password string
 
 	// CredentialsProvider allows the username and password to be updated
@@ -140,7 +140,7 @@ type Options struct {
 	WriteTimeout time.Duration
 
 	// ContextTimeoutEnabled controls whether the client respects context timeouts and deadlines.
-	// See https://redis.uptrace.dev/guide/go-redis-debugging.html#timeouts
+	// See https://kv.uptrace.dev/guide/go-kv-debugging.html#timeouts
 	ContextTimeoutEnabled bool
 
 	// ReadBufferSize is the size of the bufio.Reader buffer for each connection.
@@ -260,7 +260,7 @@ type Options struct {
 	// IdentitySuffix - add suffix to client name.
 	IdentitySuffix string
 
-	// UnstableResp3 enables Unstable mode for Redis Search module with RESP3.
+	// UnstableResp3 enables Unstable mode for KV Search module with RESP3.
 	// When unstable mode is enabled, the client will use RESP3 protocol and only be able to use RawResult
 	UnstableResp3 bool
 
@@ -420,16 +420,16 @@ func NewDialer(opt *Options) func(context.Context, string, string) (net.Conn, er
 	}
 }
 
-// ParseURL parses a URL into Options that can be used to connect to Redis.
+// ParseURL parses a URL into Options that can be used to connect to KV.
 // Scheme is required.
 // There are two connection types: by tcp socket and by unix socket.
 // Tcp connection:
 //
-//	redis://<user>:<password>@<host>:<port>/<db_number>
+//	kv://<user>:<password>@<host>:<port>/<db_number>
 //
 // Unix connection:
 //
-//	unix://<user>:<password>@</path/to/redis.sock>?db=<db_number>
+//	unix://<user>:<password>@</path/to/kv.sock>?db=<db_number>
 //
 // Most Option fields can be set using query parameters, with the following restrictions:
 //   - field names are mapped using snake-case conversion: to set MaxRetries, use max_retries
@@ -447,7 +447,7 @@ func NewDialer(opt *Options) func(context.Context, string, string) (net.Conn, er
 //
 // Examples:
 //
-//	redis://user:password@localhost:6789/3?dial_timeout=3&db=1&read_timeout=6s&max_retries=2
+//	kv://user:password@localhost:6789/3?dial_timeout=3&db=1&read_timeout=6s&max_retries=2
 //	is equivalent to:
 //	&Options{
 //		Network:     "tcp",
@@ -457,19 +457,19 @@ func NewDialer(opt *Options) func(context.Context, string, string) (net.Conn, er
 //		ReadTimeout: 6 * time.Second,
 //		MaxRetries:  2,
 //	}
-func ParseURL(redisURL string) (*Options, error) {
-	u, err := url.Parse(redisURL)
+func ParseURL(kvURL string) (*Options, error) {
+	u, err := url.Parse(kvURL)
 	if err != nil {
 		return nil, err
 	}
 
 	switch u.Scheme {
-	case "redis", "rediss":
+	case "kv", "kvs":
 		return setupTCPConn(u)
 	case "unix":
 		return setupUnixConn(u)
 	default:
-		return nil, fmt.Errorf("redis: invalid URL scheme: %s", u.Scheme)
+		return nil, fmt.Errorf("kv: invalid URL scheme: %s", u.Scheme)
 	}
 }
 
@@ -490,13 +490,13 @@ func setupTCPConn(u *url.URL) (*Options, error) {
 	case 1:
 		var err error
 		if o.DB, err = strconv.Atoi(f[0]); err != nil {
-			return nil, fmt.Errorf("redis: invalid database number: %q", f[0])
+			return nil, fmt.Errorf("kv: invalid database number: %q", f[0])
 		}
 	default:
-		return nil, fmt.Errorf("redis: invalid URL path: %s", u.Path)
+		return nil, fmt.Errorf("kv: invalid URL path: %s", u.Path)
 	}
 
-	if u.Scheme == "rediss" {
+	if u.Scheme == "kvs" {
 		o.TLSConfig = &tls.Config{
 			ServerName: h,
 			MinVersion: tls.VersionTLS12,
@@ -529,7 +529,7 @@ func setupUnixConn(u *url.URL) (*Options, error) {
 	}
 
 	if strings.TrimSpace(u.Path) == "" { // path is required with unix connection
-		return nil, errors.New("redis: empty unix socket path")
+		return nil, errors.New("kv: empty unix socket path")
 	}
 	o.Addr = u.Path
 	o.Username, o.Password = getUserPassword(u)
@@ -570,7 +570,7 @@ func (o *queryOptions) int(name string) int {
 		return i
 	}
 	if o.err == nil {
-		o.err = fmt.Errorf("redis: invalid %s number: %s", name, err)
+		o.err = fmt.Errorf("kv: invalid %s number: %s", name, err)
 	}
 	return 0
 }
@@ -593,7 +593,7 @@ func (o *queryOptions) duration(name string) time.Duration {
 		return dur
 	}
 	if o.err == nil {
-		o.err = fmt.Errorf("redis: invalid %s duration: %w", name, err)
+		o.err = fmt.Errorf("kv: invalid %s duration: %w", name, err)
 	}
 	return 0
 }
@@ -606,7 +606,7 @@ func (o *queryOptions) bool(name string) bool {
 		return false
 	default:
 		if o.err == nil {
-			o.err = fmt.Errorf("redis: invalid %s boolean: expected true/false/1/0 or an empty string, got %q", name, s)
+			o.err = fmt.Errorf("kv: invalid %s boolean: expected true/false/1/0 or an empty string, got %q", name, s)
 		}
 		return false
 	}
@@ -632,7 +632,7 @@ func setupConnParams(u *url.URL, o *Options) (*Options, error) {
 	if tmp := q.string("db"); tmp != "" {
 		db, err := strconv.Atoi(tmp)
 		if err != nil {
-			return nil, fmt.Errorf("redis: invalid database number: %w", err)
+			return nil, fmt.Errorf("kv: invalid database number: %w", err)
 		}
 		o.DB = db
 	}
@@ -674,7 +674,7 @@ func setupConnParams(u *url.URL, o *Options) (*Options, error) {
 
 	// any parameters left?
 	if r := q.remaining(); len(r) > 0 {
-		return nil, fmt.Errorf("redis: unexpected option: %s", strings.Join(r, ", "))
+		return nil, fmt.Errorf("kv: unexpected option: %s", strings.Join(r, ", "))
 	}
 
 	return o, nil

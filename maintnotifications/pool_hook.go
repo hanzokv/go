@@ -26,7 +26,7 @@ type HandoffRequest struct {
 	Pool     pool.Pooler // Pool to remove connection from on failure
 }
 
-// PoolHook implements pool.PoolHook for Redis-specific connection handling
+// PoolHook implements pool.PoolHook for KV-specific connection handling
 // with maintenance notifications support.
 type PoolHook struct {
 	// Base dialer for creating connections to new endpoints during handoffs

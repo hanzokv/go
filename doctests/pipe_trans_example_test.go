@@ -14,7 +14,7 @@ import (
 func ExampleClient_transactions() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -43,7 +43,7 @@ func ExampleClient_transactions() {
 	}
 
 	for _, c := range cmds {
-		fmt.Printf("%v;", c.(*redis.StatusCmd).Val())
+		fmt.Printf("%v;", c.(*kv.StatusCmd).Val())
 	}
 
 	fmt.Println("")
@@ -65,14 +65,14 @@ func ExampleClient_transactions() {
 	// STEP_END
 
 	// STEP_START basic_pipe_pipelined
-	var pd0Result *redis.StatusCmd
-	var pd3Result *redis.StatusCmd
-	var pd4Result *redis.StatusCmd
+	var pd0Result *kv.StatusCmd
+	var pd3Result *kv.StatusCmd
+	var pd4Result *kv.StatusCmd
 
-	cmds, err = rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
-		pd0Result = (*redis.StatusCmd)(pipe.Get(ctx, "seat:0"))
-		pd3Result = (*redis.StatusCmd)(pipe.Get(ctx, "seat:3"))
-		pd4Result = (*redis.StatusCmd)(pipe.Get(ctx, "seat:4"))
+	cmds, err = rdb.Pipelined(ctx, func(pipe kv.Pipeliner) error {
+		pd0Result = (*kv.StatusCmd)(pipe.Get(ctx, "seat:0"))
+		pd3Result = (*kv.StatusCmd)(pipe.Get(ctx, "seat:3"))
+		pd4Result = (*kv.StatusCmd)(pipe.Get(ctx, "seat:4"))
 		return nil
 	})
 
@@ -97,7 +97,7 @@ func ExampleClient_transactions() {
 	cmds, err = trans.Exec(ctx)
 
 	for _, c := range cmds {
-		fmt.Println(c.(*redis.IntCmd).Val())
+		fmt.Println(c.(*kv.IntCmd).Val())
 	}
 	// >>> 1
 	// >>> 2
@@ -105,11 +105,11 @@ func ExampleClient_transactions() {
 	// STEP_END
 
 	// STEP_START basic_trans_txpipelined
-	var tx1Result *redis.IntCmd
-	var tx2Result *redis.IntCmd
-	var tx3Result *redis.IntCmd
+	var tx1Result *kv.IntCmd
+	var tx2Result *kv.IntCmd
+	var tx3Result *kv.IntCmd
 
-	cmds, err = rdb.TxPipelined(ctx, func(trans redis.Pipeliner) error {
+	cmds, err = rdb.TxPipelined(ctx, func(trans kv.Pipeliner) error {
 		tx1Result = trans.IncrBy(ctx, "counter:1", 1)
 		tx2Result = trans.IncrBy(ctx, "counter:2", 2)
 		tx3Result = trans.IncrBy(ctx, "counter:3", 3)
@@ -134,11 +134,11 @@ func ExampleClient_transactions() {
 	// Retry if the key has been changed.
 	for i := 0; i < maxRetries; i++ {
 		err := rdb.Watch(ctx,
-			func(tx *redis.Tx) error {
+			func(tx *kv.Tx) error {
 				currentPath, err := rdb.Get(ctx, "shellpath").Result()
 				newPath := currentPath + ":/usr/mycmds/"
 
-				_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+				_, err = tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					pipe.Set(ctx, "shellpath", newPath, 0)
 					return nil
 				})
@@ -151,7 +151,7 @@ func ExampleClient_transactions() {
 		if err == nil {
 			// Success.
 			break
-		} else if err == redis.TxFailedErr {
+		} else if err == kv.TxFailedErr {
 			// Optimistic lock lost. Retry the transaction.
 			continue
 		} else {

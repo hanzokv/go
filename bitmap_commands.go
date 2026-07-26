@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func (c cmdable) BitCount(ctx context.Context, key string, bitCount *BitCount) *
 		if bitCount.Unit != "" {
 			if bitCount.Unit != BitCountIndexByte && bitCount.Unit != BitCountIndexBit {
 				cmd := NewIntCmd(ctx)
-				cmd.SetErr(errors.New("redis: invalid bitcount index"))
+				cmd.SetErr(errors.New("kv: invalid bitcount index"))
 				return cmd
 			}
 			args = append(args, bitCount.Unit)
@@ -103,30 +103,30 @@ func (c cmdable) BitOpNot(ctx context.Context, destKey string, key string) *IntC
 }
 
 // BitOpDiff creates a new bitmap in which users are members of bitmap X but not of any of bitmaps Y1, Y2, …
-// Introduced with Redis 8.2
+// Introduced with KV 8.2
 func (c cmdable) BitOpDiff(ctx context.Context, destKey string, keys ...string) *IntCmd {
 	return c.bitOp(ctx, "diff", destKey, keys...)
 }
 
 // BitOpDiff1 creates a new bitmap in which users are members of one or more of bitmaps Y1, Y2, … but not members of bitmap X
-// Introduced with Redis 8.2
+// Introduced with KV 8.2
 func (c cmdable) BitOpDiff1(ctx context.Context, destKey string, keys ...string) *IntCmd {
 	return c.bitOp(ctx, "diff1", destKey, keys...)
 }
 
 // BitOpAndOr creates a new bitmap in which users are members of bitmap X and also members of one or more of bitmaps Y1, Y2, …
-// Introduced with Redis 8.2
+// Introduced with KV 8.2
 func (c cmdable) BitOpAndOr(ctx context.Context, destKey string, keys ...string) *IntCmd {
 	return c.bitOp(ctx, "andor", destKey, keys...)
 }
 
 // BitOpOne creates a new bitmap in which users are members of exactly one of the given bitmaps
-// Introduced with Redis 8.2
+// Introduced with KV 8.2
 func (c cmdable) BitOpOne(ctx context.Context, destKey string, keys ...string) *IntCmd {
 	return c.bitOp(ctx, "one", destKey, keys...)
 }
 
-// BitPos is an API before Redis version 7.0, cmd: bitpos key bit start end
+// BitPos is an API before KV version 7.0, cmd: bitpos key bit start end
 // if you need the `byte | bit` parameter, please use `BitPosSpan`.
 func (c cmdable) BitPos(ctx context.Context, key string, bit int64, pos ...int64) *IntCmd {
 	args := make([]interface{}, 3+len(pos))
@@ -150,7 +150,7 @@ func (c cmdable) BitPos(ctx context.Context, key string, bit int64, pos ...int64
 	return cmd
 }
 
-// BitPosSpan supports the `byte | bit` parameters in redis version 7.0,
+// BitPosSpan supports the `byte | bit` parameters in kv version 7.0,
 // the bitpos command defaults to using byte type for the `start-end` range,
 // which means it counts in bytes from start to end. you can set the value
 // of "span" to determine the type of `start-end`.

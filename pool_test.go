@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -11,14 +11,14 @@ import (
 )
 
 var _ = Describe("pool", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		opt := redisOptions()
+		opt := kvOptions()
 		opt.MinIdleConns = 0
 		opt.ConnMaxLifetime = 0
 		opt.ConnMaxIdleTime = time.Second
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 	})
 
 	AfterEach(func() {
@@ -40,10 +40,10 @@ var _ = Describe("pool", func() {
 
 	It("respects max size on multi", func() {
 		perform(1000, func(id int) {
-			var ping *redis.StatusCmd
+			var ping *kv.StatusCmd
 
-			err := client.Watch(ctx, func(tx *redis.Tx) error {
-				cmds, err := tx.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			err := client.Watch(ctx, func(tx *kv.Tx) error {
+				cmds, err := tx.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 					ping = pipe.Ping(ctx)
 					return nil
 				})
@@ -106,11 +106,11 @@ var _ = Describe("pool", func() {
 
 	It("reuses connections", func() {
 		// explain: https://github.com/hanzokv/go/pull/1675
-		opt := redisOptions()
+		opt := kvOptions()
 		opt.MinIdleConns = 0
 		opt.ConnMaxLifetime = 0
 		opt.ConnMaxIdleTime = 10 * time.Second
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 
 		for i := 0; i < 100; i++ {
 			val, err := client.Ping(ctx).Result()

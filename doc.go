@@ -1,4 +1,4 @@
 /*
-Package redis implements a Redis client.
+Package kv implements a KV client.
 */
-package redis
+package kv

@@ -24,7 +24,7 @@ func (l *DefaultLogger) Printf(ctx context.Context, format string, v ...interfac
 
 func NewDefaultLogger() Logging {
 	return &DefaultLogger{
-		log: log.New(os.Stderr, "redis: ", log.LstdFlags|log.Lshortfile),
+		log: log.New(os.Stderr, "kv: ", log.LstdFlags|log.Lshortfile),
 	}
 }
 
@@ -37,7 +37,7 @@ var LogLevel LogLevelT = LogLevelError
 // LogLevelT represents the logging level
 type LogLevelT int
 
-// Log level constants for the entire go-redis library
+// Log level constants for the entire go-kv library
 const (
 	LogLevelError LogLevelT = iota // 0 - errors only
 	LogLevelWarn                   // 1 - warnings and errors

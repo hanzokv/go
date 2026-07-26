@@ -13,10 +13,10 @@ import (
 )
 
 var (
-	ErrMaxAggregation = errors.New("redis: no valid results to aggregate for max operation")
-	ErrMinAggregation = errors.New("redis: no valid results to aggregate for min operation")
-	ErrAndAggregation = errors.New("redis: no valid results to aggregate for logical AND operation")
-	ErrOrAggregation  = errors.New("redis: no valid results to aggregate for logical OR operation")
+	ErrMaxAggregation = errors.New("kv: no valid results to aggregate for max operation")
+	ErrMinAggregation = errors.New("kv: no valid results to aggregate for min operation")
+	ErrAndAggregation = errors.New("kv: no valid results to aggregate for logical AND operation")
+	ErrOrAggregation  = errors.New("kv: no valid results to aggregate for logical OR operation")
 )
 
 // ResponseAggregator defines the interface for aggregating responses from multiple shards.

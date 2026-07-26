@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"bytes"
@@ -16,29 +16,29 @@ import (
 	"github.com/hanzokv/go/v9/auth"
 )
 
-type redisHookError struct{}
+type kvHookError struct{}
 
-var _ redis.Hook = redisHookError{}
+var _ kv.Hook = kvHookError{}
 
-func (redisHookError) DialHook(hook redis.DialHook) redis.DialHook {
+func (kvHookError) DialHook(hook kv.DialHook) kv.DialHook {
 	return hook
 }
 
-func (redisHookError) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
-	return func(ctx context.Context, cmd redis.Cmder) error {
+func (kvHookError) ProcessHook(hook kv.ProcessHook) kv.ProcessHook {
+	return func(ctx context.Context, cmd kv.Cmder) error {
 		return errors.New("hook error")
 	}
 }
 
-func (redisHookError) ProcessPipelineHook(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+func (kvHookError) ProcessPipelineHook(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
 	return hook
 }
 
 func TestHookError(t *testing.T) {
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 	})
-	rdb.AddHook(redisHookError{})
+	rdb.AddHook(kvHookError{})
 
 	err := rdb.Ping(ctx).Err()
 	if err == nil {
@@ -54,10 +54,10 @@ func TestHookError(t *testing.T) {
 //------------------------------------------------------------------------------
 
 var _ = Describe("Client", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -66,7 +66,7 @@ var _ = Describe("Client", func() {
 	})
 
 	It("should Stringer", func() {
-		Expect(client.String()).To(Equal(fmt.Sprintf("Redis<:%s db:0>", redisPort)))
+		Expect(client.String()).To(Equal(fmt.Sprintf("KV<:%s db:0>", kvPort)))
 	})
 
 	It("supports context", func() {
@@ -77,7 +77,7 @@ var _ = Describe("Client", func() {
 		Expect(err).To(MatchError("context canceled"))
 	})
 
-	It("supports WithTimeout", Label("NonRedisEnterprise"), func() {
+	It("supports WithTimeout", Label("NonKVEnterprise"), func() {
 		err := client.ClientPause(ctx, time.Second).Err()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -101,13 +101,13 @@ var _ = Describe("Client", func() {
 	})
 
 	It("should return pool stats", func() {
-		Expect(client.PoolStats()).To(BeAssignableToTypeOf(&redis.PoolStats{}))
+		Expect(client.PoolStats()).To(BeAssignableToTypeOf(&kv.PoolStats{}))
 	})
 
 	It("should support custom dialers", func() {
-		custom := redis.NewClient(&redis.Options{
+		custom := kv.NewClient(&kv.Options{
 			Network: "tcp",
-			Addr:    redisAddr,
+			Addr:    kvAddr,
 			Dialer: func(ctx context.Context, network, addr string) (net.Conn, error) {
 				var d net.Dialer
 				return d.DialContext(ctx, network, addr)
@@ -123,7 +123,7 @@ var _ = Describe("Client", func() {
 	It("should close", func() {
 		Expect(client.Close()).NotTo(HaveOccurred())
 		err := client.Ping(ctx).Err()
-		Expect(err).To(MatchError("redis: client is closed"))
+		Expect(err).To(MatchError("kv: client is closed"))
 	})
 
 	It("should close pubsub without closing the client", func() {
@@ -131,13 +131,13 @@ var _ = Describe("Client", func() {
 		Expect(pubsub.Close()).NotTo(HaveOccurred())
 
 		_, err := pubsub.Receive(ctx)
-		Expect(err).To(MatchError("redis: client is closed"))
+		Expect(err).To(MatchError("kv: client is closed"))
 		Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
 	})
 
 	It("should close Tx without closing the client", func() {
-		err := client.Watch(ctx, func(tx *redis.Tx) error {
-			_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		err := client.Watch(ctx, func(tx *kv.Tx) error {
+			_, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
@@ -153,34 +153,34 @@ var _ = Describe("Client", func() {
 		Expect(client.Close()).NotTo(HaveOccurred())
 
 		_, err := pubsub.Receive(ctx)
-		Expect(err).To(MatchError("redis: client is closed"))
+		Expect(err).To(MatchError("kv: client is closed"))
 
 		Expect(pubsub.Close()).NotTo(HaveOccurred())
 	})
 
-	It("should select DB", Label("NonRedisEnterprise"), func() {
-		db2 := redis.NewClient(&redis.Options{
-			Addr: redisAddr,
+	It("should select DB", Label("NonKVEnterprise"), func() {
+		db2 := kv.NewClient(&kv.Options{
+			Addr: kvAddr,
 			DB:   2,
 		})
 		Expect(db2.FlushDB(ctx).Err()).NotTo(HaveOccurred())
-		Expect(db2.Get(ctx, "db").Err()).To(Equal(redis.Nil))
+		Expect(db2.Get(ctx, "db").Err()).To(Equal(kv.Nil))
 		Expect(db2.Set(ctx, "db", 2, 0).Err()).NotTo(HaveOccurred())
 
 		n, err := db2.Get(ctx, "db").Int64()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(n).To(Equal(int64(2)))
 
-		Expect(client.Get(ctx, "db").Err()).To(Equal(redis.Nil))
+		Expect(client.Get(ctx, "db").Err()).To(Equal(kv.Nil))
 
 		Expect(db2.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 		Expect(db2.Close()).NotTo(HaveOccurred())
 	})
 
 	It("should client setname", func() {
-		opt := redisOptions()
+		opt := kvOptions()
 		opt.ClientName = "hi"
-		db := redis.NewClient(opt)
+		db := kv.NewClient(opt)
 
 		defer func() {
 			Expect(db.Close()).NotTo(HaveOccurred())
@@ -193,9 +193,9 @@ var _ = Describe("Client", func() {
 	})
 
 	It("should attempt to set client name in HELLO", func() {
-		opt := redisOptions()
+		opt := kvOptions()
 		opt.ClientName = "hi"
-		db := redis.NewClient(opt)
+		db := kv.NewClient(opt)
 
 		defer func() {
 			Expect(db.Close()).NotTo(HaveOccurred())
@@ -219,9 +219,9 @@ var _ = Describe("Client", func() {
 	})
 
 	It("should client PROTO 2", func() {
-		opt := redisOptions()
+		opt := kvOptions()
 		opt.Protocol = 2
-		db := redis.NewClient(opt)
+		db := kv.NewClient(opt)
 
 		defer func() {
 			Expect(db.Close()).NotTo(HaveOccurred())
@@ -233,8 +233,8 @@ var _ = Describe("Client", func() {
 	})
 
 	It("should client PROTO 3", func() {
-		opt := redisOptions()
-		db := redis.NewClient(opt)
+		opt := kvOptions()
+		db := kv.NewClient(opt)
 
 		defer func() {
 			Expect(db.Close()).NotTo(HaveOccurred())
@@ -245,10 +245,10 @@ var _ = Describe("Client", func() {
 		Expect(val).Should(HaveKeyWithValue("proto", int64(3)))
 	})
 
-	It("should initialize idle connections created by MinIdleConns", Label("NonRedisEnterprise"), func() {
-		opt := redisOptions()
+	It("should initialize idle connections created by MinIdleConns", Label("NonKVEnterprise"), func() {
+		opt := kvOptions()
 		passwrd := "asdf"
-		db0 := redis.NewClient(opt)
+		db0 := kv.NewClient(opt)
 		// set password
 		err := db0.Do(ctx, "CONFIG", "SET", "requirepass", passwrd).Err()
 		Expect(err).NotTo(HaveOccurred())
@@ -261,7 +261,7 @@ var _ = Describe("Client", func() {
 		opt.Password = passwrd
 		opt.DB = 1 // Set DB to require SELECT
 
-		db := redis.NewClient(opt)
+		db := kv.NewClient(opt)
 		defer func() {
 			Expect(db.Close()).NotTo(HaveOccurred())
 		}()
@@ -302,7 +302,7 @@ var _ = Describe("Client", func() {
 	})
 
 	It("processes custom commands", func() {
-		cmd := redis.NewCmd(ctx, "PING")
+		cmd := kv.NewCmd(ctx, "PING")
 		_ = client.Process(ctx, cmd)
 
 		// Flush buffers.
@@ -315,8 +315,8 @@ var _ = Describe("Client", func() {
 	It("should retry command on network error", func() {
 		Expect(client.Close()).NotTo(HaveOccurred())
 
-		client = redis.NewClient(&redis.Options{
-			Addr:       redisAddr,
+		client = kv.NewClient(&kv.Options{
+			Addr:       kvAddr,
 			MaxRetries: 1,
 		})
 
@@ -332,13 +332,13 @@ var _ = Describe("Client", func() {
 	})
 
 	It("should retry with backoff", func() {
-		clientNoRetry := redis.NewClient(&redis.Options{
+		clientNoRetry := kv.NewClient(&kv.Options{
 			Addr:       ":1234",
 			MaxRetries: -1,
 		})
 		defer clientNoRetry.Close()
 
-		clientRetry := redis.NewClient(&redis.Options{
+		clientRetry := kv.NewClient(&kv.Options{
 			Addr:            ":1234",
 			MaxRetries:      5,
 			MaxRetryBackoff: 128 * time.Millisecond,
@@ -401,7 +401,7 @@ var _ = Describe("Client", func() {
 
 		// Reconnect to get new connection.
 		Expect(client.Close()).NotTo(HaveOccurred())
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 
 		got, err := client.Get(ctx, "key").Bytes()
 		Expect(err).NotTo(HaveOccurred())
@@ -434,7 +434,7 @@ var _ = Describe("Client", func() {
 
 	It("should Conn", func() {
 		err := client.Conn().Get(ctx, "this-key-does-not-exist").Err()
-		Expect(err).To(Equal(redis.Nil))
+		Expect(err).To(Equal(kv.Nil))
 	})
 
 	It("should set and scan net.IP", func() {
@@ -451,8 +451,8 @@ var _ = Describe("Client", func() {
 })
 
 var _ = Describe("Client timeout", func() {
-	var opt *redis.Options
-	var client *redis.Client
+	var opt *kv.Options
+	var client *kv.Client
 
 	AfterEach(func() {
 		Expect(client.Close()).NotTo(HaveOccurred())
@@ -473,7 +473,7 @@ var _ = Describe("Client timeout", func() {
 		})
 
 		It("Pipeline timeouts", func() {
-			_, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
@@ -495,7 +495,7 @@ var _ = Describe("Client timeout", func() {
 		})
 
 		It("Tx timeouts", func() {
-			err := client.Watch(ctx, func(tx *redis.Tx) error {
+			err := client.Watch(ctx, func(tx *kv.Tx) error {
 				return tx.Ping(ctx).Err()
 			})
 			Expect(err).To(HaveOccurred())
@@ -503,8 +503,8 @@ var _ = Describe("Client timeout", func() {
 		})
 
 		It("Tx Pipeline timeouts", func() {
-			err := client.Watch(ctx, func(tx *redis.Tx) error {
-				_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			err := client.Watch(ctx, func(tx *kv.Tx) error {
+				_, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					pipe.Ping(ctx)
 					return nil
 				})
@@ -517,10 +517,10 @@ var _ = Describe("Client timeout", func() {
 
 	Context("read timeout", func() {
 		BeforeEach(func() {
-			opt = redisOptions()
+			opt = kvOptions()
 			opt.ReadTimeout = time.Nanosecond
 			opt.WriteTimeout = -1
-			client = redis.NewClient(opt)
+			client = kv.NewClient(opt)
 		})
 
 		testTimeout()
@@ -528,10 +528,10 @@ var _ = Describe("Client timeout", func() {
 
 	Context("write timeout", func() {
 		BeforeEach(func() {
-			opt = redisOptions()
+			opt = kvOptions()
 			opt.ReadTimeout = -1
 			opt.WriteTimeout = time.Nanosecond
-			client = redis.NewClient(opt)
+			client = kv.NewClient(opt)
 		})
 
 		testTimeout()
@@ -539,16 +539,16 @@ var _ = Describe("Client timeout", func() {
 })
 
 var _ = Describe("Client OnConnect", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		opt := redisOptions()
+		opt := kvOptions()
 		opt.DB = 0
-		opt.OnConnect = func(ctx context.Context, cn *redis.Conn) error {
+		opt.OnConnect = func(ctx context.Context, cn *kv.Conn) error {
 			return cn.ClientSetName(ctx, "on_connect").Err()
 		}
 
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 	})
 
 	AfterEach(func() {
@@ -563,14 +563,14 @@ var _ = Describe("Client OnConnect", func() {
 })
 
 var _ = Describe("Client context cancellation", func() {
-	var opt *redis.Options
-	var client *redis.Client
+	var opt *kv.Options
+	var client *kv.Client
 
 	BeforeEach(func() {
-		opt = redisOptions()
+		opt = kvOptions()
 		opt.ReadTimeout = -1
 		opt.WriteTimeout = -1
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 	})
 
 	AfterEach(func() {
@@ -588,10 +588,10 @@ var _ = Describe("Client context cancellation", func() {
 })
 
 var _ = Describe("Conn", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -600,7 +600,7 @@ var _ = Describe("Conn", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("TxPipeline", Label("NonRedisEnterprise"), func() {
+	It("TxPipeline", Label("NonKVEnterprise"), func() {
 		tx := client.Conn().TxPipeline()
 		tx.SwapDB(ctx, 0, 2)
 		tx.SwapDB(ctx, 1, 0)
@@ -610,10 +610,10 @@ var _ = Describe("Conn", func() {
 })
 
 var _ = Describe("Hook", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -625,8 +625,8 @@ var _ = Describe("Hook", func() {
 	It("fifo", func() {
 		var res []string
 		client.AddHook(&hook{
-			processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-				return func(ctx context.Context, cmd redis.Cmder) error {
+			processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+				return func(ctx context.Context, cmd kv.Cmder) error {
 					res = append(res, "hook-1-process-start")
 					err := hook(ctx, cmd)
 					res = append(res, "hook-1-process-end")
@@ -635,8 +635,8 @@ var _ = Describe("Hook", func() {
 			},
 		})
 		client.AddHook(&hook{
-			processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-				return func(ctx context.Context, cmd redis.Cmder) error {
+			processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+				return func(ctx context.Context, cmd kv.Cmder) error {
 					res = append(res, "hook-2-process-start")
 					err := hook(ctx, cmd)
 					res = append(res, "hook-2-process-end")
@@ -658,8 +658,8 @@ var _ = Describe("Hook", func() {
 
 	It("wrapped error in a hook", func() {
 		client.AddHook(&hook{
-			processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-				return func(ctx context.Context, cmd redis.Cmder) error {
+			processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+				return func(ctx context.Context, cmd kv.Cmder) error {
 					if err := hook(ctx, cmd); err != nil {
 						return fmt.Errorf("wrapped error: %w", err)
 					}
@@ -669,7 +669,7 @@ var _ = Describe("Hook", func() {
 		})
 		client.ScriptFlush(ctx)
 
-		script := redis.NewScript(`return 'Script and hook'`)
+		script := kv.NewScript(`return 'Script and hook'`)
 
 		cmd := script.Run(ctx, client, nil)
 		Expect(cmd.Err()).NotTo(HaveOccurred())
@@ -678,12 +678,12 @@ var _ = Describe("Hook", func() {
 })
 
 var _ = Describe("Hook with MinIdleConns", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		options := redisOptions()
+		options := kvOptions()
 		options.MinIdleConns = 1
-		client = redis.NewClient(options)
+		client = kv.NewClient(options)
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -695,8 +695,8 @@ var _ = Describe("Hook with MinIdleConns", func() {
 	It("fifo", func() {
 		var res []string
 		client.AddHook(&hook{
-			processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-				return func(ctx context.Context, cmd redis.Cmder) error {
+			processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+				return func(ctx context.Context, cmd kv.Cmder) error {
 					res = append(res, "hook-1-process-start")
 					err := hook(ctx, cmd)
 					res = append(res, "hook-1-process-end")
@@ -705,8 +705,8 @@ var _ = Describe("Hook with MinIdleConns", func() {
 			},
 		})
 		client.AddHook(&hook{
-			processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-				return func(ctx context.Context, cmd redis.Cmder) error {
+			processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+				return func(ctx context.Context, cmd kv.Cmder) error {
 					res = append(res, "hook-2-process-start")
 					err := hook(ctx, cmd)
 					res = append(res, "hook-2-process-end")
@@ -728,12 +728,12 @@ var _ = Describe("Hook with MinIdleConns", func() {
 })
 
 var _ = Describe("Dialer connection timeouts", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	const dialSimulatedDelay = 1 * time.Second
 
 	BeforeEach(func() {
-		options := redisOptions()
+		options := kvOptions()
 		options.Dialer = func(ctx context.Context, network, addr string) (net.Conn, error) {
 			// Simulated slow dialer.
 			// Note that the following sleep is deliberately not context-aware.
@@ -741,7 +741,7 @@ var _ = Describe("Dialer connection timeouts", func() {
 			return net.Dial("tcp", options.Addr)
 		}
 		options.MinIdleConns = 1
-		client = redis.NewClient(options)
+		client = kv.NewClient(options)
 	})
 
 	AfterEach(func() {
@@ -792,8 +792,8 @@ var _ = Describe("Dialer connection timeouts", func() {
 })
 
 var _ = Describe("Credentials Provider Priority", func() {
-	var client *redis.Client
-	var opt *redis.Options
+	var client *kv.Client
+	var opt *kv.Options
 	var recorder *commandRecorder
 
 	BeforeEach(func() {
@@ -811,7 +811,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 		ctxCreds := auth.NewBasicCredentials("ctx_user", "ctx_pass")
 		providerCreds := auth.NewBasicCredentials("provider_user", "provider_pass")
 
-		opt = &redis.Options{
+		opt = &kv.Options{
 			Username: "field_user",
 			Password: "field_pass",
 			CredentialsProvider: func() (string, string) {
@@ -828,7 +828,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 			},
 		}
 
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 		client.AddHook(recorder.Hook())
 		// wrongpass
 		Expect(client.Ping(context.Background()).Err()).To(HaveOccurred())
@@ -839,7 +839,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 		ctxCreds := auth.NewBasicCredentials("ctx_user", "ctx_pass")
 		providerCreds := auth.NewBasicCredentials("provider_user", "provider_pass")
 
-		opt = &redis.Options{
+		opt = &kv.Options{
 			Username: "field_user",
 			Password: "field_pass",
 			CredentialsProvider: func() (string, string) {
@@ -852,7 +852,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 			},
 		}
 
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 		client.AddHook(recorder.Hook())
 		// wrongpass
 		Expect(client.Ping(context.Background()).Err()).To(HaveOccurred())
@@ -862,7 +862,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 	It("should use regular provider when streaming and context providers are not available", func() {
 		providerCreds := auth.NewBasicCredentials("provider_user", "provider_pass")
 
-		opt = &redis.Options{
+		opt = &kv.Options{
 			Username: "field_user",
 			Password: "field_pass",
 			CredentialsProvider: func() (string, string) {
@@ -871,7 +871,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 			},
 		}
 
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 		client.AddHook(recorder.Hook())
 		// wrongpass
 		Expect(client.Ping(context.Background()).Err()).To(HaveOccurred())
@@ -879,12 +879,12 @@ var _ = Describe("Credentials Provider Priority", func() {
 	})
 
 	It("should use username/password fields when no providers are set", func() {
-		opt = &redis.Options{
+		opt = &kv.Options{
 			Username: "field_user",
 			Password: "field_pass",
 		}
 
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 		client.AddHook(recorder.Hook())
 		// wrongpass
 		Expect(client.Ping(context.Background()).Err()).To(HaveOccurred())
@@ -892,9 +892,9 @@ var _ = Describe("Credentials Provider Priority", func() {
 	})
 
 	It("should use empty credentials when nothing is set", func() {
-		opt = &redis.Options{}
+		opt = &kv.Options{}
 
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 		client.AddHook(recorder.Hook())
 		// no pass, ok
 		Expect(client.Ping(context.Background()).Err()).NotTo(HaveOccurred())
@@ -906,7 +906,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 		updatedCreds := auth.NewBasicCredentials("updated_user", "updated_pass")
 		updatesChan := make(chan auth.Credentials, 1)
 
-		opt = &redis.Options{
+		opt = &kv.Options{
 			StreamingCredentialsProvider: &mockStreamingProvider{
 				credentials: initialCreds,
 				updates:     updatesChan,
@@ -914,7 +914,7 @@ var _ = Describe("Credentials Provider Priority", func() {
 			PoolSize: 1, // Force single connection to ensure reauth is tested
 		}
 
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 		client.AddHook(recorder.Hook())
 		// wrongpass
 		Expect(client.Ping(context.Background()).Err()).To(HaveOccurred())
@@ -1001,49 +1001,49 @@ var _ = Describe("Client creation", func() {
 	Context("simple client with nil options", func() {
 		It("panics", func() {
 			Expect(func() {
-				redis.NewClient(nil)
+				kv.NewClient(nil)
 			}).To(Panic())
 		})
 	})
 	Context("cluster client with nil options", func() {
 		It("panics", func() {
 			Expect(func() {
-				redis.NewClusterClient(nil)
+				kv.NewClusterClient(nil)
 			}).To(Panic())
 		})
 	})
 	Context("ring client with nil options", func() {
 		It("panics", func() {
 			Expect(func() {
-				redis.NewRing(nil)
+				kv.NewRing(nil)
 			}).To(Panic())
 		})
 	})
 	Context("universal client with nil options", func() {
 		It("panics", func() {
 			Expect(func() {
-				redis.NewUniversalClient(nil)
+				kv.NewUniversalClient(nil)
 			}).To(Panic())
 		})
 	})
 	Context("failover client with nil options", func() {
 		It("panics", func() {
 			Expect(func() {
-				redis.NewFailoverClient(nil)
+				kv.NewFailoverClient(nil)
 			}).To(Panic())
 		})
 	})
 	Context("failover cluster client with nil options", func() {
 		It("panics", func() {
 			Expect(func() {
-				redis.NewFailoverClusterClient(nil)
+				kv.NewFailoverClusterClient(nil)
 			}).To(Panic())
 		})
 	})
 	Context("sentinel client with nil options", func() {
 		It("panics", func() {
 			Expect(func() {
-				redis.NewSentinelClient(nil)
+				kv.NewSentinelClient(nil)
 			}).To(Panic())
 		})
 	})

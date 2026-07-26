@@ -1,10 +1,10 @@
-# Redis Digest & Optimistic Locking Example
+# KV Digest & Optimistic Locking Example
 
-This example demonstrates how to use Redis DIGEST command and digest-based optimistic locking with go-redis.
+This example demonstrates how to use KV DIGEST command and digest-based optimistic locking with go-kv.
 
-## What is Redis DIGEST?
+## What is KV DIGEST?
 
-The DIGEST command (Redis 8.4+) returns a 64-bit xxh3 hash of a key's value. This hash can be used for:
+The DIGEST command (KV 8.4+) returns a 64-bit xxh3 hash of a key's value. This hash can be used for:
 
 - **Optimistic locking**: Update values only if they haven't changed
 - **Change detection**: Detect if a value was modified
@@ -12,15 +12,15 @@ The DIGEST command (Redis 8.4+) returns a 64-bit xxh3 hash of a key's value. Thi
 
 ## Features Demonstrated
 
-1. **Basic Digest Usage**: Get digest from Redis and verify with client-side calculation
+1. **Basic Digest Usage**: Get digest from KV and verify with client-side calculation
 2. **Optimistic Locking with SetIFDEQ**: Update only if digest matches (value unchanged)
 3. **Change Detection with SetIFDNE**: Update only if digest differs (value changed)
 4. **Conditional Delete**: Delete only if digest matches expected value
-5. **Client-Side Digest Generation**: Calculate digests without fetching from Redis
+5. **Client-Side Digest Generation**: Calculate digests without fetching from KV
 
 ## Requirements
 
-- Redis 8.4+ (for DIGEST command support)
+- KV 8.4+ (for DIGEST command support)
 - Go 1.18+
 
 ## Installation
@@ -33,8 +33,8 @@ go mod tidy
 ## Running the Example
 
 ```bash
-# Make sure Redis 8.4+ is running on localhost:6379
-redis-server
+# Make sure KV 8.4+ is running on localhost:6379
+kv-server
 
 # In another terminal, run the example
 go run .
@@ -43,7 +43,7 @@ go run .
 ## Expected Output
 
 ```
-=== Redis Digest & Optimistic Locking Example ===
+=== KV Digest & Optimistic Locking Example ===
 
 1. Basic Digest Usage
 ---------------------
@@ -92,10 +92,10 @@ Binary data digest: 0x1122334455667788
 
 ### Digest Calculation
 
-Redis uses the **xxh3** hashing algorithm. The go-redis library provides built-in helper functions to calculate digests client-side:
+KV uses the **xxh3** hashing algorithm. The go-kv library provides built-in helper functions to calculate digests client-side:
 
 ```go
-import "github.com/redis/go-redis/v9/helper"
+import "github.com/kv/go-kv/v9/helper"
 
 // For strings
 digest := helper.DigestString("myvalue")
@@ -116,7 +116,7 @@ newValue := processValue(currentValue)
 
 // 3. Update only if value hasn't changed
 result := rdb.SetIFDEQ(ctx, "key", newValue, currentDigest, 0)
-if result.Err() == redis.Nil {
+if result.Err() == kv.Nil {
     // Value was modified by another client - retry or handle conflict
 }
 ```
@@ -124,13 +124,13 @@ if result.Err() == redis.Nil {
 ### Client-Side Digest (No Extra Round Trip)
 
 ```go
-import "github.com/redis/go-redis/v9/helper"
+import "github.com/kv/go-kv/v9/helper"
 
 // If you know the expected current value, calculate digest client-side
 expectedValue := "100"
 expectedDigest := helper.DigestString(expectedValue)
 
-// Update without fetching digest from Redis first
+// Update without fetching digest from KV first
 result := rdb.SetIFDEQ(ctx, "counter", "150", expectedDigest, 0)
 ```
 
@@ -146,7 +146,7 @@ currentDigest := rdb.Digest(ctx, "counter").Val()
 newValue := incrementCounter(currentValue)
 
 // Only succeeds if no other client modified it
-if rdb.SetIFDEQ(ctx, "counter", newValue, currentDigest, 0).Err() == redis.Nil {
+if rdb.SetIFDEQ(ctx, "counter", newValue, currentDigest, 0).Err() == kv.Nil {
     // Retry with new value
 }
 ```
@@ -154,13 +154,13 @@ if rdb.SetIFDEQ(ctx, "counter", newValue, currentDigest, 0).Err() == redis.Nil {
 ### 2. Session Management
 
 ```go
-import "github.com/redis/go-redis/v9/helper"
+import "github.com/kv/go-kv/v9/helper"
 
 // Delete session only if it contains expected data
 sessionData := "user:1234:active"
 expectedDigest := helper.DigestString(sessionData)
 
-deleted := rdb.DelExArgs(ctx, "session:xyz", redis.DelExArgs{
+deleted := rdb.DelExArgs(ctx, "session:xyz", kv.DelExArgs{
     Mode:        "IFDEQ",
     MatchDigest: expectedDigest,
 }).Val()
@@ -169,7 +169,7 @@ deleted := rdb.DelExArgs(ctx, "session:xyz", redis.DelExArgs{
 ### 3. Configuration Updates
 
 ```go
-import "github.com/redis/go-redis/v9/helper"
+import "github.com/kv/go-kv/v9/helper"
 
 // Update config only if it changed
 oldConfig := loadOldConfig()
@@ -179,7 +179,7 @@ newConfig := loadNewConfig()
 
 // Only update if config actually changed
 result := rdb.SetIFDNE(ctx, "config", newConfig, oldDigest, 0)
-if result.Err() != redis.Nil {
+if result.Err() != kv.Nil {
     fmt.Println("Config updated!")
 }
 ```
@@ -188,22 +188,22 @@ if result.Err() != redis.Nil {
 
 - **Simpler**: Single command instead of transaction
 - **Faster**: No transaction overhead
-- **Client-side digest**: Can calculate expected digest without fetching from Redis
+- **Client-side digest**: Can calculate expected digest without fetching from KV
 - **Works with any command**: Not limited to transactions
 
 ## Learn More
 
-- [Redis DIGEST command](https://redis.io/commands/digest/)
-- [Redis SET command with IFDEQ/IFDNE](https://redis.io/commands/set/)
+- [KV DIGEST command](https://kv.io/commands/digest/)
+- [KV SET command with IFDEQ/IFDNE](https://kv.io/commands/set/)
 - [xxh3 hashing algorithm](https://github.com/Cyan4973/xxHash)
 
 ## Helper Functions Reference
 
-The `github.com/redis/go-redis/v9/helper` package provides:
+The `github.com/kv/go-kv/v9/helper` package provides:
 
 | Function | Description |
 |----------|-------------|
 | `DigestString(s string) uint64` | Computes xxh3 hash of a string |
 | `DigestBytes(data []byte) uint64` | Computes xxh3 hash of a byte slice |
 
-Both functions produce the **exact same hash** as the Redis DIGEST command.
+Both functions produce the **exact same hash** as the KV DIGEST command.

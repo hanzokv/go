@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 
 // HSET Benchmark Tests
 //
-// This file contains benchmark tests for Redis HSET operations with different scales:
+// This file contains benchmark tests for KV HSET operations with different scales:
 // 1, 10, 100, 1000, 10000, 100000 operations
 //
 // Prerequisites:
-// - Redis server running on localhost:6379
+// - KV server running on localhost:6379
 // - No authentication required
 //
 // Usage:
@@ -36,8 +36,8 @@ import (
 func BenchmarkHSET(b *testing.B) {
 	ctx := context.Background()
 
-	// Setup Redis client
-	rdb := redis.NewClient(&redis.Options{
+	// Setup KV client
+	rdb := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 		DB:   0,
 	})
@@ -45,7 +45,7 @@ func BenchmarkHSET(b *testing.B) {
 
 	// Test connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		b.Skipf("Redis server not available: %v", err)
+		b.Skipf("KV server not available: %v", err)
 	}
 
 	// Clean up before and after tests
@@ -63,7 +63,7 @@ func BenchmarkHSET(b *testing.B) {
 }
 
 // benchmarkHSETOperations performs the actual HSET benchmark for a given scale
-func benchmarkHSETOperations(b *testing.B, rdb *redis.Client, ctx context.Context, operations int) {
+func benchmarkHSETOperations(b *testing.B, rdb *kv.Client, ctx context.Context, operations int) {
 	hashKey := fmt.Sprintf("benchmark_hash_%d", operations)
 
 	b.ResetTimer()
@@ -110,7 +110,7 @@ func benchmarkHSETOperations(b *testing.B, rdb *redis.Client, ctx context.Contex
 }
 
 // benchmarkHSETOperationsConcurrent performs the actual HSET benchmark for a given scale
-func benchmarkHSETOperationsConcurrent(b *testing.B, rdb *redis.Client, ctx context.Context, operations int) {
+func benchmarkHSETOperationsConcurrent(b *testing.B, rdb *kv.Client, ctx context.Context, operations int) {
 	hashKey := fmt.Sprintf("benchmark_hash_%d", operations)
 
 	b.ResetTimer()
@@ -184,8 +184,8 @@ func benchmarkHSETOperationsConcurrent(b *testing.B, rdb *redis.Client, ctx cont
 func BenchmarkHSETPipelined(b *testing.B) {
 	ctx := context.Background()
 
-	// Setup Redis client
-	rdb := redis.NewClient(&redis.Options{
+	// Setup KV client
+	rdb := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 		DB:   0,
 	})
@@ -193,7 +193,7 @@ func BenchmarkHSETPipelined(b *testing.B) {
 
 	// Test connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		b.Skipf("Redis server not available: %v", err)
+		b.Skipf("KV server not available: %v", err)
 	}
 
 	// Clean up before and after tests
@@ -213,8 +213,8 @@ func BenchmarkHSETPipelined(b *testing.B) {
 func BenchmarkHSET_Concurrent(b *testing.B) {
 	ctx := context.Background()
 
-	// Setup Redis client
-	rdb := redis.NewClient(&redis.Options{
+	// Setup KV client
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		DB:       0,
 		PoolSize: 100,
@@ -223,7 +223,7 @@ func BenchmarkHSET_Concurrent(b *testing.B) {
 
 	// Test connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		b.Skipf("Redis server not available: %v", err)
+		b.Skipf("KV server not available: %v", err)
 	}
 
 	// Clean up before and after tests
@@ -242,7 +242,7 @@ func BenchmarkHSET_Concurrent(b *testing.B) {
 }
 
 // benchmarkHSETPipelined performs HSET benchmark using pipelining
-func benchmarkHSETPipelined(b *testing.B, rdb *redis.Client, ctx context.Context, operations int) {
+func benchmarkHSETPipelined(b *testing.B, rdb *kv.Client, ctx context.Context, operations int) {
 	hashKey := fmt.Sprintf("benchmark_hash_pipelined_%d", operations)
 
 	b.ResetTimer()
@@ -296,8 +296,8 @@ func benchmarkHSETPipelined(b *testing.B, rdb *redis.Client, ctx context.Context
 func BenchmarkHSET_RESP2(b *testing.B) {
 	ctx := context.Background()
 
-	// Setup Redis client
-	rdb := redis.NewClient(&redis.Options{
+	// Setup KV client
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -307,7 +307,7 @@ func BenchmarkHSET_RESP2(b *testing.B) {
 
 	// Test connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		b.Skipf("Redis server not available: %v", err)
+		b.Skipf("KV server not available: %v", err)
 	}
 
 	// Clean up before and after tests
@@ -327,8 +327,8 @@ func BenchmarkHSET_RESP2(b *testing.B) {
 func BenchmarkHSETPipelined_RESP2(b *testing.B) {
 	ctx := context.Background()
 
-	// Setup Redis client
-	rdb := redis.NewClient(&redis.Options{
+	// Setup KV client
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -338,7 +338,7 @@ func BenchmarkHSETPipelined_RESP2(b *testing.B) {
 
 	// Test connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		b.Skipf("Redis server not available: %v", err)
+		b.Skipf("KV server not available: %v", err)
 	}
 
 	// Clean up before and after tests

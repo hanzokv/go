@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import "context"
 
@@ -95,7 +95,7 @@ func (c cmdable) ScriptLoad(ctx context.Context, script string) *StringCmd {
 
 // ------------------------------------------------------------------------------
 
-// FunctionListQuery is used with FunctionList to query for Redis libraries
+// FunctionListQuery is used with FunctionList to query for KV libraries
 //
 //	  	LibraryNamePattern 	- Use an empty string to get all libraries.
 //	  						- Use a glob-style pattern to match multiple libraries with a matching name

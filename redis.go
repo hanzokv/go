@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 // Scanner internal/hscan.Scanner exposed interface.
 type Scanner = hscan.Scanner
 
-// Nil reply returned by Redis when key does not exist.
+// Nil reply returned by KV when key does not exist.
 const Nil = proto.Nil
 
 // SetLogger set custom log
@@ -96,7 +96,7 @@ func (h *hooks) setDefaults() {
 //
 // hook-1:
 //
-//	func (Hook1) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
+//	func (Hook1) ProcessHook(next kv.ProcessHook) kv.ProcessHook {
 //	 	return func(ctx context.Context, cmd Cmder) error {
 //		 	print("hook-1 start")
 //		 	next(ctx, cmd)
@@ -107,8 +107,8 @@ func (h *hooks) setDefaults() {
 //
 // hook-2:
 //
-//	func (Hook2) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
-//		return func(ctx context.Context, cmd redis.Cmder) error {
+//	func (Hook2) ProcessHook(next kv.ProcessHook) kv.ProcessHook {
+//		return func(ctx context.Context, cmd kv.Cmder) error {
 //			print("hook-2 start")
 //			next(ctx, cmd)
 //			print("hook-2 end")
@@ -118,10 +118,10 @@ func (h *hooks) setDefaults() {
 //
 // The execution sequence is:
 //
-//	hook-1 start -> hook-2 start -> exec redis cmd -> hook-2 end -> hook-1 end
+//	hook-1 start -> hook-2 start -> exec kv cmd -> hook-2 end -> hook-1 end
 //
 // Please note: "next(ctx, cmd)" is very important, it will call the next hook,
-// if "next(ctx, cmd)" is not executed, the redis command will not be executed.
+// if "next(ctx, cmd)" is not executed, the kv command will not be executed.
 func (hs *hooksMixin) AddHook(hook Hook) {
 	hs.slice = append(hs.slice, hook)
 	hs.chain()
@@ -258,7 +258,7 @@ func (c *baseClient) withTimeout(timeout time.Duration) *baseClient {
 }
 
 func (c *baseClient) String() string {
-	return fmt.Sprintf("Redis<%s db:%d>", c.getAddr(), c.opt.DB)
+	return fmt.Sprintf("KV<%s db:%d>", c.getAddr(), c.opt.DB)
 }
 
 func (c *baseClient) getConn(ctx context.Context) (*pool.Conn, error) {
@@ -301,7 +301,7 @@ func (c *baseClient) _getConn(ctx context.Context) (*pool.Conn, error) {
 	// initConn will transition to IDLE state, so we need to acquire it
 	// before returning it to the user.
 	if !cn.TryAcquire() {
-		return nil, fmt.Errorf("redis: connection is not usable")
+		return nil, fmt.Errorf("kv: connection is not usable")
 	}
 
 	return cn, nil
@@ -336,16 +336,16 @@ func (c *baseClient) onAuthenticationErr() func(poolCn *pool.Conn, err error) {
 				// Close the connection to force a reconnection.
 				err := c.connPool.CloseConn(poolCn)
 				if err != nil {
-					internal.Logger.Printf(context.Background(), "redis: failed to close connection: %v", err)
+					internal.Logger.Printf(context.Background(), "kv: failed to close connection: %v", err)
 					// try to close the network connection directly
 					// so that no resource is leaked
 					err := poolCn.Close()
 					if err != nil {
-						internal.Logger.Printf(context.Background(), "redis: failed to close network connection: %v", err)
+						internal.Logger.Printf(context.Background(), "kv: failed to close network connection: %v", err)
 					}
 				}
 			}
-			internal.Logger.Printf(context.Background(), "redis: re-authentication failed: %v", err)
+			internal.Logger.Printf(context.Background(), "kv: re-authentication failed: %v", err)
 		}
 	}
 }
@@ -486,16 +486,16 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 		username, password = c.opt.Username, c.opt.Password
 	}
 
-	// for redis-server versions that do not support the HELLO command,
+	// for kv-server versions that do not support the HELLO command,
 	// RESP2 will continue to be used.
 	if initErr = conn.Hello(ctx, c.opt.Protocol, username, password, c.opt.ClientName).Err(); initErr == nil {
 		// Authentication successful with HELLO command
-	} else if !isRedisError(initErr) {
+	} else if !isKVError(initErr) {
 		// When the server responds with the RESP protocol and the result is not a normal
 		// execution result of the HELLO command, we consider it to be an indication that
 		// the server does not support the HELLO command.
-		// The server may be a redis-server that does not support the HELLO command,
-		// or it could be DragonflyDB or a third-party redis-proxy. They all respond
+		// The server may be a kv-server that does not support the HELLO command,
+		// or it could be DragonflyDB or a third-party kv-proxy. They all respond
 		// with different error string results for unsupported commands, making it
 		// difficult to rely on error strings to determine all results.
 		cn.GetStateMachine().Transition(pool.StateClosed)
@@ -547,8 +547,8 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 			endpointType.String(),
 		).Err()
 		if maintNotifHandshakeErr != nil {
-			if !isRedisError(maintNotifHandshakeErr) {
-				// if not redis error, fail the connection
+			if !isKVError(maintNotifHandshakeErr) {
+				// if not kv error, fail the connection
 				cn.GetStateMachine().Transition(pool.StateClosed)
 				return maintNotifHandshakeErr
 			}
@@ -593,7 +593,7 @@ func (c *baseClient) initConn(ctx context.Context, cn *pool.Conn) error {
 		p.ClientSetInfo(ctx, WithLibraryVersion(libVer))
 		// Handle network errors (e.g. timeouts) in CLIENT SETINFO to avoid
 		// out of order responses later on.
-		if _, initErr = p.Exec(ctx); initErr != nil && !isRedisError(initErr) {
+		if _, initErr = p.Exec(ctx); initErr != nil && !isKVError(initErr) {
 			cn.GetStateMachine().Transition(pool.StateClosed)
 			return initErr
 		}
@@ -888,7 +888,7 @@ func (c *baseClient) generalProcessPipeline(
 		})
 		if lastErr == nil || !canRetry || !shouldRetry(lastErr, true) {
 			// The error should be set here only when failing to obtain the conn.
-			if !isRedisError(lastErr) {
+			if !isKVError(lastErr) {
 				setCmdsErr(cmds, lastErr)
 			}
 			return lastErr
@@ -930,12 +930,12 @@ func (c *baseClient) pipelineReadCmds(ctx context.Context, cn *pool.Conn, rd *pr
 		}
 		err := cmd.readReply(rd)
 		cmd.SetErr(err)
-		if err != nil && !isRedisError(err) {
+		if err != nil && !isKVError(err) {
 			setCmdsErr(cmds[i+1:], err)
 			return err
 		}
 	}
-	// Retry errors like "LOADING redis is loading the dataset in memory".
+	// Retry errors like "LOADING kv is loading the dataset in memory".
 	return cmds[0].Err()
 }
 
@@ -973,7 +973,7 @@ func (c *baseClient) txPipelineProcessCmds(
 	return false, nil
 }
 
-// txPipelineReadQueued reads queued replies from the Redis server.
+// txPipelineReadQueued reads queued replies from the KV server.
 // It returns an error if the server returns an error or if the number of replies does not match the number of commands.
 func (c *baseClient) txPipelineReadQueued(ctx context.Context, cn *pool.Conn, rd *proto.Reader, statusCmd *StatusCmd, cmds []Cmder) error {
 	// To be sure there are no buffered push notifications, we process them before reading the reply
@@ -993,7 +993,7 @@ func (c *baseClient) txPipelineReadQueued(ctx context.Context, cn *pool.Conn, rd
 		}
 		if err := statusCmd.readReply(rd); err != nil {
 			cmd.SetErr(err)
-			if !isRedisError(err) {
+			if !isKVError(err) {
 				return err
 			}
 		}
@@ -1013,7 +1013,7 @@ func (c *baseClient) txPipelineReadQueued(ctx context.Context, cn *pool.Conn, rd
 	}
 
 	if line[0] != proto.RespArray {
-		return fmt.Errorf("redis: expected '*', but got line %q", line)
+		return fmt.Errorf("kv: expected '*', but got line %q", line)
 	}
 
 	return nil
@@ -1021,7 +1021,7 @@ func (c *baseClient) txPipelineReadQueued(ctx context.Context, cn *pool.Conn, rd
 
 //------------------------------------------------------------------------------
 
-// Client is a Redis client representing a pool of zero or more underlying connections.
+// Client is a KV client representing a pool of zero or more underlying connections.
 // It's safe for concurrent use by multiple goroutines.
 //
 // Client creates and frees connections automatically; it also maintains a free pool
@@ -1031,10 +1031,10 @@ type Client struct {
 	cmdable
 }
 
-// NewClient returns a client to the Redis Server specified by Options.
+// NewClient returns a client to the KV Server specified by Options.
 func NewClient(opt *Options) *Client {
 	if opt == nil {
-		panic("redis: NewClient nil options")
+		panic("kv: NewClient nil options")
 	}
 	// clone to not share options with the caller
 	opt = opt.clone()
@@ -1059,11 +1059,11 @@ func NewClient(opt *Options) *Client {
 	var err error
 	c.connPool, err = newConnPool(opt, c.dialHook)
 	if err != nil {
-		panic(fmt.Errorf("redis: failed to create connection pool: %w", err))
+		panic(fmt.Errorf("kv: failed to create connection pool: %w", err))
 	}
 	c.pubSubPool, err = newPubSubPool(opt, c.dialHook)
 	if err != nil {
-		panic(fmt.Errorf("redis: failed to create pubsub pool: %w", err))
+		panic(fmt.Errorf("kv: failed to create pubsub pool: %w", err))
 	}
 
 	if opt.StreamingCredentialsProvider != nil {
@@ -1236,7 +1236,7 @@ func (c *Client) pubSub() *PubSub {
 
 // Subscribe subscribes the client to the specified channels.
 // Channels can be omitted to create empty subscription.
-// Note that this method does not wait on a response from Redis, so the
+// Note that this method does not wait on a response from KV, so the
 // subscription may not be active immediately. To force the connection to wait,
 // you may call the Receive() method on the returned *PubSub like so:
 //
@@ -1290,9 +1290,9 @@ func (c *Client) SSubscribe(ctx context.Context, channels ...string) *PubSub {
 
 //------------------------------------------------------------------------------
 
-// Conn represents a single Redis connection rather than a pool of connections.
+// Conn represents a single KV connection rather than a pool of connections.
 // Prefer running commands from Client unless there is a specific need
-// for a continuous single Redis connection.
+// for a continuous single KV connection.
 type Conn struct {
 	baseClient
 	cmdable

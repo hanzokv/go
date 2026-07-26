@@ -12,7 +12,7 @@ import (
 func ExampleClient_query_range() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -26,34 +26,34 @@ func ExampleClient_query_range() {
 	// REMOVE_END
 
 	_, err := rdb.FTCreate(ctx, "idx:bicycle",
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnJSON: true,
 			Prefix: []interface{}{"bicycle:"},
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.brand",
 			As:        "brand",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.model",
 			As:        "model",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.description",
 			As:        "description",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.price",
 			As:        "price",
-			FieldType: redis.SearchFieldTypeNumeric,
+			FieldType: kv.SearchFieldTypeNumeric,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.condition",
 			As:        "condition",
-			FieldType: redis.SearchFieldTypeTag,
+			FieldType: kv.SearchFieldTypeTag,
 		},
 	).Result()
 
@@ -171,7 +171,7 @@ func ExampleClient_query_range() {
 				"The rear-inclined seat tube facilitates stability by allowing you to put a foot " +
 				"on the ground to balance at a stop, and the low step-over frame makes it " +
 				"accessible for all ability and mobility levels. The saddle is very soft, with " +
-				"a wide back to support your hip joints and a cutout in the center to redistribute " +
+				"a wide back to support your hip joints and a cutout in the center to kvtribute " +
 				"that pressure. Rim brakes deliver satisfactory braking control, and the wide tires " +
 				"provide a smooth, stable ride on paved roads and gravel. Rack and fender mounts " +
 				"facilitate setting up the Roll Low-Entry as your preferred commuter, and the " +
@@ -224,13 +224,13 @@ func ExampleClient_query_range() {
 	// STEP_START range1
 	res1, err := rdb.FTSearchWithArgs(ctx,
 		"idx:bicycle", "@price:[500 1000]",
-		&redis.FTSearchOptions{
-			Return: []redis.FTSearchReturn{
+		&kv.FTSearchOptions{
+			Return: []kv.FTSearchReturn{
 				{
 					FieldName: "price",
 				},
 			},
-			SortBy: []redis.FTSearchSortBy{
+			SortBy: []kv.FTSearchSortBy{
 				{
 					FieldName: "price",
 					Asc:       true,
@@ -256,20 +256,20 @@ func ExampleClient_query_range() {
 	// STEP_START range2
 	res2, err := rdb.FTSearchWithArgs(ctx,
 		"idx:bicycle", "*",
-		&redis.FTSearchOptions{
-			Filters: []redis.FTSearchFilter{
+		&kv.FTSearchOptions{
+			Filters: []kv.FTSearchFilter{
 				{
 					FieldName: "price",
 					Min:       500,
 					Max:       1000,
 				},
 			},
-			Return: []redis.FTSearchReturn{
+			Return: []kv.FTSearchReturn{
 				{
 					FieldName: "price",
 				},
 			},
-			SortBy: []redis.FTSearchSortBy{
+			SortBy: []kv.FTSearchSortBy{
 				{
 					FieldName: "price",
 					Asc:       true,
@@ -295,19 +295,19 @@ func ExampleClient_query_range() {
 	// STEP_START range3
 	res3, err := rdb.FTSearchWithArgs(ctx,
 		"idx:bicycle", "*",
-		&redis.FTSearchOptions{
-			Return: []redis.FTSearchReturn{
+		&kv.FTSearchOptions{
+			Return: []kv.FTSearchReturn{
 				{
 					FieldName: "price",
 				},
 			},
-			SortBy: []redis.FTSearchSortBy{
+			SortBy: []kv.FTSearchSortBy{
 				{
 					FieldName: "price",
 					Asc:       true,
 				},
 			},
-			Filters: []redis.FTSearchFilter{
+			Filters: []kv.FTSearchFilter{
 				{
 					FieldName: "price",
 					Min:       "(1000",
@@ -337,13 +337,13 @@ func ExampleClient_query_range() {
 	res4, err := rdb.FTSearchWithArgs(ctx,
 		"idx:bicycle",
 		"@price:[-inf 2000]",
-		&redis.FTSearchOptions{
-			Return: []redis.FTSearchReturn{
+		&kv.FTSearchOptions{
+			Return: []kv.FTSearchReturn{
 				{
 					FieldName: "price",
 				},
 			},
-			SortBy: []redis.FTSearchSortBy{
+			SortBy: []kv.FTSearchSortBy{
 				{
 					FieldName: "price",
 					Asc:       true,

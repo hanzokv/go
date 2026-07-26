@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -16,12 +16,12 @@ var ErrInvalidCommand = errors.New("invalid command type")
 // ErrInvalidPool is returned when the pool type is not supported.
 var ErrInvalidPool = errors.New("invalid pool type")
 
-// newClientAdapter creates a new client adapter for regular Redis clients.
+// newClientAdapter creates a new client adapter for regular KV clients.
 func newClientAdapter(client *baseClient) interfaces.ClientInterface {
 	return &clientAdapter{client: client}
 }
 
-// clientAdapter adapts a Redis client to implement interfaces.ClientInterface.
+// clientAdapter adapts a KV client to implement interfaces.ClientInterface.
 type clientAdapter struct {
 	client *baseClient
 }
@@ -36,7 +36,7 @@ func (ca *clientAdapter) GetPushProcessor() interfaces.NotificationProcessor {
 	return &pushProcessorAdapter{processor: ca.client.pushProcessor}
 }
 
-// optionsAdapter adapts Redis options to implement interfaces.OptionsInterface.
+// optionsAdapter adapts KV options to implement interfaces.OptionsInterface.
 type optionsAdapter struct {
 	options *Options
 }

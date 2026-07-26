@@ -1,14 +1,14 @@
-package redis
+package kv
 
 import (
 	"testing"
 )
 
 // TestParseFTInfo tests the parseFTInfo function with a comprehensive FT.INFO response
-// This test uses the actual response structure from Redis with vector fields
+// This test uses the actual response structure from KV with vector fields
 func TestParseFTInfo(t *testing.T) {
-	// This is the data structure that would be returned by Redis for FT.INFO
-	// Based on the redis-cli output provided by the user
+	// This is the data structure that would be returned by KV for FT.INFO
+	// Based on the kv-cli output provided by the user
 	data := map[string]interface{}{
 		"index_name":    "rand:42d1f2820b3048b6bc783d4dcdb9094a",
 		"index_options": []interface{}{},

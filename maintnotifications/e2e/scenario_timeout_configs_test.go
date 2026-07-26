@@ -113,7 +113,7 @@ func TestTimeoutConfigurationsPushNotifications(t *testing.T) {
 			poolSize := 10
 			maxConnections := 15
 
-			// Create Redis client with specific timeout configuration
+			// Create KV client with specific timeout configuration
 			client, err := factory.Create(fmt.Sprintf("timeout-test-%s", timeoutTest.name), &CreateClientOptions{
 				Protocol:       3, // RESP3 required for push notifications
 				PoolSize:       poolSize,
@@ -144,7 +144,7 @@ func TestTimeoutConfigurationsPushNotifications(t *testing.T) {
 			// Verify initial connectivity
 			err = client.Ping(ctx).Err()
 			if err != nil {
-				ef("Failed to ping Redis with %s timeout config: %v", timeoutTest.name, err)
+				ef("Failed to ping KV with %s timeout config: %v", timeoutTest.name, err)
 			}
 
 			p("Client connected successfully with %s timeout configuration", timeoutTest.name)

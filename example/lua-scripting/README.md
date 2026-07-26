@@ -1,6 +1,6 @@
-# Redis Lua scripting example
+# KV Lua scripting example
 
-This is an example for [Redis Lua scripting](https://redis.uptrace.dev/guide/lua-scripting.html)
+This is an example for [KV Lua scripting](https://kv.uptrace.dev/guide/lua-scripting.html)
 article. To run it:
 
 ```shell

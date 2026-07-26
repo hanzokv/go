@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -13,11 +13,11 @@ import (
 )
 
 var (
-	errInvalidCmdPointer         = errors.New("redis: invalid command pointer")
-	errNoCmdsToAggregate         = errors.New("redis: no commands to aggregate")
-	errNoResToAggregate          = errors.New("redis: no results to aggregate")
-	errInvalidCursorCmdArgsCount = errors.New("redis: FT.CURSOR command requires at least 3 arguments")
-	errInvalidCursorIdType       = errors.New("redis: invalid cursor ID type")
+	errInvalidCmdPointer         = errors.New("kv: invalid command pointer")
+	errNoCmdsToAggregate         = errors.New("kv: no commands to aggregate")
+	errNoResToAggregate          = errors.New("kv: no results to aggregate")
+	errInvalidCursorCmdArgsCount = errors.New("kv: FT.CURSOR command requires at least 3 arguments")
+	errInvalidCursorIdType       = errors.New("kv: invalid cursor ID type")
 )
 
 // slotResult represents the result of executing a command on a specific slot
@@ -117,7 +117,7 @@ func (c *ClusterClient) executeMultiShard(ctx context.Context, cmd Cmder, policy
 	}
 
 	if firstKeyPos == 0 || firstKeyPos >= len(args) {
-		return fmt.Errorf("redis: multi-shard command %s has no key arguments", cmd.Name())
+		return fmt.Errorf("kv: multi-shard command %s has no key arguments", cmd.Name())
 	}
 
 	// Group keys by slot
@@ -127,7 +127,7 @@ func (c *ClusterClient) executeMultiShard(ctx context.Context, cmd Cmder, policy
 	for i := firstKeyPos; i < len(args); i += stepCount {
 		key, ok := args[i].(string)
 		if !ok {
-			return fmt.Errorf("redis: non-string key at position %d: %v", i, args[i])
+			return fmt.Errorf("kv: non-string key at position %d: %v", i, args[i])
 		}
 
 		slot := hashtag.Slot(key)
@@ -519,7 +519,7 @@ func (c *ClusterClient) setCommandValue(cmd Cmder, value interface{}) error {
 		}
 		// Command executed successfully but we can't extract/set the aggregated value
 		// This indicates the command type needs to be added to ExtractCommandValue
-		return fmt.Errorf("redis: cannot aggregate command %s: unsupported command type %d",
+		return fmt.Errorf("kv: cannot aggregate command %s: unsupported command type %d",
 			cmd.Name(), cmd.GetCmdType())
 	}
 
@@ -960,7 +960,7 @@ func (c *ClusterClient) setCommandValueReflection(cmd Cmder, value interface{}) 
 
 	setValMethod := cmdValue.MethodByName("SetVal")
 	if !setValMethod.IsValid() {
-		return fmt.Errorf("redis: command %T does not have SetVal method", cmd)
+		return fmt.Errorf("kv: command %T does not have SetVal method", cmd)
 	}
 
 	args := []reflect.Value{reflect.ValueOf(value)}
@@ -983,7 +983,7 @@ func (c *ClusterClient) setCommandValueReflection(cmd Cmder, value interface{}) 
 
 	defer func() {
 		if r := recover(); r != nil {
-			cmd.SetErr(fmt.Errorf("redis: failed to set command value: %v", r))
+			cmd.SetErr(fmt.Errorf("kv: failed to set command value: %v", r))
 		}
 	}()
 

@@ -1,5 +1,5 @@
-// Package push provides push notifications for Redis.
-// This is an EXPERIMENTAL API for handling push notifications from Redis.
+// Package push provides push notifications for KV.
+// This is an EXPERIMENTAL API for handling push notifications from KV.
 // It is not yet stable and may change in the future.
 // Although this is in a public package, in its current form public use is not advised.
 // Pending push notifications should be processed before executing any readReply from the connection

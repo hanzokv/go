@@ -13,7 +13,7 @@ import (
 func ExampleClient_zadd() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -27,7 +27,7 @@ func ExampleClient_zadd() {
 
 	// STEP_START zadd
 	res1, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 10},
+		kv.Z{Member: "Norem", Score: 10},
 	).Result()
 
 	if err != nil {
@@ -37,7 +37,7 @@ func ExampleClient_zadd() {
 	fmt.Println(res1) // >>> 1
 
 	res2, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Castilla", Score: 12},
+		kv.Z{Member: "Castilla", Score: 12},
 	).Result()
 
 	if err != nil {
@@ -47,12 +47,12 @@ func ExampleClient_zadd() {
 	fmt.Println(res2) // >>> 1
 
 	res3, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 10},
-		redis.Z{Member: "Sam-Bodden", Score: 8},
-		redis.Z{Member: "Royce", Score: 10},
-		redis.Z{Member: "Ford", Score: 6},
-		redis.Z{Member: "Prickett", Score: 14},
-		redis.Z{Member: "Castilla", Score: 12},
+		kv.Z{Member: "Norem", Score: 10},
+		kv.Z{Member: "Sam-Bodden", Score: 8},
+		kv.Z{Member: "Royce", Score: 10},
+		kv.Z{Member: "Ford", Score: 6},
+		kv.Z{Member: "Prickett", Score: 14},
+		kv.Z{Member: "Castilla", Score: 12},
 	).Result()
 
 	if err != nil {
@@ -71,7 +71,7 @@ func ExampleClient_zadd() {
 func ExampleClient_zrange() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -84,12 +84,12 @@ func ExampleClient_zrange() {
 	// REMOVE_END
 
 	_, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 10},
-		redis.Z{Member: "Sam-Bodden", Score: 8},
-		redis.Z{Member: "Royce", Score: 10},
-		redis.Z{Member: "Ford", Score: 6},
-		redis.Z{Member: "Prickett", Score: 14},
-		redis.Z{Member: "Castilla", Score: 12},
+		kv.Z{Member: "Norem", Score: 10},
+		kv.Z{Member: "Sam-Bodden", Score: 8},
+		kv.Z{Member: "Royce", Score: 10},
+		kv.Z{Member: "Ford", Score: 6},
+		kv.Z{Member: "Prickett", Score: 14},
+		kv.Z{Member: "Castilla", Score: 12},
 	).Result()
 
 	if err != nil {
@@ -124,7 +124,7 @@ func ExampleClient_zrange() {
 func ExampleClient_zrangewithscores() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -137,12 +137,12 @@ func ExampleClient_zrangewithscores() {
 	// REMOVE_END
 
 	_, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 10},
-		redis.Z{Member: "Sam-Bodden", Score: 8},
-		redis.Z{Member: "Royce", Score: 10},
-		redis.Z{Member: "Ford", Score: 6},
-		redis.Z{Member: "Prickett", Score: 14},
-		redis.Z{Member: "Castilla", Score: 12},
+		kv.Z{Member: "Norem", Score: 10},
+		kv.Z{Member: "Sam-Bodden", Score: 8},
+		kv.Z{Member: "Royce", Score: 10},
+		kv.Z{Member: "Ford", Score: 6},
+		kv.Z{Member: "Prickett", Score: 14},
+		kv.Z{Member: "Castilla", Score: 12},
 	).Result()
 
 	if err != nil {
@@ -167,7 +167,7 @@ func ExampleClient_zrangewithscores() {
 func ExampleClient_zrangebyscore() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -180,12 +180,12 @@ func ExampleClient_zrangebyscore() {
 	// REMOVE_END
 
 	_, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 10},
-		redis.Z{Member: "Sam-Bodden", Score: 8},
-		redis.Z{Member: "Royce", Score: 10},
-		redis.Z{Member: "Ford", Score: 6},
-		redis.Z{Member: "Prickett", Score: 14},
-		redis.Z{Member: "Castilla", Score: 12},
+		kv.Z{Member: "Norem", Score: 10},
+		kv.Z{Member: "Sam-Bodden", Score: 8},
+		kv.Z{Member: "Royce", Score: 10},
+		kv.Z{Member: "Ford", Score: 6},
+		kv.Z{Member: "Prickett", Score: 14},
+		kv.Z{Member: "Castilla", Score: 12},
 	).Result()
 
 	if err != nil {
@@ -194,7 +194,7 @@ func ExampleClient_zrangebyscore() {
 
 	// STEP_START zrangebyscore
 	res7, err := rdb.ZRangeByScore(ctx, "racer_scores",
-		&redis.ZRangeBy{Min: "-inf", Max: "10"},
+		&kv.ZRangeBy{Min: "-inf", Max: "10"},
 	).Result()
 
 	if err != nil {
@@ -212,7 +212,7 @@ func ExampleClient_zrangebyscore() {
 func ExampleClient_zremrangebyscore() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -225,12 +225,12 @@ func ExampleClient_zremrangebyscore() {
 	// REMOVE_END
 
 	_, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 10},
-		redis.Z{Member: "Sam-Bodden", Score: 8},
-		redis.Z{Member: "Royce", Score: 10},
-		redis.Z{Member: "Ford", Score: 6},
-		redis.Z{Member: "Prickett", Score: 14},
-		redis.Z{Member: "Castilla", Score: 12},
+		kv.Z{Member: "Norem", Score: 10},
+		kv.Z{Member: "Sam-Bodden", Score: 8},
+		kv.Z{Member: "Royce", Score: 10},
+		kv.Z{Member: "Ford", Score: 6},
+		kv.Z{Member: "Prickett", Score: 14},
+		kv.Z{Member: "Castilla", Score: 12},
 	).Result()
 
 	if err != nil {
@@ -273,7 +273,7 @@ func ExampleClient_zremrangebyscore() {
 func ExampleClient_zrank() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -286,9 +286,9 @@ func ExampleClient_zrank() {
 	// REMOVE_END
 
 	_, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 10},
-		redis.Z{Member: "Royce", Score: 10},
-		redis.Z{Member: "Prickett", Score: 14},
+		kv.Z{Member: "Norem", Score: 10},
+		kv.Z{Member: "Royce", Score: 10},
+		kv.Z{Member: "Prickett", Score: 14},
 	).Result()
 
 	if err != nil {
@@ -321,7 +321,7 @@ func ExampleClient_zrank() {
 func ExampleClient_zaddlex() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -334,19 +334,19 @@ func ExampleClient_zaddlex() {
 	// REMOVE_END
 
 	_, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 0},
-		redis.Z{Member: "Royce", Score: 0},
-		redis.Z{Member: "Prickett", Score: 0},
+		kv.Z{Member: "Norem", Score: 0},
+		kv.Z{Member: "Royce", Score: 0},
+		kv.Z{Member: "Prickett", Score: 0},
 	).Result()
 
 	// STEP_START zadd_lex
 	res13, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Norem", Score: 0},
-		redis.Z{Member: "Sam-Bodden", Score: 0},
-		redis.Z{Member: "Royce", Score: 0},
-		redis.Z{Member: "Ford", Score: 0},
-		redis.Z{Member: "Prickett", Score: 0},
-		redis.Z{Member: "Castilla", Score: 0},
+		kv.Z{Member: "Norem", Score: 0},
+		kv.Z{Member: "Sam-Bodden", Score: 0},
+		kv.Z{Member: "Royce", Score: 0},
+		kv.Z{Member: "Ford", Score: 0},
+		kv.Z{Member: "Prickett", Score: 0},
+		kv.Z{Member: "Castilla", Score: 0},
 	).Result()
 
 	if err != nil {
@@ -364,7 +364,7 @@ func ExampleClient_zaddlex() {
 	fmt.Println(res14)
 	// >>> [Castilla Ford Norem Prickett Royce Sam-Bodden]
 
-	res15, err := rdb.ZRangeByLex(ctx, "racer_scores", &redis.ZRangeBy{
+	res15, err := rdb.ZRangeByLex(ctx, "racer_scores", &kv.ZRangeBy{
 		Min: "[A", Max: "[L",
 	}).Result()
 
@@ -384,7 +384,7 @@ func ExampleClient_zaddlex() {
 func ExampleClient_leaderboard() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -398,7 +398,7 @@ func ExampleClient_leaderboard() {
 
 	// STEP_START leaderboard
 	res16, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Wood", Score: 100},
+		kv.Z{Member: "Wood", Score: 100},
 	).Result()
 
 	if err != nil {
@@ -408,7 +408,7 @@ func ExampleClient_leaderboard() {
 	fmt.Println(res16) // >>> 1
 
 	res17, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Henshaw", Score: 100},
+		kv.Z{Member: "Henshaw", Score: 100},
 	).Result()
 
 	if err != nil {
@@ -418,7 +418,7 @@ func ExampleClient_leaderboard() {
 	fmt.Println(res17) // >>> 1
 
 	res18, err := rdb.ZAdd(ctx, "racer_scores",
-		redis.Z{Member: "Henshaw", Score: 150},
+		kv.Z{Member: "Henshaw", Score: 150},
 	).Result()
 
 	if err != nil {

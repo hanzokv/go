@@ -1,4 +1,4 @@
-package redisotel
+package kvotel
 
 import (
 	"context"
@@ -13,32 +13,32 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.24.0"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/hanzokv/go/extra/rediscmd/v9"
+	"github.com/hanzokv/go/extra/kvcmd/v9"
 	"github.com/hanzokv/go/v9"
 )
 
 const (
-	instrumName = "github.com/hanzokv/go/extra/redisotel"
+	instrumName = "github.com/hanzokv/go/extra/kvotel"
 )
 
-func InstrumentTracing(rdb redis.UniversalClient, opts ...TracingOption) error {
+func InstrumentTracing(rdb kv.UniversalClient, opts ...TracingOption) error {
 	switch rdb := rdb.(type) {
-	case *redis.Client:
+	case *kv.Client:
 		opt := rdb.Options()
 		connString := formatDBConnString(opt.Network, opt.Addr)
 		opts = addServerAttributes(opts, opt.Addr)
 		rdb.AddHook(newTracingHook(connString, opts...))
 		return nil
-	case *redis.ClusterClient:
-		rdb.OnNewNode(func(rdb *redis.Client) {
+	case *kv.ClusterClient:
+		rdb.OnNewNode(func(rdb *kv.Client) {
 			opt := rdb.Options()
 			opts = addServerAttributes(opts, opt.Addr)
 			connString := formatDBConnString(opt.Network, opt.Addr)
 			rdb.AddHook(newTracingHook(connString, opts...))
 		})
 		return nil
-	case *redis.Ring:
-		rdb.OnNewNode(func(rdb *redis.Client) {
+	case *kv.Ring:
+		rdb.OnNewNode(func(rdb *kv.Client) {
 			opt := rdb.Options()
 			opts = addServerAttributes(opts, opt.Addr)
 			connString := formatDBConnString(opt.Network, opt.Addr)
@@ -46,7 +46,7 @@ func InstrumentTracing(rdb redis.UniversalClient, opts ...TracingOption) error {
 		})
 		return nil
 	default:
-		return fmt.Errorf("redisotel: %T not supported", rdb)
+		return fmt.Errorf("kvotel: %T not supported", rdb)
 	}
 }
 
@@ -56,7 +56,7 @@ type tracingHook struct {
 	spanOpts []trace.SpanStartOption
 }
 
-var _ redis.Hook = (*tracingHook)(nil)
+var _ kv.Hook = (*tracingHook)(nil)
 
 func newTracingHook(connString string, opts ...TracingOption) *tracingHook {
 	baseOpts := make([]baseOption, len(opts))
@@ -68,7 +68,7 @@ func newTracingHook(connString string, opts ...TracingOption) *tracingHook {
 	if conf.tracer == nil {
 		conf.tracer = conf.tp.Tracer(
 			instrumName,
-			trace.WithInstrumentationVersion("semver:"+redis.Version()),
+			trace.WithInstrumentationVersion("semver:"+kv.Version()),
 		)
 	}
 	if connString != "" {
@@ -85,14 +85,14 @@ func newTracingHook(connString string, opts ...TracingOption) *tracingHook {
 	}
 }
 
-func (th *tracingHook) DialHook(hook redis.DialHook) redis.DialHook {
+func (th *tracingHook) DialHook(hook kv.DialHook) kv.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 
 		if th.conf.filterDial {
 			return hook(ctx, network, addr)
 		}
 
-		ctx, span := th.conf.tracer.Start(ctx, "redis.dial", th.spanOpts...)
+		ctx, span := th.conf.tracer.Start(ctx, "kv.dial", th.spanOpts...)
 		defer span.End()
 
 		conn, err := hook(ctx, network, addr)
@@ -104,8 +104,8 @@ func (th *tracingHook) DialHook(hook redis.DialHook) redis.DialHook {
 	}
 }
 
-func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
-	return func(ctx context.Context, cmd redis.Cmder) error {
+func (th *tracingHook) ProcessHook(hook kv.ProcessHook) kv.ProcessHook {
+	return func(ctx context.Context, cmd kv.Cmder) error {
 
 		// Check if the command should be filtered out
 		if th.conf.filterProcess != nil && th.conf.filterProcess(cmd) {
@@ -124,7 +124,7 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 		}
 
 		if th.conf.dbStmtEnabled {
-			cmdString := rediscmd.CmdString(cmd)
+			cmdString := kvcmd.CmdString(cmd)
 			attrs = append(attrs, semconv.DBStatement(cmdString))
 		}
 
@@ -143,9 +143,9 @@ func (th *tracingHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 }
 
 func (th *tracingHook) ProcessPipelineHook(
-	hook redis.ProcessPipelineHook,
-) redis.ProcessPipelineHook {
-	return func(ctx context.Context, cmds []redis.Cmder) error {
+	hook kv.ProcessPipelineHook,
+) kv.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []kv.Cmder) error {
 
 		if th.conf.filterProcessPipeline != nil && th.conf.filterProcessPipeline(cmds) {
 			return hook(ctx, cmds)
@@ -153,7 +153,7 @@ func (th *tracingHook) ProcessPipelineHook(
 
 		attrs := make([]attribute.KeyValue, 0, 8)
 		attrs = append(attrs,
-			attribute.Int("db.redis.num_cmd", len(cmds)),
+			attribute.Int("db.kv.num_cmd", len(cmds)),
 		)
 
 		if th.conf.callerEnabled {
@@ -165,7 +165,7 @@ func (th *tracingHook) ProcessPipelineHook(
 			)
 		}
 
-		summary, cmdsString := rediscmd.CmdsString(cmds)
+		summary, cmdsString := kvcmd.CmdsString(cmds)
 		if th.conf.dbStmtEnabled {
 			attrs = append(attrs, semconv.DBStatement(cmdsString))
 		}
@@ -173,7 +173,7 @@ func (th *tracingHook) ProcessPipelineHook(
 		opts := th.spanOpts
 		opts = append(opts, trace.WithAttributes(attrs...))
 
-		ctx, span := th.conf.tracer.Start(ctx, "redis.pipeline "+summary, opts...)
+		ctx, span := th.conf.tracer.Start(ctx, "kv.pipeline "+summary, opts...)
 		defer span.End()
 
 		if err := hook(ctx, cmds); err != nil {
@@ -185,7 +185,7 @@ func (th *tracingHook) ProcessPipelineHook(
 }
 
 func recordError(span trace.Span, err error) {
-	if err != redis.Nil {
+	if err != kv.Nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 	}
@@ -193,7 +193,7 @@ func recordError(span trace.Span, err error) {
 
 func formatDBConnString(network, addr string) string {
 	if network == "tcp" {
-		network = "redis"
+		network = "kv"
 	}
 	return fmt.Sprintf("%s://%s", network, addr)
 }

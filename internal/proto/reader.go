@@ -15,7 +15,7 @@ import (
 // DefaultBufferSize is the default size for read/write buffers (32 KiB).
 const DefaultBufferSize = 32 * 1024
 
-// redis resp protocol data type.
+// kv resp protocol data type.
 const (
 	RespStatus    = '+' // +<string>\r\n
 	RespError     = '-' // -<string>\r\n
@@ -35,23 +35,23 @@ const (
 )
 
 // Not used temporarily.
-// Redis has not used these two data types for the time being, and will implement them later.
+// KV has not used these two data types for the time being, and will implement them later.
 // Streamed           = "EOF:"
 // StreamedAggregated = '?'
 
 //------------------------------------------------------------------------------
 
-const Nil = RedisError("redis: nil") // nolint:errname
+const Nil = KVError("kv: nil") // nolint:errname
 
-type RedisError string
+type KVError string
 
-func (e RedisError) Error() string { return string(e) }
+func (e KVError) Error() string { return string(e) }
 
-func (RedisError) RedisError() {}
+func (KVError) KVError() {}
 
 func ParseErrorReply(line []byte) error {
 	msg := string(line[1:])
-	return parseTypedRedisError(msg)
+	return parseTypedKVError(msg)
 }
 
 //------------------------------------------------------------------------------
@@ -107,14 +107,14 @@ func (r *Reader) PeekPushNotificationName() (string, error) {
 		return "", err
 	}
 	if c[0] != RespPush {
-		return "", fmt.Errorf("redis: can't peek push notification name, next reply is not a push notification")
+		return "", fmt.Errorf("kv: can't peek push notification name, next reply is not a push notification")
 	}
 
 	// peek 36 bytes at most, should be enough to read the push notification name
 	toPeek := 36
 	buffered := r.Buffered()
 	if buffered == 0 {
-		return "", fmt.Errorf("redis: can't peek push notification name, no data available")
+		return "", fmt.Errorf("kv: can't peek push notification name, no data available")
 	}
 	if buffered < toPeek {
 		toPeek = buffered
@@ -124,11 +124,11 @@ func (r *Reader) PeekPushNotificationName() (string, error) {
 		return "", err
 	}
 	if buf[0] != RespPush {
-		return "", fmt.Errorf("redis: can't parse push notification: %q", buf)
+		return "", fmt.Errorf("kv: can't parse push notification: %q", buf)
 	}
 
 	if len(buf) < 3 {
-		return "", fmt.Errorf("redis: can't parse push notification: %q", buf)
+		return "", fmt.Errorf("kv: can't parse push notification: %q", buf)
 	}
 
 	// remove push notification type
@@ -140,17 +140,17 @@ func (r *Reader) PeekPushNotificationName() (string, error) {
 			break
 		} else {
 			if buf[i] < '0' || buf[i] > '9' {
-				return "", fmt.Errorf("redis: can't parse push notification: %q", buf)
+				return "", fmt.Errorf("kv: can't parse push notification: %q", buf)
 			}
 		}
 	}
 	if len(buf) < 2 {
-		return "", fmt.Errorf("redis: can't parse push notification: %q", buf)
+		return "", fmt.Errorf("kv: can't parse push notification: %q", buf)
 	}
 	// next line should be $<length><string>\r\n or +<length><string>\r\n
 	// should have the type of the push notification name and it's length
 	if buf[0] != RespString && buf[0] != RespStatus {
-		return "", fmt.Errorf("redis: can't parse push notification name: %q", buf)
+		return "", fmt.Errorf("kv: can't parse push notification name: %q", buf)
 	}
 	typeOfName := buf[0]
 	// remove the type of the push notification name
@@ -158,7 +158,7 @@ func (r *Reader) PeekPushNotificationName() (string, error) {
 	if typeOfName == RespString {
 		// remove the length of the string
 		if len(buf) < 2 {
-			return "", fmt.Errorf("redis: can't parse push notification name: %q", buf)
+			return "", fmt.Errorf("kv: can't parse push notification name: %q", buf)
 		}
 		for i := 0; i < len(buf)-1; i++ {
 			if buf[i] == '\r' && buf[i+1] == '\n' {
@@ -166,14 +166,14 @@ func (r *Reader) PeekPushNotificationName() (string, error) {
 				break
 			} else {
 				if buf[i] < '0' || buf[i] > '9' {
-					return "", fmt.Errorf("redis: can't parse push notification name: %q", buf)
+					return "", fmt.Errorf("kv: can't parse push notification name: %q", buf)
 				}
 			}
 		}
 	}
 
 	if len(buf) < 2 {
-		return "", fmt.Errorf("redis: can't parse push notification name: %q", buf)
+		return "", fmt.Errorf("kv: can't parse push notification name: %q", buf)
 	}
 	// keep only the notification name
 	for i := 0; i < len(buf)-1; i++ {
@@ -186,7 +186,7 @@ func (r *Reader) PeekPushNotificationName() (string, error) {
 	return util.BytesToString(buf), nil
 }
 
-// ReadLine Return a valid reply, it will check the protocol or redis error,
+// ReadLine Return a valid reply, it will check the protocol or kv error,
 // and discard the attribute type.
 func (r *Reader) ReadLine() ([]byte, error) {
 	line, err := r.readLine()
@@ -202,7 +202,7 @@ func (r *Reader) ReadLine() ([]byte, error) {
 		var blobErr string
 		blobErr, err = r.readStringReply(line)
 		if err == nil {
-			err = parseTypedRedisError(blobErr)
+			err = parseTypedKVError(blobErr)
 		}
 		return nil, err
 	case RespAttr:
@@ -242,7 +242,7 @@ func (r *Reader) readLine() ([]byte, error) {
 		b = full
 	}
 	if len(b) <= 2 || b[len(b)-1] != '\n' || b[len(b)-2] != '\r' {
-		return nil, fmt.Errorf("redis: invalid reply: %q", b)
+		return nil, fmt.Errorf("kv: invalid reply: %q", b)
 	}
 	return b[:len(b)-2], nil
 }
@@ -275,7 +275,7 @@ func (r *Reader) ReadReply() (interface{}, error) {
 	case RespMap:
 		return r.readMap(line)
 	}
-	return nil, fmt.Errorf("redis: can't parse %.100q", line)
+	return nil, fmt.Errorf("kv: can't parse %.100q", line)
 }
 
 func (r *Reader) readFloat(line []byte) (float64, error) {
@@ -298,7 +298,7 @@ func (r *Reader) readBool(line []byte) (bool, error) {
 	case "f":
 		return false, nil
 	}
-	return false, fmt.Errorf("redis: can't parse bool reply: %q", line)
+	return false, fmt.Errorf("kv: can't parse bool reply: %q", line)
 }
 
 func (r *Reader) readBigInt(line []byte) (*big.Int, error) {
@@ -306,7 +306,7 @@ func (r *Reader) readBigInt(line []byte) (*big.Int, error) {
 	if i, ok := i.SetString(string(line[1:]), 10); ok {
 		return i, nil
 	}
-	return nil, fmt.Errorf("redis: can't parse bigInt reply: %q", line)
+	return nil, fmt.Errorf("kv: can't parse bigInt reply: %q", line)
 }
 
 func (r *Reader) readStringReply(line []byte) (string, error) {
@@ -330,7 +330,7 @@ func (r *Reader) readVerb(line []byte) (string, error) {
 		return "", err
 	}
 	if len(s) < 4 || s[3] != ':' {
-		return "", fmt.Errorf("redis: can't parse verbatim string reply: %q", line)
+		return "", fmt.Errorf("kv: can't parse verbatim string reply: %q", line)
 	}
 	return s[4:], nil
 }
@@ -349,7 +349,7 @@ func (r *Reader) readSlice(line []byte) ([]interface{}, error) {
 				val[i] = nil
 				continue
 			}
-			if err, ok := err.(RedisError); ok {
+			if err, ok := err.(KVError); ok {
 				val[i] = err
 				continue
 			}
@@ -377,7 +377,7 @@ func (r *Reader) readMap(line []byte) (map[interface{}]interface{}, error) {
 				m[k] = nil
 				continue
 			}
-			if err, ok := err.(RedisError); ok {
+			if err, ok := err.(KVError); ok {
 				m[k] = err
 				continue
 			}
@@ -414,7 +414,7 @@ func (r *Reader) ReadInt() (int64, error) {
 		}
 		return b.Int64(), nil
 	}
-	return 0, fmt.Errorf("redis: can't parse int reply: %.100q", line)
+	return 0, fmt.Errorf("kv: can't parse int reply: %.100q", line)
 }
 
 func (r *Reader) ReadUint() (uint64, error) {
@@ -441,7 +441,7 @@ func (r *Reader) ReadUint() (uint64, error) {
 		}
 		return b.Uint64(), nil
 	}
-	return 0, fmt.Errorf("redis: can't parse uint reply: %.100q", line)
+	return 0, fmt.Errorf("kv: can't parse uint reply: %.100q", line)
 }
 
 func (r *Reader) ReadFloat() (float64, error) {
@@ -461,7 +461,7 @@ func (r *Reader) ReadFloat() (float64, error) {
 		}
 		return strconv.ParseFloat(s, 64)
 	}
-	return 0, fmt.Errorf("redis: can't parse float reply: %.100q", line)
+	return 0, fmt.Errorf("kv: can't parse float reply: %.100q", line)
 }
 
 func (r *Reader) ReadString() (string, error) {
@@ -487,7 +487,7 @@ func (r *Reader) ReadString() (string, error) {
 		}
 		return b.String(), nil
 	}
-	return "", fmt.Errorf("redis: can't parse reply=%.100q reading string", line)
+	return "", fmt.Errorf("kv: can't parse reply=%.100q reading string", line)
 }
 
 func (r *Reader) ReadBool() (bool, error) {
@@ -513,7 +513,7 @@ func (r *Reader) ReadFixedArrayLen(fixedLen int) error {
 		return err
 	}
 	if n != fixedLen {
-		return fmt.Errorf("redis: got %d elements in the array, wanted %d", n, fixedLen)
+		return fmt.Errorf("kv: got %d elements in the array, wanted %d", n, fixedLen)
 	}
 	return nil
 }
@@ -528,7 +528,7 @@ func (r *Reader) ReadArrayLen() (int, error) {
 	case RespArray, RespSet, RespPush:
 		return replyLen(line)
 	default:
-		return 0, fmt.Errorf("redis: can't parse array/set/push reply: %.100q", line)
+		return 0, fmt.Errorf("kv: can't parse array/set/push reply: %.100q", line)
 	}
 }
 
@@ -539,7 +539,7 @@ func (r *Reader) ReadFixedMapLen(fixedLen int) error {
 		return err
 	}
 	if n != fixedLen {
-		return fmt.Errorf("redis: got %d elements in the map, wanted %d", n, fixedLen)
+		return fmt.Errorf("kv: got %d elements in the map, wanted %d", n, fixedLen)
 	}
 	return nil
 }
@@ -563,11 +563,11 @@ func (r *Reader) ReadMapLen() (int, error) {
 			return 0, err
 		}
 		if n%2 != 0 {
-			return 0, fmt.Errorf("redis: the length of the array must be a multiple of 2, got: %d", n)
+			return 0, fmt.Errorf("kv: the length of the array must be a multiple of 2, got: %d", n)
 		}
 		return n / 2, nil
 	default:
-		return 0, fmt.Errorf("redis: can't parse map reply: %.100q", line)
+		return 0, fmt.Errorf("kv: can't parse map reply: %.100q", line)
 	}
 }
 
@@ -583,7 +583,7 @@ func (r *Reader) DiscardNext() error {
 // Discard the data represented by line.
 func (r *Reader) Discard(line []byte) (err error) {
 	if len(line) == 0 {
-		return errors.New("redis: invalid line")
+		return errors.New("kv: invalid line")
 	}
 	switch line[0] {
 	case RespStatus, RespError, RespInt, RespNil, RespFloat, RespBool, RespBigInt:
@@ -617,7 +617,7 @@ func (r *Reader) Discard(line []byte) (err error) {
 		return nil
 	}
 
-	return fmt.Errorf("redis: can't parse %.100q", line)
+	return fmt.Errorf("kv: can't parse %.100q", line)
 }
 
 func replyLen(line []byte) (n int, err error) {
@@ -627,7 +627,7 @@ func replyLen(line []byte) (n int, err error) {
 	}
 
 	if n < -1 {
-		return 0, fmt.Errorf("redis: invalid reply: %q", line)
+		return 0, fmt.Errorf("kv: invalid reply: %q", line)
 	}
 
 	switch line[0] {
@@ -640,7 +640,7 @@ func replyLen(line []byte) (n int, err error) {
 	return n, nil
 }
 
-// IsNilReply detects redis.Nil of RESP2.
+// IsNilReply detects kv.Nil of RESP2.
 func IsNilReply(line []byte) bool {
 	return len(line) == 3 &&
 		(line[0] == RespString || line[0] == RespArray) &&

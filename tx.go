@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"github.com/hanzokv/go/v9/internal/proto"
 )
 
-// TxFailedErr transaction redis failed.
-const TxFailedErr = proto.RedisError("redis: transaction failed")
+// TxFailedErr transaction kv failed.
+const TxFailedErr = proto.KVError("kv: transaction failed")
 
-// Tx implements Redis transactions as described in
-// http://redis.io/topics/transactions. It's NOT safe for concurrent use
+// Tx implements KV transactions as described in
+// http://kv.io/topics/transactions. It's NOT safe for concurrent use
 // by multiple goroutines, because Exec resets list of watched keys.
 //
 // If you don't need WATCH, use Pipeline instead.

@@ -14,7 +14,7 @@ import (
 func ExampleClient_query_em() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -30,34 +30,34 @@ func ExampleClient_query_em() {
 	// REMOVE_END
 
 	_, err := rdb.FTCreate(ctx, "idx:bicycle",
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnJSON: true,
 			Prefix: []interface{}{"bicycle:"},
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.brand",
 			As:        "brand",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.model",
 			As:        "model",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.description",
 			As:        "description",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.price",
 			As:        "price",
-			FieldType: redis.SearchFieldTypeNumeric,
+			FieldType: kv.SearchFieldTypeNumeric,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.condition",
 			As:        "condition",
-			FieldType: redis.SearchFieldTypeTag,
+			FieldType: kv.SearchFieldTypeTag,
 		},
 	).Result()
 
@@ -175,7 +175,7 @@ func ExampleClient_query_em() {
 				"The rear-inclined seat tube facilitates stability by allowing you to put a foot " +
 				"on the ground to balance at a stop, and the low step-over frame makes it " +
 				"accessible for all ability and mobility levels. The saddle is very soft, with " +
-				"a wide back to support your hip joints and a cutout in the center to redistribute " +
+				"a wide back to support your hip joints and a cutout in the center to kvtribute " +
 				"that pressure. Rim brakes deliver satisfactory braking control, and the wide tires " +
 				"provide a smooth, stable ride on paved roads and gravel. Rack and fender mounts " +
 				"facilitate setting up the Roll Low-Entry as your preferred commuter, and the " +
@@ -244,8 +244,8 @@ func ExampleClient_query_em() {
 	res2, err := rdb.FTSearchWithArgs(ctx,
 		"idx:bicycle",
 		"*",
-		&redis.FTSearchOptions{
-			Filters: []redis.FTSearchFilter{
+		&kv.FTSearchOptions{
+			Filters: []kv.FTSearchFilter{
 				{
 					FieldName: "price",
 					Min:       270,
@@ -279,7 +279,7 @@ func ExampleClient_query_em() {
 	fmt.Println(res3.Total) // >>> 5
 
 	docs := res3.Docs
-	slices.SortFunc(docs, func(a, b redis.Document) int {
+	slices.SortFunc(docs, func(a, b kv.Document) int {
 		return strings.Compare(a.ID, b.ID)
 	})
 
@@ -296,14 +296,14 @@ func ExampleClient_query_em() {
 	// STEP_START em3
 	res4, err := rdb.FTCreate(ctx,
 		"idx:email",
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnJSON: true,
 			Prefix: []interface{}{"key:"},
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.email",
 			As:        "email",
-			FieldType: redis.SearchFieldTypeTag,
+			FieldType: kv.SearchFieldTypeTag,
 		},
 	).Result()
 
@@ -315,7 +315,7 @@ func ExampleClient_query_em() {
 
 	res5, err := rdb.JSONSet(ctx, "key:1", "$",
 		map[string]interface{}{
-			"email": "test@redis.com",
+			"email": "test@kv.com",
 		},
 	).Result()
 
@@ -326,7 +326,7 @@ func ExampleClient_query_em() {
 	fmt.Println(res5) // >>> OK
 
 	res6, err := rdb.FTSearch(ctx, "idx:email",
-		"@email:{test\\@redis\\.com}",
+		"@email:{test\\@kv\\.com}",
 	).Result()
 
 	if err != nil {

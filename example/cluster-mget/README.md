@@ -1,11 +1,11 @@
-# Redis Cluster MGET Example
+# KV Cluster MGET Example
 
-This example demonstrates how to use the Redis Cluster client with the `MGET` command to retrieve multiple keys efficiently.
+This example demonstrates how to use the KV Cluster client with the `MGET` command to retrieve multiple keys efficiently.
 
 ## Overview
 
 The example shows:
-- Creating a Redis Cluster client
+- Creating a KV Cluster client
 - Setting 10 keys with individual `SET` commands
 - Retrieving all 10 keys in a single operation using `MGET`
 - Validating that the retrieved values match the expected values
@@ -13,21 +13,21 @@ The example shows:
 
 ## Prerequisites
 
-You need a running Redis Cluster. The example expects cluster nodes at:
+You need a running KV Cluster. The example expects cluster nodes at:
 - `localhost:7000`
 - `localhost:7001`
 - `localhost:7002`
 
-### Setting up a Redis Cluster (using Docker)
+### Setting up a KV Cluster (using Docker)
 
-If you don't have a Redis Cluster running, you can use the docker-compose setup from the repository root:
+If you don't have a KV Cluster running, you can use the docker-compose setup from the repository root:
 
 ```bash
-# From the go-redis repository root
+# From the go-kv repository root
 docker compose --profile cluster up -d
 ```
 
-This will start a Redis Cluster with nodes on ports 16600-16605.
+This will start a KV Cluster with nodes on ports 16600-16605.
 
 If using the docker-compose cluster, update the `Addrs` in `main.go` to:
 ```go
@@ -47,7 +47,7 @@ go run main.go
 ## Expected Output
 
 ```
-✓ Connected to Redis cluster
+✓ Connected to KV cluster
 
 === Setting 10 keys ===
 ✓ SET key0 = value0
@@ -86,7 +86,7 @@ go run main.go
 
 ### MGET Command
 
-`MGET` (Multiple GET) is a Redis command that retrieves the values of multiple keys in a single operation. This is more efficient than executing multiple individual `GET` commands.
+`MGET` (Multiple GET) is a KV command that retrieves the values of multiple keys in a single operation. This is more efficient than executing multiple individual `GET` commands.
 
 **Syntax:**
 ```go
@@ -112,7 +112,7 @@ For `MGET` operations in a cluster, the client may need to split the request acr
 
 ```go
 // Create cluster client
-rdb := redis.NewClusterClient(&redis.ClusterOptions{
+rdb := kv.NewClusterClient(&kv.ClusterOptions{
     Addrs: []string{
         "localhost:7000",
         "localhost:7001",
@@ -138,7 +138,7 @@ for i, val := range result {
 
 ## Learn More
 
-- [Redis MGET Documentation](https://redis.io/commands/mget/)
-- [Redis Cluster Specification](https://redis.io/topics/cluster-spec)
-- [go-redis Documentation](https://redis.uptrace.dev/)
+- [KV MGET Documentation](https://kv.io/commands/mget/)
+- [KV Cluster Specification](https://kv.io/topics/cluster-spec)
+- [go-kv Documentation](https://kv.uptrace.dev/)
 

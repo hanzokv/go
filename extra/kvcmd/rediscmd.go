@@ -1,4 +1,4 @@
-package rediscmd
+package kvcmd
 
 import (
 	"encoding/hex"
@@ -10,13 +10,13 @@ import (
 	"github.com/hanzokv/go/v9"
 )
 
-func CmdString(cmd redis.Cmder) string {
+func CmdString(cmd kv.Cmder) string {
 	b := make([]byte, 0, 32)
 	b = AppendCmd(b, cmd)
 	return String(b)
 }
 
-func CmdsString(cmds []redis.Cmder) (string, string) {
+func CmdsString(cmds []kv.Cmder) (string, string) {
 	const numNameLimit = 10
 
 	seen := make(map[string]struct{}, numNameLimit)
@@ -45,7 +45,7 @@ func CmdsString(cmds []redis.Cmder) (string, string) {
 	return summary, String(b)
 }
 
-func AppendCmd(b []byte, cmd redis.Cmder) []byte {
+func AppendCmd(b []byte, cmd kv.Cmder) []byte {
 	for i, arg := range cmd.Args() {
 		if i > 0 {
 			b = append(b, ' ')

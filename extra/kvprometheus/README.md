@@ -1,14 +1,14 @@
 # Prometheus Metric Collector
 
 This package implements a [`prometheus.Collector`](https://pkg.go.dev/github.com/prometheus/client_golang@v1.12.2/prometheus#Collector)
-for collecting metrics about the connection pool used by the various redis clients.
-Supported clients are `redis.Client`, `redis.ClusterClient`, `redis.Ring` and `redis.UniversalClient`.
+for collecting metrics about the connection pool used by the various kv clients.
+Supported clients are `kv.Client`, `kv.ClusterClient`, `kv.Ring` and `kv.UniversalClient`.
 
 ### Example
 
 ```go
-client := redis.NewClient(options)
-collector := redisprometheus.NewCollector(namespace, subsystem, client)
+client := kv.NewClient(options)
+collector := kvprometheus.NewCollector(namespace, subsystem, client)
 prometheus.MustRegister(collector)
 ```
 

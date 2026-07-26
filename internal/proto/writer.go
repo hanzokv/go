@@ -195,7 +195,7 @@ func (w *Writer) WriteArg(v interface{}) error {
 		return w.bytes(v)
 	default:
 		return fmt.Errorf(
-			"redis: can't marshal %T (implement encoding.BinaryMarshaler)", v)
+			"kv: can't marshal %T (implement encoding.BinaryMarshaler)", v)
 	}
 }
 

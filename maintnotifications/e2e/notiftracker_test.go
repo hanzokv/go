@@ -251,23 +251,23 @@ func (tnh *TrackingNotificationsHook) increaseRelaxedTimeoutCount(notificationTy
 }
 
 // setupNotificationHook sets up tracking for both regular and cluster clients with notification hooks
-func setupNotificationHook(client redis.UniversalClient, hook maintnotifications.NotificationHook) {
-	if clusterClient, ok := client.(*redis.ClusterClient); ok {
+func setupNotificationHook(client kv.UniversalClient, hook maintnotifications.NotificationHook) {
+	if clusterClient, ok := client.(*kv.ClusterClient); ok {
 		setupClusterClientNotificationHook(clusterClient, hook)
-	} else if regularClient, ok := client.(*redis.Client); ok {
+	} else if regularClient, ok := client.(*kv.Client); ok {
 		setupRegularClientNotificationHook(regularClient, hook)
 	}
 }
 
 // setupNotificationHooks sets up tracking for both regular and cluster clients with notification hooks
-func setupNotificationHooks(client redis.UniversalClient, hooks ...maintnotifications.NotificationHook) {
+func setupNotificationHooks(client kv.UniversalClient, hooks ...maintnotifications.NotificationHook) {
 	for _, hook := range hooks {
 		setupNotificationHook(client, hook)
 	}
 }
 
 // setupRegularClientNotificationHook sets up notification hook for regular clients
-func setupRegularClientNotificationHook(client *redis.Client, hook maintnotifications.NotificationHook) {
+func setupRegularClientNotificationHook(client *kv.Client, hook maintnotifications.NotificationHook) {
 	maintnotificationsManager := client.GetMaintNotificationsManager()
 	if maintnotificationsManager != nil {
 		maintnotificationsManager.AddNotificationHook(hook)
@@ -277,11 +277,11 @@ func setupRegularClientNotificationHook(client *redis.Client, hook maintnotifica
 }
 
 // setupClusterClientNotificationHook sets up notification hook for cluster clients
-func setupClusterClientNotificationHook(client *redis.ClusterClient, hook maintnotifications.NotificationHook) {
+func setupClusterClientNotificationHook(client *kv.ClusterClient, hook maintnotifications.NotificationHook) {
 	ctx := context.Background()
 
 	// Register hook on existing nodes
-	err := client.ForEachShard(ctx, func(ctx context.Context, nodeClient *redis.Client) error {
+	err := client.ForEachShard(ctx, func(ctx context.Context, nodeClient *kv.Client) error {
 		maintnotificationsManager := nodeClient.GetMaintNotificationsManager()
 		if maintnotificationsManager != nil {
 			maintnotificationsManager.AddNotificationHook(hook)
@@ -296,7 +296,7 @@ func setupClusterClientNotificationHook(client *redis.ClusterClient, hook maintn
 	}
 
 	// Register hook on new nodes
-	client.OnNewNode(func(nodeClient *redis.Client) {
+	client.OnNewNode(func(nodeClient *kv.Client) {
 		maintnotificationsManager := nodeClient.GetMaintNotificationsManager()
 		if maintnotificationsManager != nil {
 			maintnotificationsManager.AddNotificationHook(hook)

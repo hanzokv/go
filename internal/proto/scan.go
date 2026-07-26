@@ -16,7 +16,7 @@ import (
 func Scan(b []byte, v interface{}) error {
 	switch v := v.(type) {
 	case nil:
-		return fmt.Errorf("redis: Scan(nil)")
+		return fmt.Errorf("kv: Scan(nil)")
 	case *string:
 		*v = util.BytesToString(b)
 		return nil
@@ -122,28 +122,28 @@ func Scan(b []byte, v interface{}) error {
 		return nil
 	default:
 		return fmt.Errorf(
-			"redis: can't unmarshal %T (consider implementing BinaryUnmarshaler)", v)
+			"kv: can't unmarshal %T (consider implementing BinaryUnmarshaler)", v)
 	}
 }
 
 func ScanSlice(data []string, slice interface{}) error {
 	v := reflect.ValueOf(slice)
 	if !v.IsValid() {
-		return fmt.Errorf("redis: ScanSlice(nil)")
+		return fmt.Errorf("kv: ScanSlice(nil)")
 	}
 	if v.Kind() != reflect.Ptr {
-		return fmt.Errorf("redis: ScanSlice(non-pointer %T)", slice)
+		return fmt.Errorf("kv: ScanSlice(non-pointer %T)", slice)
 	}
 	v = v.Elem()
 	if v.Kind() != reflect.Slice {
-		return fmt.Errorf("redis: ScanSlice(non-slice %T)", slice)
+		return fmt.Errorf("kv: ScanSlice(non-slice %T)", slice)
 	}
 
 	next := makeSliceNextElemFunc(v)
 	for i, s := range data {
 		elem := next()
 		if err := Scan([]byte(s), elem.Addr().Interface()); err != nil {
-			err = fmt.Errorf("redis: ScanSlice index=%d value=%q failed: %w", i, s, err)
+			err = fmt.Errorf("kv: ScanSlice index=%d value=%q failed: %w", i, s, err)
 			return err
 		}
 	}

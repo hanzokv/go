@@ -24,7 +24,7 @@ var startTime = time.Now()
 func main() {
 	startTime = time.Now()
 	wg := &sync.WaitGroup{}
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 		MaintNotificationsConfig: &maintnotifications.Config{
 			Mode:                       maintnotifications.ModeEnabled,
@@ -119,7 +119,7 @@ func main() {
 	fmt.Println("time:", time.Since(startTime))
 }
 
-func floodThePool(ctx context.Context, rdb *redis.Client, wg *sync.WaitGroup) {
+func floodThePool(ctx context.Context, rdb *kv.Client, wg *sync.WaitGroup) {
 	defer wg.Done()
 	for {
 		select {
@@ -146,7 +146,7 @@ func floodThePool(ctx context.Context, rdb *redis.Client, wg *sync.WaitGroup) {
 	}
 }
 
-func subscribe(ctx context.Context, rdb *redis.Client, topic string, subscriberId int, wg *sync.WaitGroup) {
+func subscribe(ctx context.Context, rdb *kv.Client, topic string, subscriberId int, wg *sync.WaitGroup) {
 	defer wg.Done()
 	rec := rdb.Subscribe(ctx, topic)
 	recChan := rec.Channel()

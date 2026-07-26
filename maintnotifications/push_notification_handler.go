@@ -87,7 +87,7 @@ func (snh *NotificationHandler) handleMoving(ctx context.Context, handlerCtx pus
 		if !ok {
 			stringified := fmt.Sprintf("%v", notification[3])
 			// this could be <nil> which is valid
-			if notification[3] == nil || stringified == internal.RedisNull {
+			if notification[3] == nil || stringified == internal.KVNull {
 				newEndpoint = ""
 			} else {
 				internal.Logger.Printf(ctx, logs.InvalidNewEndpointInMovingNotification(notification[3]))
@@ -123,7 +123,7 @@ func (snh *NotificationHandler) handleMoving(ctx context.Context, handlerCtx pus
 
 	deadline := time.Now().Add(time.Duration(timeS) * time.Second)
 	// If newEndpoint is empty, we should schedule a handoff to the current endpoint in timeS/2 seconds
-	if newEndpoint == "" || newEndpoint == internal.RedisNull {
+	if newEndpoint == "" || newEndpoint == internal.KVNull {
 		if internal.LogLevel.DebugOrAbove() {
 			internal.Logger.Printf(ctx, logs.SchedulingHandoffToCurrentEndpoint(poolConn.GetID(), float64(timeS)/2))
 		}

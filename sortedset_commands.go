@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -65,7 +65,7 @@ type SortedSetCmdable interface {
 	ZScan(ctx context.Context, key string, cursor uint64, match string, count int64) *ScanCmd
 }
 
-// BZPopMax Redis `BZPOPMAX key [key ...] timeout` command.
+// BZPopMax KV `BZPOPMAX key [key ...] timeout` command.
 func (c cmdable) BZPopMax(ctx context.Context, timeout time.Duration, keys ...string) *ZWithKeyCmd {
 	args := make([]interface{}, 1+len(keys)+1)
 	args[0] = "bzpopmax"
@@ -79,7 +79,7 @@ func (c cmdable) BZPopMax(ctx context.Context, timeout time.Duration, keys ...st
 	return cmd
 }
 
-// BZPopMin Redis `BZPOPMIN key [key ...] timeout` command.
+// BZPopMin KV `BZPOPMIN key [key ...] timeout` command.
 func (c cmdable) BZPopMin(ctx context.Context, timeout time.Duration, keys ...string) *ZWithKeyCmd {
 	args := make([]interface{}, 1+len(keys)+1)
 	args[0] = "bzpopmin"
@@ -95,7 +95,7 @@ func (c cmdable) BZPopMin(ctx context.Context, timeout time.Duration, keys ...st
 
 // BZMPop is the blocking variant of ZMPOP.
 // When any of the sorted sets contains elements, this command behaves exactly like ZMPOP.
-// When all sorted sets are empty, Redis will block the connection until another client adds members to one of the keys or until the timeout elapses.
+// When all sorted sets are empty, KV will block the connection until another client adds members to one of the keys or until the timeout elapses.
 // A timeout of zero can be used to block indefinitely.
 // example: client.BZMPop(ctx, 0,"max", 1, "set")
 func (c cmdable) BZMPop(ctx context.Context, timeout time.Duration, order string, count int64, keys ...string) *ZSliceWithKeyCmd {
@@ -165,14 +165,14 @@ func (c cmdable) ZAddArgsIncr(ctx context.Context, key string, args ZAddArgs) *F
 	return cmd
 }
 
-// ZAdd Redis `ZADD key score member [score member ...]` command.
+// ZAdd KV `ZADD key score member [score member ...]` command.
 func (c cmdable) ZAdd(ctx context.Context, key string, members ...Z) *IntCmd {
 	return c.ZAddArgs(ctx, key, ZAddArgs{
 		Members: members,
 	})
 }
 
-// ZAddLT Redis `ZADD key LT score member [score member ...]` command.
+// ZAddLT KV `ZADD key LT score member [score member ...]` command.
 func (c cmdable) ZAddLT(ctx context.Context, key string, members ...Z) *IntCmd {
 	return c.ZAddArgs(ctx, key, ZAddArgs{
 		LT:      true,
@@ -180,7 +180,7 @@ func (c cmdable) ZAddLT(ctx context.Context, key string, members ...Z) *IntCmd {
 	})
 }
 
-// ZAddGT Redis `ZADD key GT score member [score member ...]` command.
+// ZAddGT KV `ZADD key GT score member [score member ...]` command.
 func (c cmdable) ZAddGT(ctx context.Context, key string, members ...Z) *IntCmd {
 	return c.ZAddArgs(ctx, key, ZAddArgs{
 		GT:      true,
@@ -188,7 +188,7 @@ func (c cmdable) ZAddGT(ctx context.Context, key string, members ...Z) *IntCmd {
 	})
 }
 
-// ZAddNX Redis `ZADD key NX score member [score member ...]` command.
+// ZAddNX KV `ZADD key NX score member [score member ...]` command.
 func (c cmdable) ZAddNX(ctx context.Context, key string, members ...Z) *IntCmd {
 	return c.ZAddArgs(ctx, key, ZAddArgs{
 		NX:      true,
@@ -196,7 +196,7 @@ func (c cmdable) ZAddNX(ctx context.Context, key string, members ...Z) *IntCmd {
 	})
 }
 
-// ZAddXX Redis `ZADD key XX score member [score member ...]` command.
+// ZAddXX KV `ZADD key XX score member [score member ...]` command.
 func (c cmdable) ZAddXX(ctx context.Context, key string, members ...Z) *IntCmd {
 	return c.ZAddArgs(ctx, key, ZAddArgs{
 		XX:      true,
@@ -355,9 +355,9 @@ func (c cmdable) ZPopMin(ctx context.Context, key string, count ...int64) *ZSlic
 //	ZRANGEBYLEX,
 //	ZREVRANGEBYLEX.
 //
-// Please pay attention to your redis-server version.
+// Please pay attention to your kv-server version.
 //
-// Rev, ByScore, ByLex and Offset+Count options require redis-server 6.2.0 and higher.
+// Rev, ByScore, ByLex and Offset+Count options require kv-server 6.2.0 and higher.
 type ZRangeArgs struct {
 	Key string
 
@@ -384,7 +384,7 @@ type ZRangeArgs struct {
 	//		cmd: "ZRange example-key [abc (def ByLex"
 	//
 	// For normal cases (ByScore==false && ByLex==false), <Start> and <Stop> should be set to the index range (int).
-	// You can read the documentation for more information: https://redis.io/commands/zrange
+	// You can read the documentation for more information: https://kv.io/commands/zrange
 	Start interface{}
 	Stop  interface{}
 
@@ -481,14 +481,14 @@ func (c cmdable) zRangeBy(ctx context.Context, zcmd, key string, opt *ZRangeBy, 
 
 // ZRangeByScore returns members in a sorted set within a range of scores.
 //
-// Deprecated: Use ZRangeArgs with ByScore option instead as of Redis 6.2.0.
+// Deprecated: Use ZRangeArgs with ByScore option instead as of KV 6.2.0.
 func (c cmdable) ZRangeByScore(ctx context.Context, key string, opt *ZRangeBy) *StringSliceCmd {
 	return c.zRangeBy(ctx, "zrangebyscore", key, opt, false)
 }
 
 // ZRangeByLex returns members in a sorted set within a lexicographical range.
 //
-// Deprecated: Use ZRangeArgs with ByLex option instead as of Redis 6.2.0.
+// Deprecated: Use ZRangeArgs with ByLex option instead as of KV 6.2.0.
 func (c cmdable) ZRangeByLex(ctx context.Context, key string, opt *ZRangeBy) *StringSliceCmd {
 	return c.zRangeBy(ctx, "zrangebylex", key, opt, false)
 }
@@ -523,8 +523,8 @@ func (c cmdable) ZRank(ctx context.Context, key, member string) *IntCmd {
 	return cmd
 }
 
-// ZRankWithScore according to the Redis documentation, if member does not exist
-// in the sorted set or key does not exist, it will return a redis.Nil error.
+// ZRankWithScore according to the KV documentation, if member does not exist
+// in the sorted set or key does not exist, it will return a kv.Nil error.
 func (c cmdable) ZRankWithScore(ctx context.Context, key, member string) *RankWithScoreCmd {
 	cmd := NewRankWithScoreCmd(ctx, "zrank", key, member, "withscore")
 	_ = c(ctx, cmd)
@@ -567,15 +567,15 @@ func (c cmdable) ZRemRangeByLex(ctx context.Context, key, min, max string) *IntC
 
 // ZRevRange returns members in a sorted set within a range of indexes in reverse order.
 //
-// Deprecated: Use ZRangeArgs with Rev option instead as of Redis 6.2.0.
+// Deprecated: Use ZRangeArgs with Rev option instead as of KV 6.2.0.
 func (c cmdable) ZRevRange(ctx context.Context, key string, start, stop int64) *StringSliceCmd {
 	cmd := NewStringSliceCmd(ctx, "zrevrange", key, start, stop)
 	_ = c(ctx, cmd)
 	return cmd
 }
 
-// ZRevRangeWithScores according to the Redis documentation, if member does not exist
-// in the sorted set or key does not exist, it will return a redis.Nil error.
+// ZRevRangeWithScores according to the KV documentation, if member does not exist
+// in the sorted set or key does not exist, it will return a kv.Nil error.
 func (c cmdable) ZRevRangeWithScores(ctx context.Context, key string, start, stop int64) *ZSliceCmd {
 	cmd := NewZSliceCmd(ctx, "zrevrange", key, start, stop, "withscores")
 	_ = c(ctx, cmd)
@@ -599,14 +599,14 @@ func (c cmdable) zRevRangeBy(ctx context.Context, zcmd, key string, opt *ZRangeB
 
 // ZRevRangeByScore returns members in a sorted set within a range of scores in reverse order.
 //
-// Deprecated: Use ZRangeArgs with Rev and ByScore options instead as of Redis 6.2.0.
+// Deprecated: Use ZRangeArgs with Rev and ByScore options instead as of KV 6.2.0.
 func (c cmdable) ZRevRangeByScore(ctx context.Context, key string, opt *ZRangeBy) *StringSliceCmd {
 	return c.zRevRangeBy(ctx, "zrevrangebyscore", key, opt)
 }
 
 // ZRevRangeByLex returns members in a sorted set within a lexicographical range in reverse order.
 //
-// Deprecated: Use ZRangeArgs with Rev and ByLex options instead as of Redis 6.2.0.
+// Deprecated: Use ZRangeArgs with Rev and ByLex options instead as of KV 6.2.0.
 func (c cmdable) ZRevRangeByLex(ctx context.Context, key string, opt *ZRangeBy) *StringSliceCmd {
 	return c.zRevRangeBy(ctx, "zrevrangebylex", key, opt)
 }
@@ -675,21 +675,21 @@ func (c cmdable) ZUnionStore(ctx context.Context, dest string, store *ZStore) *I
 	return cmd
 }
 
-// ZRandMember redis-server version >= 6.2.0.
+// ZRandMember kv-server version >= 6.2.0.
 func (c cmdable) ZRandMember(ctx context.Context, key string, count int) *StringSliceCmd {
 	cmd := NewStringSliceCmd(ctx, "zrandmember", key, count)
 	_ = c(ctx, cmd)
 	return cmd
 }
 
-// ZRandMemberWithScores redis-server version >= 6.2.0.
+// ZRandMemberWithScores kv-server version >= 6.2.0.
 func (c cmdable) ZRandMemberWithScores(ctx context.Context, key string, count int) *ZSliceCmd {
 	cmd := NewZSliceCmd(ctx, "zrandmember", key, count, "withscores")
 	_ = c(ctx, cmd)
 	return cmd
 }
 
-// ZDiff redis-server version >= 6.2.0.
+// ZDiff kv-server version >= 6.2.0.
 func (c cmdable) ZDiff(ctx context.Context, keys ...string) *StringSliceCmd {
 	args := make([]interface{}, 2+len(keys))
 	args[0] = "zdiff"
@@ -704,7 +704,7 @@ func (c cmdable) ZDiff(ctx context.Context, keys ...string) *StringSliceCmd {
 	return cmd
 }
 
-// ZDiffWithScores redis-server version >= 6.2.0.
+// ZDiffWithScores kv-server version >= 6.2.0.
 func (c cmdable) ZDiffWithScores(ctx context.Context, keys ...string) *ZSliceCmd {
 	args := make([]interface{}, 3+len(keys))
 	args[0] = "zdiff"
@@ -720,7 +720,7 @@ func (c cmdable) ZDiffWithScores(ctx context.Context, keys ...string) *ZSliceCmd
 	return cmd
 }
 
-// ZDiffStore redis-server version >=6.2.0.
+// ZDiffStore kv-server version >=6.2.0.
 func (c cmdable) ZDiffStore(ctx context.Context, destination string, keys ...string) *IntCmd {
 	args := make([]interface{}, 0, 3+len(keys))
 	args = append(args, "zdiffstore", destination, len(keys))

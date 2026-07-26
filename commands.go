@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -15,11 +15,11 @@ import (
 	"github.com/hanzokv/go/v9/internal"
 )
 
-// KeepTTL is a Redis KEEPTTL option to keep existing TTL, it requires your redis-server version >= 6.0,
+// KeepTTL is a KV KEEPTTL option to keep existing TTL, it requires your kv-server version >= 6.0,
 // otherwise you will receive an error: (error) ERR syntax error.
 // For example:
 //
-//	rdb.Set(ctx, key, value, redis.KeepTTL)
+//	rdb.Set(ctx, key, value, kv.KeepTTL)
 const KeepTTL = -1
 
 func usePrecise(dur time.Duration) bool {
@@ -106,7 +106,7 @@ func appendArg(dst []interface{}, arg interface{}) []interface{} {
 func appendStructField(dst []interface{}, v reflect.Value) []interface{} {
 	typ := v.Type()
 	for i := 0; i < typ.NumField(); i++ {
-		tag := typ.Field(i).Tag.Get("redis")
+		tag := typ.Field(i).Tag.Get("kv")
 		if tag == "" || tag == "-" {
 			continue
 		}
@@ -275,7 +275,7 @@ func (c statefulCmdable) Auth(ctx context.Context, password string) *StatusCmd {
 
 // AuthACL Perform an AUTH command, using the given user and pass.
 // Should be used to authenticate the current connection with one of the connections defined in the ACL list
-// when connecting to a Redis 6.0 instance, or greater, that is using the Redis ACL system.
+// when connecting to a KV 6.0 instance, or greater, that is using the KV ACL system.
 func (c statefulCmdable) AuthACL(ctx context.Context, username, password string) *StatusCmd {
 	cmd := NewStatusCmd(ctx, "auth", username, password)
 	_ = c(ctx, cmd)
@@ -324,7 +324,7 @@ func (c statefulCmdable) ClientSetInfo(ctx context.Context, info LibraryInfo) *S
 
 	var cmd *StatusCmd
 	if info.LibName != nil {
-		libName := fmt.Sprintf("go-redis(%s,%s)", *info.LibName, internal.ReplaceSpaces(runtime.Version()))
+		libName := fmt.Sprintf("go-kv(%s,%s)", *info.LibName, internal.ReplaceSpaces(runtime.Version()))
 		cmd = NewStatusCmd(ctx, "client", "setinfo", "LIB-NAME", libName)
 	} else {
 		cmd = NewStatusCmd(ctx, "client", "setinfo", "LIB-VER", *info.LibVer)
@@ -445,7 +445,7 @@ func (c cmdable) Do(ctx context.Context, args ...interface{}) *Cmd {
 
 // Quit closes the connection.
 //
-// Deprecated: Just close the connection instead as of Redis 7.2.0.
+// Deprecated: Just close the connection instead as of KV 7.2.0.
 func (c cmdable) Quit(_ context.Context) *StatusCmd {
 	panic("not implemented")
 }
@@ -528,7 +528,7 @@ func (c cmdable) ClientInfo(ctx context.Context) *ClientInfoCmd {
 }
 
 // ClientMaintNotifications enables or disables maintenance notifications for maintenance upgrades.
-// When enabled, the client will receive push notifications about Redis maintenance events.
+// When enabled, the client will receive push notifications about KV maintenance events.
 func (c cmdable) ClientMaintNotifications(ctx context.Context, enabled bool, endpointType string) *StatusCmd {
 	args := []interface{}{"client", "maint_notifications"}
 	if enabled {
@@ -668,9 +668,9 @@ func (c cmdable) ShutdownNoSave(ctx context.Context) *StatusCmd {
 	return c.shutdown(ctx, "nosave")
 }
 
-// SlaveOf sets a Redis server as a replica of another, or promotes it to being a master.
+// SlaveOf sets a KV server as a replica of another, or promotes it to being a master.
 //
-// Deprecated: Use ReplicaOf instead as of Redis 5.0.0.
+// Deprecated: Use ReplicaOf instead as of KV 5.0.0.
 func (c cmdable) SlaveOf(ctx context.Context, host, port string) *StatusCmd {
 	cmd := NewStatusCmd(ctx, "slaveof", host, port)
 	_ = c(ctx, cmd)
@@ -745,7 +745,7 @@ func (c cmdable) MemoryUsage(ctx context.Context, key string, samples ...int) *I
 
 //------------------------------------------------------------------------------
 
-// ModuleLoadexConfig struct is used to specify the arguments for the MODULE LOADEX command of redis.
+// ModuleLoadexConfig struct is used to specify the arguments for the MODULE LOADEX command of kv.
 // `MODULE LOADEX path [CONFIG name value [CONFIG name value ...]] [ARGS args [args ...]]`
 type ModuleLoadexConfig struct {
 	Path string
@@ -767,7 +767,7 @@ func (c *ModuleLoadexConfig) toArgs() []interface{} {
 	return args
 }
 
-// ModuleLoadex Redis `MODULE LOADEX path [CONFIG name value [CONFIG name value ...]] [ARGS args [args ...]]` command.
+// ModuleLoadex KV `MODULE LOADEX path [CONFIG name value [CONFIG name value ...]] [ARGS args [args ...]]` command.
 func (c cmdable) ModuleLoadex(ctx context.Context, conf *ModuleLoadexConfig) *StringCmd {
 	cmd := NewStringCmd(ctx, conf.toArgs()...)
 	_ = c(ctx, cmd)
@@ -775,15 +775,15 @@ func (c cmdable) ModuleLoadex(ctx context.Context, conf *ModuleLoadexConfig) *St
 }
 
 /*
-Monitor - represents a Redis MONITOR command, allowing the user to capture
-and process all commands sent to a Redis server. This mimics the behavior of
-MONITOR in the redis-cli.
+Monitor - represents a KV MONITOR command, allowing the user to capture
+and process all commands sent to a KV server. This mimics the behavior of
+MONITOR in the kv-cli.
 
 Notes:
 - Using MONITOR blocks the connection to the server for itself. It needs a dedicated connection
 - The user should create a channel of type string
 - This runs concurrently in the background. Trigger via the Start and Stop functions
-See further: Redis MONITOR command: https://redis.io/commands/monitor
+See further: KV MONITOR command: https://kv.io/commands/monitor
 */
 func (c cmdable) Monitor(ctx context.Context, ch chan string) *MonitorCmd {
 	cmd := newMonitorCmd(ctx, ch)

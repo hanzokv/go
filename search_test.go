@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"bytes"
@@ -15,7 +15,7 @@ import (
 	"github.com/hanzokv/go/v9/helper"
 )
 
-func WaitForIndexing(c *redis.Client, index string) {
+func WaitForIndexing(c *kv.Client, index string) {
 	for {
 		res, err := c.FTInfo(context.Background(), index).Result()
 		Expect(err).NotTo(HaveOccurred())
@@ -51,10 +51,10 @@ func encodeFloat16Vector(vec []float32) []byte {
 
 var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	ctx := context.TODO()
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(&redis.Options{Addr: ":6379", Protocol: 2})
+		client = kv.NewClient(&kv.Options{Addr: ":6379", Protocol: 2})
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -63,13 +63,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate and FTSearch WithScores", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
 		client.HSet(ctx, "doc1", "txt", "foo baz")
 		client.HSet(ctx, "doc2", "txt", "foo bar")
-		res, err := client.FTSearchWithArgs(ctx, "txt", "foo ~bar", &redis.FTSearchOptions{WithScores: true}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "txt", "foo ~bar", &kv.FTSearchOptions{WithScores: true}).Result()
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Total).To(BeEquivalentTo(int64(2)))
@@ -80,43 +80,43 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate and FTSearch stopwords", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{StopWords: []interface{}{"foo", "bar", "baz"}}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{StopWords: []interface{}{"foo", "bar", "baz"}}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
 		client.HSet(ctx, "doc1", "txt", "foo baz")
 		client.HSet(ctx, "doc2", "txt", "hello world")
-		res1, err := client.FTSearchWithArgs(ctx, "txt", "foo bar", &redis.FTSearchOptions{NoContent: true}).Result()
+		res1, err := client.FTSearchWithArgs(ctx, "txt", "foo bar", &kv.FTSearchOptions{NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res1.Total).To(BeEquivalentTo(int64(0)))
-		res2, err := client.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &redis.FTSearchOptions{NoContent: true}).Result()
+		res2, err := client.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &kv.FTSearchOptions{NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res2.Total).To(BeEquivalentTo(int64(1)))
 	})
 
 	It("should FTCreate and FTSearch filters", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}, &redis.FieldSchema{FieldName: "num", FieldType: redis.SearchFieldTypeNumeric}, &redis.FieldSchema{FieldName: "loc", FieldType: redis.SearchFieldTypeGeo}).Result()
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}, &kv.FieldSchema{FieldName: "num", FieldType: kv.SearchFieldTypeNumeric}, &kv.FieldSchema{FieldName: "loc", FieldType: kv.SearchFieldTypeGeo}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
 		client.HSet(ctx, "doc1", "txt", "foo bar", "num", 3.141, "loc", "-0.441,51.458")
 		client.HSet(ctx, "doc2", "txt", "foo baz", "num", 2, "loc", "-0.1,51.2")
-		res1, err := client.FTSearchWithArgs(ctx, "txt", "foo", &redis.FTSearchOptions{Filters: []redis.FTSearchFilter{{FieldName: "num", Min: 0, Max: 2}}, NoContent: true}).Result()
+		res1, err := client.FTSearchWithArgs(ctx, "txt", "foo", &kv.FTSearchOptions{Filters: []kv.FTSearchFilter{{FieldName: "num", Min: 0, Max: 2}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res1.Total).To(BeEquivalentTo(int64(1)))
 		Expect(res1.Docs[0].ID).To(BeEquivalentTo("doc2"))
-		res2, err := client.FTSearchWithArgs(ctx, "txt", "foo", &redis.FTSearchOptions{Filters: []redis.FTSearchFilter{{FieldName: "num", Min: 0, Max: "+inf"}}, NoContent: true}).Result()
+		res2, err := client.FTSearchWithArgs(ctx, "txt", "foo", &kv.FTSearchOptions{Filters: []kv.FTSearchFilter{{FieldName: "num", Min: 0, Max: "+inf"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res2.Total).To(BeEquivalentTo(int64(2)))
 		Expect(res2.Docs[0].ID).To(BeEquivalentTo("doc1"))
 		// Test Geo filter
-		geoFilter1 := redis.FTSearchGeoFilter{FieldName: "loc", Longitude: -0.44, Latitude: 51.45, Radius: 10, Unit: "km"}
-		geoFilter2 := redis.FTSearchGeoFilter{FieldName: "loc", Longitude: -0.44, Latitude: 51.45, Radius: 100, Unit: "km"}
-		res3, err := client.FTSearchWithArgs(ctx, "txt", "foo", &redis.FTSearchOptions{GeoFilter: []redis.FTSearchGeoFilter{geoFilter1}, NoContent: true}).Result()
+		geoFilter1 := kv.FTSearchGeoFilter{FieldName: "loc", Longitude: -0.44, Latitude: 51.45, Radius: 10, Unit: "km"}
+		geoFilter2 := kv.FTSearchGeoFilter{FieldName: "loc", Longitude: -0.44, Latitude: 51.45, Radius: 100, Unit: "km"}
+		res3, err := client.FTSearchWithArgs(ctx, "txt", "foo", &kv.FTSearchOptions{GeoFilter: []kv.FTSearchGeoFilter{geoFilter1}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res3.Total).To(BeEquivalentTo(int64(1)))
 		Expect(res3.Docs[0].ID).To(BeEquivalentTo("doc1"))
-		res4, err := client.FTSearchWithArgs(ctx, "txt", "foo", &redis.FTSearchOptions{GeoFilter: []redis.FTSearchGeoFilter{geoFilter2}, NoContent: true}).Result()
+		res4, err := client.FTSearchWithArgs(ctx, "txt", "foo", &kv.FTSearchOptions{GeoFilter: []kv.FTSearchGeoFilter{geoFilter2}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res4.Total).To(BeEquivalentTo(int64(2)))
 		docs := []interface{}{res4.Docs[0].ID, res4.Docs[1].ID}
@@ -126,7 +126,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate and FTSearch sortby", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "num", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}, &redis.FieldSchema{FieldName: "num", FieldType: redis.SearchFieldTypeNumeric, Sortable: true}).Result()
+		val, err := client.FTCreate(ctx, "num", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}, &kv.FieldSchema{FieldName: "num", FieldType: kv.SearchFieldTypeNumeric, Sortable: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "num")
@@ -134,50 +134,50 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc2", "txt", "foo baz", "num", 2)
 		client.HSet(ctx, "doc3", "txt", "foo qux", "num", 3)
 
-		sortBy1 := redis.FTSearchSortBy{FieldName: "num", Asc: true}
-		sortBy2 := redis.FTSearchSortBy{FieldName: "num", Desc: true}
-		res1, err := client.FTSearchWithArgs(ctx, "num", "foo", &redis.FTSearchOptions{NoContent: true, SortBy: []redis.FTSearchSortBy{sortBy1}}).Result()
+		sortBy1 := kv.FTSearchSortBy{FieldName: "num", Asc: true}
+		sortBy2 := kv.FTSearchSortBy{FieldName: "num", Desc: true}
+		res1, err := client.FTSearchWithArgs(ctx, "num", "foo", &kv.FTSearchOptions{NoContent: true, SortBy: []kv.FTSearchSortBy{sortBy1}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res1.Total).To(BeEquivalentTo(int64(3)))
 		Expect(res1.Docs[0].ID).To(BeEquivalentTo("doc1"))
 		Expect(res1.Docs[1].ID).To(BeEquivalentTo("doc2"))
 		Expect(res1.Docs[2].ID).To(BeEquivalentTo("doc3"))
 
-		res2, err := client.FTSearchWithArgs(ctx, "num", "foo", &redis.FTSearchOptions{NoContent: true, SortBy: []redis.FTSearchSortBy{sortBy2}}).Result()
+		res2, err := client.FTSearchWithArgs(ctx, "num", "foo", &kv.FTSearchOptions{NoContent: true, SortBy: []kv.FTSearchSortBy{sortBy2}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res2.Total).To(BeEquivalentTo(int64(3)))
 		Expect(res2.Docs[2].ID).To(BeEquivalentTo("doc1"))
 		Expect(res2.Docs[1].ID).To(BeEquivalentTo("doc2"))
 		Expect(res2.Docs[0].ID).To(BeEquivalentTo("doc3"))
 
-		res3, err := client.FTSearchWithArgs(ctx, "num", "foo", &redis.FTSearchOptions{NoContent: true, SortBy: []redis.FTSearchSortBy{sortBy2}, SortByWithCount: true}).Result()
+		res3, err := client.FTSearchWithArgs(ctx, "num", "foo", &kv.FTSearchOptions{NoContent: true, SortBy: []kv.FTSearchSortBy{sortBy2}, SortByWithCount: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res3.Total).To(BeEquivalentTo(int64(3)))
 
-		res4, err := client.FTSearchWithArgs(ctx, "num", "notpresentf00", &redis.FTSearchOptions{NoContent: true, SortBy: []redis.FTSearchSortBy{sortBy2}, SortByWithCount: true}).Result()
+		res4, err := client.FTSearchWithArgs(ctx, "num", "notpresentf00", &kv.FTSearchOptions{NoContent: true, SortBy: []kv.FTSearchSortBy{sortBy2}, SortByWithCount: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res4.Total).To(BeEquivalentTo(int64(0)))
 	})
 
 	It("should FTCreate and FTSearch example", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText, Weight: 5}, &redis.FieldSchema{FieldName: "body", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText, Weight: 5}, &kv.FieldSchema{FieldName: "body", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
-		client.HSet(ctx, "doc1", "title", "RediSearch", "body", "Redisearch implements a search engine on top of redis")
-		res1, err := client.FTSearchWithArgs(ctx, "txt", "search engine", &redis.FTSearchOptions{NoContent: true, Verbatim: true, LimitOffset: 0, Limit: 5}).Result()
+		client.HSet(ctx, "doc1", "title", "RediSearch", "body", "KVearch implements a search engine on top of kv")
+		res1, err := client.FTSearchWithArgs(ctx, "txt", "search engine", &kv.FTSearchOptions{NoContent: true, Verbatim: true, LimitOffset: 0, Limit: 5}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res1.Total).To(BeEquivalentTo(int64(1)))
 
 	})
 
 	It("should FTCreate NoIndex", Label("search", "ftcreate", "ftsearch"), func() {
-		text1 := &redis.FieldSchema{FieldName: "field", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "text", FieldType: redis.SearchFieldTypeText, NoIndex: true, Sortable: true}
-		num := &redis.FieldSchema{FieldName: "numeric", FieldType: redis.SearchFieldTypeNumeric, NoIndex: true, Sortable: true}
-		geo := &redis.FieldSchema{FieldName: "geo", FieldType: redis.SearchFieldTypeGeo, NoIndex: true, Sortable: true}
-		tag := &redis.FieldSchema{FieldName: "tag", FieldType: redis.SearchFieldTypeTag, NoIndex: true, Sortable: true}
-		val, err := client.FTCreate(ctx, "idx", &redis.FTCreateOptions{}, text1, text2, num, geo, tag).Result()
+		text1 := &kv.FieldSchema{FieldName: "field", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "text", FieldType: kv.SearchFieldTypeText, NoIndex: true, Sortable: true}
+		num := &kv.FieldSchema{FieldName: "numeric", FieldType: kv.SearchFieldTypeNumeric, NoIndex: true, Sortable: true}
+		geo := &kv.FieldSchema{FieldName: "geo", FieldType: kv.SearchFieldTypeGeo, NoIndex: true, Sortable: true}
+		tag := &kv.FieldSchema{FieldName: "tag", FieldType: kv.SearchFieldTypeTag, NoIndex: true, Sortable: true}
+		val, err := client.FTCreate(ctx, "idx", &kv.FTCreateOptions{}, text1, text2, num, geo, tag).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx")
@@ -189,31 +189,31 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		res2, err := client.FTSearch(ctx, "idx", "@field:aa*").Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res2.Total).To(BeEquivalentTo(int64(2)))
-		res3, err := client.FTSearchWithArgs(ctx, "idx", "*", &redis.FTSearchOptions{SortBy: []redis.FTSearchSortBy{{FieldName: "text", Desc: true}}}).Result()
+		res3, err := client.FTSearchWithArgs(ctx, "idx", "*", &kv.FTSearchOptions{SortBy: []kv.FTSearchSortBy{{FieldName: "text", Desc: true}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res3.Total).To(BeEquivalentTo(int64(2)))
 		Expect(res3.Docs[0].ID).To(BeEquivalentTo("doc2"))
-		res4, err := client.FTSearchWithArgs(ctx, "idx", "*", &redis.FTSearchOptions{SortBy: []redis.FTSearchSortBy{{FieldName: "text", Asc: true}}}).Result()
+		res4, err := client.FTSearchWithArgs(ctx, "idx", "*", &kv.FTSearchOptions{SortBy: []kv.FTSearchSortBy{{FieldName: "text", Asc: true}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res4.Total).To(BeEquivalentTo(int64(2)))
 		Expect(res4.Docs[0].ID).To(BeEquivalentTo("doc1"))
-		res5, err := client.FTSearchWithArgs(ctx, "idx", "*", &redis.FTSearchOptions{SortBy: []redis.FTSearchSortBy{{FieldName: "numeric", Asc: true}}}).Result()
+		res5, err := client.FTSearchWithArgs(ctx, "idx", "*", &kv.FTSearchOptions{SortBy: []kv.FTSearchSortBy{{FieldName: "numeric", Asc: true}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res5.Docs[0].ID).To(BeEquivalentTo("doc1"))
-		res6, err := client.FTSearchWithArgs(ctx, "idx", "*", &redis.FTSearchOptions{SortBy: []redis.FTSearchSortBy{{FieldName: "geo", Asc: true}}}).Result()
+		res6, err := client.FTSearchWithArgs(ctx, "idx", "*", &kv.FTSearchOptions{SortBy: []kv.FTSearchSortBy{{FieldName: "geo", Asc: true}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res6.Docs[0].ID).To(BeEquivalentTo("doc1"))
-		res7, err := client.FTSearchWithArgs(ctx, "idx", "*", &redis.FTSearchOptions{SortBy: []redis.FTSearchSortBy{{FieldName: "tag", Asc: true}}}).Result()
+		res7, err := client.FTSearchWithArgs(ctx, "idx", "*", &kv.FTSearchOptions{SortBy: []kv.FTSearchSortBy{{FieldName: "tag", Asc: true}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res7.Docs[0].ID).To(BeEquivalentTo("doc1"))
 
 	})
 
 	It("should FTExplain", Label("search", "ftexplain"), func() {
-		text1 := &redis.FieldSchema{FieldName: "f1", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "f2", FieldType: redis.SearchFieldTypeText}
-		text3 := &redis.FieldSchema{FieldName: "f3", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{}, text1, text2, text3).Result()
+		text1 := &kv.FieldSchema{FieldName: "f1", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "f2", FieldType: kv.SearchFieldTypeText}
+		text3 := &kv.FieldSchema{FieldName: "f3", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{}, text1, text2, text3).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
@@ -224,13 +224,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTAlias", Label("search", "ftexplain"), func() {
-		text1 := &redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText}
-		val1, err := client.FTCreate(ctx, "testAlias", &redis.FTCreateOptions{Prefix: []interface{}{"index1:"}}, text1).Result()
+		text1 := &kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText}
+		val1, err := client.FTCreate(ctx, "testAlias", &kv.FTCreateOptions{Prefix: []interface{}{"index1:"}}, text1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val1).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "testAlias")
-		val2, err := client.FTCreate(ctx, "testAlias2", &redis.FTCreateOptions{Prefix: []interface{}{"index2:"}}, text2).Result()
+		val2, err := client.FTCreate(ctx, "testAlias2", &kv.FTCreateOptions{Prefix: []interface{}{"index2:"}}, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val2).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "testAlias2")
@@ -265,7 +265,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate and FTSearch textfield, sortable and nostem ", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText, Sortable: true, NoStem: true}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText, Sortable: true, NoStem: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -278,12 +278,12 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTAlter", Label("search", "ftcreate", "ftsearch", "ftalter"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 
-		resAlter, err := client.FTAlter(ctx, "idx1", false, []interface{}{"body", redis.SearchFieldTypeText.String()}).Result()
+		resAlter, err := client.FTAlter(ctx, "idx1", false, []interface{}{"body", kv.SearchFieldTypeText.String()}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resAlter).To(BeEquivalentTo("OK"))
 
@@ -297,9 +297,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTSpellCheck", Label("search", "ftcreate", "ftsearch", "ftspellcheck"), func() {
-		text1 := &redis.FieldSchema{FieldName: "f1", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "f2", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "f1", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "f2", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -320,7 +320,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resSpellCheck3[0].Term).To(BeEquivalentTo("vlis"))
 
-		resSpellCheck4, err := client.FTSpellCheckWithArgs(ctx, "idx1", "vlis", &redis.FTSpellCheckOptions{Distance: 2}).Result()
+		resSpellCheck4, err := client.FTSpellCheckWithArgs(ctx, "idx1", "vlis", &kv.FTSpellCheckOptions{Distance: 2}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resSpellCheck4[0].Suggestions[0].Suggestion).To(BeEquivalentTo("valid"))
 
@@ -328,8 +328,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		resDictAdd, err := client.FTDictAdd(ctx, "dict", "lore", "lorem", "lorm").Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resDictAdd).To(BeEquivalentTo(3))
-		terms := &redis.FTSpellCheckTerms{Inclusion: "INCLUDE", Dictionary: "dict"}
-		resSpellCheck5, err := client.FTSpellCheckWithArgs(ctx, "idx1", "lorm", &redis.FTSpellCheckOptions{Terms: terms}).Result()
+		terms := &kv.FTSpellCheckTerms{Inclusion: "INCLUDE", Dictionary: "dict"}
+		resSpellCheck5, err := client.FTSpellCheckWithArgs(ctx, "idx1", "lorm", &kv.FTSpellCheckOptions{Terms: terms}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		lorm := resSpellCheck5[0].Suggestions
 		Expect(len(lorm)).To(BeEquivalentTo(3))
@@ -337,16 +337,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(lorm[1].Score).To(BeEquivalentTo(0))
 		Expect(lorm[2].Score).To(BeEquivalentTo(0))
 
-		terms2 := &redis.FTSpellCheckTerms{Inclusion: "EXCLUDE", Dictionary: "dict"}
-		resSpellCheck6, err := client.FTSpellCheckWithArgs(ctx, "idx1", "lorm", &redis.FTSpellCheckOptions{Terms: terms2}).Result()
+		terms2 := &kv.FTSpellCheckTerms{Inclusion: "EXCLUDE", Dictionary: "dict"}
+		resSpellCheck6, err := client.FTSpellCheckWithArgs(ctx, "idx1", "lorm", &kv.FTSpellCheckOptions{Terms: terms2}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resSpellCheck6).To(BeEmpty())
 	})
 
 	It("should FTDict opreations", Label("search", "ftdictdump", "ftdictdel", "ftdictadd"), func() {
-		text1 := &redis.FieldSchema{FieldName: "f1", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "f2", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "f1", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "f2", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -369,8 +369,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTSearch phonetic matcher", Label("search", "ftsearch"), func() {
-		text1 := &redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1).Result()
+		text1 := &kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -384,8 +384,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(res1.Docs[0].Fields["name"]).To(BeEquivalentTo("Jon"))
 
 		client.FlushDB(ctx)
-		text2 := &redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText, PhoneticMatcher: "dm:en"}
-		val2, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text2).Result()
+		text2 := &kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText, PhoneticMatcher: "dm:en"}
+		val2, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val2).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -401,13 +401,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(names).To(ContainElement("John"))
 	})
 
-	// up until redis 8 the default scorer was TFIDF, in redis 8 it is BM25
-	// this test expect redis major version >= 8
+	// up until kv 8 the default scorer was TFIDF, in kv 8 it is BM25
+	// this test expect kv major version >= 8
 	It("should FTSearch WithScores", Label("search", "ftsearch"), func() {
-		SkipBeforeRedisVersion(7.9, "default scorer is not BM25STD")
+		SkipBeforeKVVersion(7.9, "default scorer is not BM25STD")
 
-		text1 := &redis.FieldSchema{FieldName: "description", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1).Result()
+		text1 := &kv.FieldSchema{FieldName: "description", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -415,41 +415,41 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc1", "description", "The quick brown fox jumps over the lazy dog")
 		client.HSet(ctx, "doc2", "description", "Quick alice was beginning to get very tired of sitting by her quick sister on the bank, and of having nothing to do.")
 
-		res, err := client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeNumerically("<=", 0.236))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "TFIDF"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "TFIDF"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(1)))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "TFIDF.DOCNORM"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "TFIDF.DOCNORM"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(0.14285714285714285))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "BM25"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "BM25"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeNumerically("<=", 0.22471909420069797))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "DISMAX"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "DISMAX"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(2)))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "DOCSCORE"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "DOCSCORE"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(1)))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "HAMMING"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "HAMMING"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(0)))
 	})
 
-	// up until redis 8 the default scorer was TFIDF, in redis 8 it is BM25
-	// this test expect redis version < 8.0
+	// up until kv 8 the default scorer was TFIDF, in kv 8 it is BM25
+	// this test expect kv version < 8.0
 	It("should FTSearch WithScores", Label("search", "ftsearch"), func() {
-		SkipAfterRedisVersion(7.9, "default scorer is not TFIDF")
-		text1 := &redis.FieldSchema{FieldName: "description", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1).Result()
+		SkipAfterKVVersion(7.9, "default scorer is not TFIDF")
+		text1 := &kv.FieldSchema{FieldName: "description", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -457,36 +457,36 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc1", "description", "The quick brown fox jumps over the lazy dog")
 		client.HSet(ctx, "doc2", "description", "Quick alice was beginning to get very tired of sitting by her quick sister on the bank, and of having nothing to do.")
 
-		res, err := client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(1)))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "TFIDF"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "TFIDF"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(1)))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "TFIDF.DOCNORM"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "TFIDF.DOCNORM"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(0.14285714285714285))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "BM25"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "BM25"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeNumerically("<=", 0.22471909420069797))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "DISMAX"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "DISMAX"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(2)))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "DOCSCORE"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "DOCSCORE"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(1)))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &redis.FTSearchOptions{WithScores: true, Scorer: "HAMMING"}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "quick", &kv.FTSearchOptions{WithScores: true, Scorer: "HAMMING"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*res.Docs[0].Score).To(BeEquivalentTo(float64(0)))
 	})
 
-	It("should FTConfigSet and FTConfigGet ", Label("search", "ftconfigget", "ftconfigset", "NonRedisEnterprise"), func() {
+	It("should FTConfigSet and FTConfigGet ", Label("search", "ftconfigget", "ftconfigset", "NonKVEnterprise"), func() {
 		val, err := client.FTConfigSet(ctx, "MINPREFIX", "1").Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -502,115 +502,115 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTAggregate GroupBy ", Label("search", "ftaggregate"), func() {
-		text1 := &redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "body", FieldType: redis.SearchFieldTypeText}
-		text3 := &redis.FieldSchema{FieldName: "parent", FieldType: redis.SearchFieldTypeText}
-		num := &redis.FieldSchema{FieldName: "random_num", FieldType: redis.SearchFieldTypeNumeric}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, text2, text3, num).Result()
+		text1 := &kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "body", FieldType: kv.SearchFieldTypeText}
+		text3 := &kv.FieldSchema{FieldName: "parent", FieldType: kv.SearchFieldTypeText}
+		num := &kv.FieldSchema{FieldName: "random_num", FieldType: kv.SearchFieldTypeNumeric}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, text2, text3, num).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 
 		client.HSet(ctx, "search", "title", "RediSearch",
-			"body", "Redisearch implements a search engine on top of redis",
-			"parent", "redis",
+			"body", "KVearch implements a search engine on top of kv",
+			"parent", "kv",
 			"random_num", 10)
-		client.HSet(ctx, "ai", "title", "RedisAI",
-			"body", "RedisAI executes Deep Learning/Machine Learning models and managing their data.",
-			"parent", "redis",
+		client.HSet(ctx, "ai", "title", "KVAI",
+			"body", "KVAI executes Deep Learning/Machine Learning models and managing their data.",
+			"parent", "kv",
 			"random_num", 3)
-		client.HSet(ctx, "json", "title", "RedisJson",
-			"body", "RedisJSON implements ECMA-404 The JSON Data Interchange Standard as a native data type.",
-			"parent", "redis",
+		client.HSet(ctx, "json", "title", "KVJson",
+			"body", "KVJSON implements ECMA-404 The JSON Data Interchange Standard as a native data type.",
+			"parent", "kv",
 			"random_num", 8)
 
-		reducer := redis.FTAggregateReducer{Reducer: redis.SearchCount}
-		options := &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err := client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer := kv.FTAggregateReducer{Reducer: kv.SearchCount}
+		options := &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err := client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliascount"]).To(BeEquivalentTo("3"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchCountDistinct, Args: []interface{}{"@title"}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchCountDistinct, Args: []interface{}{"@title"}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliascount_distincttitle"]).To(BeEquivalentTo("3"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchSum, Args: []interface{}{"@random_num"}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchSum, Args: []interface{}{"@random_num"}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliassumrandom_num"]).To(BeEquivalentTo("21"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchMin, Args: []interface{}{"@random_num"}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchMin, Args: []interface{}{"@random_num"}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliasminrandom_num"]).To(BeEquivalentTo("3"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchMax, Args: []interface{}{"@random_num"}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchMax, Args: []interface{}{"@random_num"}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliasmaxrandom_num"]).To(BeEquivalentTo("10"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchAvg, Args: []interface{}{"@random_num"}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchAvg, Args: []interface{}{"@random_num"}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliasavgrandom_num"]).To(BeEquivalentTo("7"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchStdDev, Args: []interface{}{"@random_num"}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchStdDev, Args: []interface{}{"@random_num"}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliasstddevrandom_num"]).To(BeEquivalentTo("3.60555127546"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchQuantile, Args: []interface{}{"@random_num", 0.5}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchQuantile, Args: []interface{}{"@random_num", 0.5}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["__generated_aliasquantilerandom_num,0.5"]).To(BeEquivalentTo("8"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchToList, Args: []interface{}{"@title"}}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchToList, Args: []interface{}{"@title"}}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
-		Expect(res.Rows[0].Fields["__generated_aliastolisttitle"]).To(ContainElements("RediSearch", "RedisAI", "RedisJson"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
+		Expect(res.Rows[0].Fields["__generated_aliastolisttitle"]).To(ContainElements("RediSearch", "KVAI", "KVJson"))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchFirstValue, Args: []interface{}{"@title"}, As: "first"}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchFirstValue, Args: []interface{}{"@title"}, As: "first"}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
-		Expect(res.Rows[0].Fields["first"]).To(Or(BeEquivalentTo("RediSearch"), BeEquivalentTo("RedisAI"), BeEquivalentTo("RedisJson")))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
+		Expect(res.Rows[0].Fields["first"]).To(Or(BeEquivalentTo("RediSearch"), BeEquivalentTo("KVAI"), BeEquivalentTo("KVJson")))
 
-		reducer = redis.FTAggregateReducer{Reducer: redis.SearchRandomSample, Args: []interface{}{"@title", 2}, As: "random"}
-		options = &redis.FTAggregateOptions{GroupBy: []redis.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []redis.FTAggregateReducer{reducer}}}}
-		res, err = client.FTAggregateWithArgs(ctx, "idx1", "redis", options).Result()
+		reducer = kv.FTAggregateReducer{Reducer: kv.SearchRandomSample, Args: []interface{}{"@title", 2}, As: "random"}
+		options = &kv.FTAggregateOptions{GroupBy: []kv.FTAggregateGroupBy{{Fields: []interface{}{"@parent"}, Reduce: []kv.FTAggregateReducer{reducer}}}}
+		res, err = client.FTAggregateWithArgs(ctx, "idx1", "kv", options).Result()
 		Expect(err).NotTo(HaveOccurred())
-		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("redis"))
+		Expect(res.Rows[0].Fields["parent"]).To(BeEquivalentTo("kv"))
 		Expect(res.Rows[0].Fields["random"]).To(Or(
 			ContainElement("RediSearch"),
-			ContainElement("RedisAI"),
-			ContainElement("RedisJson"),
+			ContainElement("KVAI"),
+			ContainElement("KVJson"),
 		))
 
 	})
 
 	It("should FTAggregate sort and limit", Label("search", "ftaggregate"), func() {
-		text1 := &redis.FieldSchema{FieldName: "t1", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "t2", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "t1", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "t2", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -618,7 +618,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc1", "t1", "a", "t2", "b")
 		client.HSet(ctx, "doc2", "t1", "b", "t2", "a")
 
-		options := &redis.FTAggregateOptions{SortBy: []redis.FTAggregateSortBy{{FieldName: "@t2", Asc: true}, {FieldName: "@t1", Desc: true}}}
+		options := &kv.FTAggregateOptions{SortBy: []kv.FTAggregateSortBy{{FieldName: "@t2", Asc: true}, {FieldName: "@t1", Desc: true}}}
 		res, err := client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("b"))
@@ -626,74 +626,74 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(res.Rows[0].Fields["t2"]).To(BeEquivalentTo("a"))
 		Expect(res.Rows[1].Fields["t2"]).To(BeEquivalentTo("b"))
 
-		options = &redis.FTAggregateOptions{SortBy: []redis.FTAggregateSortBy{{FieldName: "@t1"}}}
+		options = &kv.FTAggregateOptions{SortBy: []kv.FTAggregateSortBy{{FieldName: "@t1"}}}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("a"))
 		Expect(res.Rows[1].Fields["t1"]).To(BeEquivalentTo("b"))
 
-		options = &redis.FTAggregateOptions{SortBy: []redis.FTAggregateSortBy{{FieldName: "@t1"}}, SortByMax: 1}
+		options = &kv.FTAggregateOptions{SortBy: []kv.FTAggregateSortBy{{FieldName: "@t1"}}, SortByMax: 1}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("a"))
 
-		options = &redis.FTAggregateOptions{SortBy: []redis.FTAggregateSortBy{{FieldName: "@t1"}}, Limit: 1, LimitOffset: 1}
+		options = &kv.FTAggregateOptions{SortBy: []kv.FTAggregateSortBy{{FieldName: "@t1"}}, Limit: 1, LimitOffset: 1}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("b"))
 
-		options = &redis.FTAggregateOptions{SortBy: []redis.FTAggregateSortBy{{FieldName: "@t1"}}, Limit: 1, LimitOffset: 0}
+		options = &kv.FTAggregateOptions{SortBy: []kv.FTAggregateSortBy{{FieldName: "@t1"}}, Limit: 1, LimitOffset: 0}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("a"))
 	})
 
 	It("should FTAggregate load ", Label("search", "ftaggregate"), func() {
-		text1 := &redis.FieldSchema{FieldName: "t1", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "t2", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "t1", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "t2", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 
 		client.HSet(ctx, "doc1", "t1", "hello", "t2", "world")
 
-		options := &redis.FTAggregateOptions{Load: []redis.FTAggregateLoad{{Field: "t1"}}}
+		options := &kv.FTAggregateOptions{Load: []kv.FTAggregateLoad{{Field: "t1"}}}
 		res, err := client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("hello"))
 
-		options = &redis.FTAggregateOptions{Load: []redis.FTAggregateLoad{{Field: "t2"}}}
+		options = &kv.FTAggregateOptions{Load: []kv.FTAggregateLoad{{Field: "t2"}}}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t2"]).To(BeEquivalentTo("world"))
 
-		options = &redis.FTAggregateOptions{Load: []redis.FTAggregateLoad{{Field: "t2", As: "t2alias"}}}
+		options = &kv.FTAggregateOptions{Load: []kv.FTAggregateLoad{{Field: "t2", As: "t2alias"}}}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t2alias"]).To(BeEquivalentTo("world"))
 
-		options = &redis.FTAggregateOptions{Load: []redis.FTAggregateLoad{{Field: "t1"}, {Field: "t2", As: "t2alias"}}}
+		options = &kv.FTAggregateOptions{Load: []kv.FTAggregateLoad{{Field: "t1"}, {Field: "t2", As: "t2alias"}}}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("hello"))
 		Expect(res.Rows[0].Fields["t2alias"]).To(BeEquivalentTo("world"))
 
-		options = &redis.FTAggregateOptions{LoadAll: true}
+		options = &kv.FTAggregateOptions{LoadAll: true}
 		res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["t1"]).To(BeEquivalentTo("hello"))
 		Expect(res.Rows[0].Fields["t2"]).To(BeEquivalentTo("world"))
 
-		_, err = client.FTAggregateWithArgs(ctx, "idx_not_exist", "*", &redis.FTAggregateOptions{}).Result()
+		_, err = client.FTAggregateWithArgs(ctx, "idx_not_exist", "*", &kv.FTAggregateOptions{}).Result()
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should FTAggregate with scorer and addscores", Label("search", "ftaggregate", "NonRedisEnterprise"), func() {
-		SkipBeforeRedisVersion(7.4, "no addscores support")
-		title := &redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText, Sortable: false}
-		description := &redis.FieldSchema{FieldName: "description", FieldType: redis.SearchFieldTypeText, Sortable: false}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnHash: true, Prefix: []interface{}{"product:"}}, title, description).Result()
+	It("should FTAggregate with scorer and addscores", Label("search", "ftaggregate", "NonKVEnterprise"), func() {
+		SkipBeforeKVVersion(7.4, "no addscores support")
+		title := &kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText, Sortable: false}
+		description := &kv.FieldSchema{FieldName: "description", FieldType: kv.SearchFieldTypeText, Sortable: false}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnHash: true, Prefix: []interface{}{"product:"}}, title, description).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -702,10 +702,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "product:2", "title", "Super Old Not Gaming Laptop", "description", "this laptop is not a new laptop but it is a laptop")
 		client.HSet(ctx, "product:3", "title", "Office PC", "description", "office desktop pc")
 
-		options := &redis.FTAggregateOptions{
+		options := &kv.FTAggregateOptions{
 			AddScores: true,
 			Scorer:    "BM25",
-			SortBy: []redis.FTAggregateSortBy{{
+			SortBy: []kv.FTAggregateSortBy{{
 				FieldName: "@__score",
 				Desc:      true,
 			}},
@@ -721,10 +721,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(score1).To(BeNumerically(">", score2))
 
-		optionsDM := &redis.FTAggregateOptions{
+		optionsDM := &kv.FTAggregateOptions{
 			AddScores: true,
 			Scorer:    "DISMAX",
-			SortBy: []redis.FTAggregateSortBy{{
+			SortBy: []kv.FTAggregateSortBy{{
 				FieldName: "@__score",
 				Desc:      true,
 			}},
@@ -747,9 +747,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTAggregate apply and groupby", Label("search", "ftaggregate"), func() {
-		text1 := &redis.FieldSchema{FieldName: "PrimaryKey", FieldType: redis.SearchFieldTypeText, Sortable: true}
-		num1 := &redis.FieldSchema{FieldName: "CreatedDateTimeUTC", FieldType: redis.SearchFieldTypeNumeric, Sortable: true}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, num1).Result()
+		text1 := &kv.FieldSchema{FieldName: "PrimaryKey", FieldType: kv.SearchFieldTypeText, Sortable: true}
+		num1 := &kv.FieldSchema{FieldName: "CreatedDateTimeUTC", FieldType: kv.SearchFieldTypeNumeric, Sortable: true}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, num1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -761,15 +761,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc2", "PrimaryKey", "9::362329", "CreatedDateTimeUTC", "1739342399")
 		client.HSet(ctx, "doc3", "PrimaryKey", "9::362329", "CreatedDateTimeUTC", "1739353199")
 
-		reducer := redis.FTAggregateReducer{Reducer: redis.SearchCount, As: "perDay"}
+		reducer := kv.FTAggregateReducer{Reducer: kv.SearchCount, As: "perDay"}
 
-		options := &redis.FTAggregateOptions{
-			Apply: []redis.FTAggregateApply{{Field: "floor(@CreatedDateTimeUTC /(60*60*24))", As: "TimestampAsDay"}},
-			GroupBy: []redis.FTAggregateGroupBy{{
+		options := &kv.FTAggregateOptions{
+			Apply: []kv.FTAggregateApply{{Field: "floor(@CreatedDateTimeUTC /(60*60*24))", As: "TimestampAsDay"}},
+			GroupBy: []kv.FTAggregateGroupBy{{
 				Fields: []interface{}{"@TimestampAsDay"},
-				Reduce: []redis.FTAggregateReducer{reducer},
+				Reduce: []kv.FTAggregateReducer{reducer},
 			}},
-			SortBy: []redis.FTAggregateSortBy{{
+			SortBy: []kv.FTAggregateSortBy{{
 				FieldName: "@perDay",
 				Desc:      true,
 			}},
@@ -784,9 +784,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTAggregate apply", Label("search", "ftaggregate"), func() {
-		text1 := &redis.FieldSchema{FieldName: "PrimaryKey", FieldType: redis.SearchFieldTypeText, Sortable: true}
-		num1 := &redis.FieldSchema{FieldName: "CreatedDateTimeUTC", FieldType: redis.SearchFieldTypeNumeric, Sortable: true}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, num1).Result()
+		text1 := &kv.FieldSchema{FieldName: "PrimaryKey", FieldType: kv.SearchFieldTypeText, Sortable: true}
+		num1 := &kv.FieldSchema{FieldName: "CreatedDateTimeUTC", FieldType: kv.SearchFieldTypeNumeric, Sortable: true}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, num1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -794,7 +794,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc1", "PrimaryKey", "9::362330", "CreatedDateTimeUTC", "637387878524969984")
 		client.HSet(ctx, "doc2", "PrimaryKey", "9::362329", "CreatedDateTimeUTC", "637387875859270016")
 
-		options := &redis.FTAggregateOptions{Apply: []redis.FTAggregateApply{{Field: "@CreatedDateTimeUTC * 10", As: "CreatedDateTimeUTC"}}}
+		options := &kv.FTAggregateOptions{Apply: []kv.FTAggregateApply{{Field: "@CreatedDateTimeUTC * 10", As: "CreatedDateTimeUTC"}}}
 		res, err := client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows[0].Fields["CreatedDateTimeUTC"]).To(Or(BeEquivalentTo("6373878785249699840"), BeEquivalentTo("6373878758592700416")))
@@ -803,9 +803,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTAggregate filter", Label("search", "ftaggregate"), func() {
-		text1 := &redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText, Sortable: true}
-		num1 := &redis.FieldSchema{FieldName: "age", FieldType: redis.SearchFieldTypeNumeric, Sortable: true}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, num1).Result()
+		text1 := &kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText, Sortable: true}
+		num1 := &kv.FieldSchema{FieldName: "age", FieldType: kv.SearchFieldTypeNumeric, Sortable: true}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, num1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -814,13 +814,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc2", "name", "foo", "age", "19")
 
 		for _, dlc := range []int{1, 2} {
-			options := &redis.FTAggregateOptions{Filter: "@name=='foo' && @age < 20", DialectVersion: dlc}
+			options := &kv.FTAggregateOptions{Filter: "@name=='foo' && @age < 20", DialectVersion: dlc}
 			res, err := client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res.Total).To(Or(BeEquivalentTo(2), BeEquivalentTo(1)))
 			Expect(res.Rows[0].Fields["name"]).To(BeEquivalentTo("foo"))
 
-			options = &redis.FTAggregateOptions{Filter: "@age > 15", DialectVersion: dlc, SortBy: []redis.FTAggregateSortBy{{FieldName: "@age"}}}
+			options = &kv.FTAggregateOptions{Filter: "@age > 15", DialectVersion: dlc, SortBy: []kv.FTAggregateSortBy{{FieldName: "@age"}}}
 			res, err = client.FTAggregateWithArgs(ctx, "idx1", "*", options).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res.Total).To(BeEquivalentTo(2))
@@ -830,17 +830,17 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return only the base query when options is nil", Label("search", "ftaggregate"), func() {
-		args, err := redis.FTAggregateQuery("testQuery", nil)
+		args, err := kv.FTAggregateQuery("testQuery", nil)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(args).To(Equal(redis.AggregateQuery{"testQuery"}))
+		Expect(args).To(Equal(kv.AggregateQuery{"testQuery"}))
 	})
 
 	It("should include VERBATIM and SCORER when options are set", Label("search", "ftaggregate"), func() {
-		options := &redis.FTAggregateOptions{
+		options := &kv.FTAggregateOptions{
 			Verbatim: true,
 			Scorer:   "BM25",
 		}
-		args, err := redis.FTAggregateQuery("testQuery", options)
+		args, err := kv.FTAggregateQuery("testQuery", options)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(args[0]).To(Equal("testQuery"))
 		Expect(args).To(ContainElement("VERBATIM"))
@@ -849,32 +849,32 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should include ADDSCORES when AddScores is true", Label("search", "ftaggregate"), func() {
-		options := &redis.FTAggregateOptions{
+		options := &kv.FTAggregateOptions{
 			AddScores: true,
 		}
-		args, err := redis.FTAggregateQuery("q", options)
+		args, err := kv.FTAggregateQuery("q", options)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(args).To(ContainElement("ADDSCORES"))
 	})
 
 	It("should include LOADALL when LoadAll is true", Label("search", "ftaggregate"), func() {
-		options := &redis.FTAggregateOptions{
+		options := &kv.FTAggregateOptions{
 			LoadAll: true,
 		}
-		args, err := redis.FTAggregateQuery("q", options)
+		args, err := kv.FTAggregateQuery("q", options)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(args).To(ContainElement("LOAD"))
 		Expect(args).To(ContainElement("*"))
 	})
 
 	It("should include LOAD when Load is provided", Label("search", "ftaggregate"), func() {
-		options := &redis.FTAggregateOptions{
-			Load: []redis.FTAggregateLoad{
+		options := &kv.FTAggregateOptions{
+			Load: []kv.FTAggregateLoad{
 				{Field: "field1", As: "alias1"},
 				{Field: "field2"},
 			},
 		}
-		args, err := redis.FTAggregateQuery("q", options)
+		args, err := kv.FTAggregateQuery("q", options)
 		Expect(err).NotTo(HaveOccurred())
 		// Verify LOAD options related arguments
 		Expect(args).To(ContainElement("LOAD"))
@@ -885,10 +885,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should include TIMEOUT when Timeout > 0", Label("search", "ftaggregate"), func() {
-		options := &redis.FTAggregateOptions{
+		options := &kv.FTAggregateOptions{
 			Timeout: 500,
 		}
-		args, err := redis.FTAggregateQuery("q", options)
+		args, err := kv.FTAggregateQuery("q", options)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(args).To(ContainElement("TIMEOUT"))
 		found := false
@@ -905,8 +905,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	It("should FTSearch SkipInitialScan", Label("search", "ftsearch"), func() {
 		client.HSet(ctx, "doc1", "foo", "bar")
 
-		text1 := &redis.FieldSchema{FieldName: "foo", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{SkipInitialScan: true}, text1).Result()
+		text1 := &kv.FieldSchema{FieldName: "foo", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{SkipInitialScan: true}, text1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -918,8 +918,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTCreate json", Label("search", "ftcreate"), func() {
 
-		text1 := &redis.FieldSchema{FieldName: "$.name", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnJSON: true, Prefix: []interface{}{"king:"}}, text1).Result()
+		text1 := &kv.FieldSchema{FieldName: "$.name", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnJSON: true, Prefix: []interface{}{"king:"}}, text1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -936,16 +936,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTCreate json fields as names", Label("search", "ftcreate"), func() {
 
-		text1 := &redis.FieldSchema{FieldName: "$.name", FieldType: redis.SearchFieldTypeText, As: "name"}
-		num1 := &redis.FieldSchema{FieldName: "$.age", FieldType: redis.SearchFieldTypeNumeric, As: "just_a_number"}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnJSON: true}, text1, num1).Result()
+		text1 := &kv.FieldSchema{FieldName: "$.name", FieldType: kv.SearchFieldTypeText, As: "name"}
+		num1 := &kv.FieldSchema{FieldName: "$.age", FieldType: kv.SearchFieldTypeNumeric, As: "just_a_number"}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnJSON: true}, text1, num1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 
 		client.JSONSet(ctx, "doc:1", "$", `{"name": "Jon", "age": 25}`)
 
-		res, err := client.FTSearchWithArgs(ctx, "idx1", "Jon", &redis.FTSearchOptions{Return: []redis.FTSearchReturn{{FieldName: "name"}, {FieldName: "just_a_number"}}}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "idx1", "Jon", &kv.FTSearchOptions{Return: []kv.FTSearchReturn{{FieldName: "name"}, {FieldName: "just_a_number"}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Total).To(BeEquivalentTo(1))
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("doc:1"))
@@ -955,8 +955,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTCreate CaseSensitive", Label("search", "ftcreate"), func() {
 
-		tag1 := &redis.FieldSchema{FieldName: "t", FieldType: redis.SearchFieldTypeTag, CaseSensitive: false}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, tag1).Result()
+		tag1 := &kv.FieldSchema{FieldName: "t", FieldType: kv.SearchFieldTypeTag, CaseSensitive: false}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, tag1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -974,8 +974,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resDrop).To(BeEquivalentTo("OK"))
 
-		tag2 := &redis.FieldSchema{FieldName: "t", FieldType: redis.SearchFieldTypeTag, CaseSensitive: true}
-		val, err = client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, tag2).Result()
+		tag2 := &kv.FieldSchema{FieldName: "t", FieldType: kv.SearchFieldTypeTag, CaseSensitive: true}
+		val, err = client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, tag2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -992,20 +992,20 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resJson).To(BeEquivalentTo("OK"))
 
-		text1 := &redis.FieldSchema{FieldName: "$.t", FieldType: redis.SearchFieldTypeText}
-		num1 := &redis.FieldSchema{FieldName: "$.flt", FieldType: redis.SearchFieldTypeNumeric}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnJSON: true}, text1, num1).Result()
+		text1 := &kv.FieldSchema{FieldName: "$.t", FieldType: kv.SearchFieldTypeText}
+		num1 := &kv.FieldSchema{FieldName: "$.flt", FieldType: kv.SearchFieldTypeNumeric}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnJSON: true}, text1, num1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 
-		res, err := client.FTSearchWithArgs(ctx, "idx1", "*", &redis.FTSearchOptions{Return: []redis.FTSearchReturn{{FieldName: "$.t", As: "txt"}}}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "idx1", "*", &kv.FTSearchOptions{Return: []kv.FTSearchReturn{{FieldName: "$.t", As: "txt"}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Total).To(BeEquivalentTo(1))
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("doc:1"))
 		Expect(res.Docs[0].Fields["txt"]).To(BeEquivalentTo("riceratops"))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "*", &redis.FTSearchOptions{Return: []redis.FTSearchReturn{{FieldName: "$.t2", As: "txt"}}}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "*", &kv.FTSearchOptions{Return: []kv.FTSearchReturn{{FieldName: "$.t2", As: "txt"}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Total).To(BeEquivalentTo(1))
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("doc:1"))
@@ -1014,24 +1014,24 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTSynUpdate", Label("search", "ftsynupdate"), func() {
 
-		text1 := &redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "body", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnHash: true}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "body", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnHash: true}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 
-		resSynUpdate, err := client.FTSynUpdateWithArgs(ctx, "idx1", "id1", &redis.FTSynUpdateOptions{SkipInitialScan: true}, []interface{}{"boy", "child", "offspring"}).Result()
+		resSynUpdate, err := client.FTSynUpdateWithArgs(ctx, "idx1", "id1", &kv.FTSynUpdateOptions{SkipInitialScan: true}, []interface{}{"boy", "child", "offspring"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resSynUpdate).To(BeEquivalentTo("OK"))
 		client.HSet(ctx, "doc1", "title", "he is a baby", "body", "this is a test")
 
-		resSynUpdate, err = client.FTSynUpdateWithArgs(ctx, "idx1", "id1", &redis.FTSynUpdateOptions{SkipInitialScan: true}, []interface{}{"baby"}).Result()
+		resSynUpdate, err = client.FTSynUpdateWithArgs(ctx, "idx1", "id1", &kv.FTSynUpdateOptions{SkipInitialScan: true}, []interface{}{"baby"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resSynUpdate).To(BeEquivalentTo("OK"))
 		client.HSet(ctx, "doc2", "title", "he is another baby", "body", "another test")
 
-		res, err := client.FTSearchWithArgs(ctx, "idx1", "child", &redis.FTSearchOptions{Expander: "SYNONYM"}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "idx1", "child", &kv.FTSearchOptions{Expander: "SYNONYM"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("doc2"))
 		Expect(res.Docs[0].Fields["title"]).To(BeEquivalentTo("he is another baby"))
@@ -1040,9 +1040,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTSynDump", Label("search", "ftsyndump"), func() {
 
-		text1 := &redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "body", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnHash: true}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "body", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnHash: true}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1078,9 +1078,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTCreate json with alias", Label("search", "ftcreate"), func() {
 
-		text1 := &redis.FieldSchema{FieldName: "$.name", FieldType: redis.SearchFieldTypeText, As: "name"}
-		num1 := &redis.FieldSchema{FieldName: "$.num", FieldType: redis.SearchFieldTypeNumeric, As: "num"}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnJSON: true, Prefix: []interface{}{"king:"}}, text1, num1).Result()
+		text1 := &kv.FieldSchema{FieldName: "$.name", FieldType: kv.SearchFieldTypeText, As: "name"}
+		num1 := &kv.FieldSchema{FieldName: "$.num", FieldType: kv.SearchFieldTypeNumeric, As: "num"}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnJSON: true, Prefix: []interface{}{"king:"}}, text1, num1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1103,8 +1103,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTCreate json with multipath", Label("search", "ftcreate"), func() {
 
-		tag1 := &redis.FieldSchema{FieldName: "$..name", FieldType: redis.SearchFieldTypeTag, As: "name"}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnJSON: true, Prefix: []interface{}{"king:"}}, tag1).Result()
+		tag1 := &kv.FieldSchema{FieldName: "$..name", FieldType: kv.SearchFieldTypeTag, As: "name"}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnJSON: true, Prefix: []interface{}{"king:"}}, tag1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1120,9 +1120,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	It("should FTCreate json with jsonpath", Label("search", "ftcreate"), func() {
 
-		text1 := &redis.FieldSchema{FieldName: `$["prod:name"]`, FieldType: redis.SearchFieldTypeText, As: "name"}
-		text2 := &redis.FieldSchema{FieldName: `$.prod:name`, FieldType: redis.SearchFieldTypeText, As: "name_unsupported"}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnJSON: true}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: `$["prod:name"]`, FieldType: kv.SearchFieldTypeText, As: "name"}
+		text2 := &kv.FieldSchema{FieldName: `$.prod:name`, FieldType: kv.SearchFieldTypeText, As: "name_unsupported"}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnJSON: true}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1139,7 +1139,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Total).To(BeEquivalentTo(1))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "@name:RediSearch", &redis.FTSearchOptions{Return: []redis.FTSearchReturn{{FieldName: "name"}}}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "@name:RediSearch", &kv.FTSearchOptions{Return: []kv.FTSearchReturn{{FieldName: "name"}}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Total).To(BeEquivalentTo(1))
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("doc:1"))
@@ -1148,10 +1148,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate VECTOR", Label("search", "ftcreate"), func() {
-		hnswOptions := &redis.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"}
+		hnswOptions := &kv.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{HNSWOptions: hnswOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{HNSWOptions: hnswOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1160,9 +1160,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "b", "v", "aaaabaaa")
 		client.HSet(ctx, "c", "v", "aaaaabaa")
 
-		searchOptions := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "__v_score"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "__v_score"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
 			DialectVersion: 2,
 			Params:         map[string]interface{}{"vec": "aaaaaaaa"},
 		}
@@ -1173,10 +1173,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate VECTOR with dialect 1 ", Label("search", "ftcreate"), func() {
-		hnswOptions := &redis.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"}
+		hnswOptions := &kv.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{HNSWOptions: hnswOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{HNSWOptions: hnswOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1185,9 +1185,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "b", "v", "aaaabaaa")
 		client.HSet(ctx, "c", "v", "aaaaabaa")
 
-		searchOptions := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "v"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "v", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "v"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "v", Asc: true}},
 			Limit:          10,
 			DialectVersion: 1,
 		}
@@ -1198,10 +1198,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate VECTOR with default dialect", Label("search", "ftcreate"), func() {
-		hnswOptions := &redis.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"}
+		hnswOptions := &kv.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{HNSWOptions: hnswOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{HNSWOptions: hnswOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1210,9 +1210,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "b", "v", "aaaabaaa")
 		client.HSet(ctx, "c", "v", "aaaaabaa")
 
-		searchOptions := &redis.FTSearchOptions{
-			Return: []redis.FTSearchReturn{{FieldName: "__v_score"}},
-			SortBy: []redis.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return: []kv.FTSearchReturn{{FieldName: "__v_score"}},
+			SortBy: []kv.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
 			Params: map[string]interface{}{"vec": "aaaaaaaa"},
 		}
 		res, err := client.FTSearchWithArgs(ctx, "idx1", "*=>[KNN 2 @v $vec]", searchOptions).Result()
@@ -1222,7 +1222,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate and FTSearch text params", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1231,7 +1231,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc2", "name", "Bob")
 		client.HSet(ctx, "doc3", "name", "Carol")
 
-		res1, err := client.FTSearchWithArgs(ctx, "idx1", "@name:($name1 | $name2 )", &redis.FTSearchOptions{Params: map[string]interface{}{"name1": "Alice", "name2": "Bob"}, DialectVersion: 2}).Result()
+		res1, err := client.FTSearchWithArgs(ctx, "idx1", "@name:($name1 | $name2 )", &kv.FTSearchOptions{Params: map[string]interface{}{"name1": "Alice", "name2": "Bob"}, DialectVersion: 2}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res1.Total).To(BeEquivalentTo(int64(2)))
 		Expect(res1.Docs[0].ID).To(BeEquivalentTo("doc1"))
@@ -1240,7 +1240,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate and FTSearch numeric params", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "numval", FieldType: redis.SearchFieldTypeNumeric}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "numval", FieldType: kv.SearchFieldTypeNumeric}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1249,7 +1249,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc2", "numval", 102)
 		client.HSet(ctx, "doc3", "numval", 103)
 
-		res1, err := client.FTSearchWithArgs(ctx, "idx1", "@numval:[$min $max]", &redis.FTSearchOptions{Params: map[string]interface{}{"min": 101, "max": 102}, DialectVersion: 2}).Result()
+		res1, err := client.FTSearchWithArgs(ctx, "idx1", "@numval:[$min $max]", &kv.FTSearchOptions{Params: map[string]interface{}{"min": 101, "max": 102}, DialectVersion: 2}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res1.Total).To(BeEquivalentTo(int64(2)))
 		Expect(res1.Docs[0].ID).To(BeEquivalentTo("doc1"))
@@ -1258,7 +1258,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate and FTSearch geo params", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "g", FieldType: redis.SearchFieldTypeGeo}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "g", FieldType: kv.SearchFieldTypeGeo}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1267,7 +1267,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc2", "g", "29.69350, 34.94737")
 		client.HSet(ctx, "doc3", "g", "29.68746, 34.94882")
 
-		res1, err := client.FTSearchWithArgs(ctx, "idx1", "@g:[$lon $lat $radius $units]", &redis.FTSearchOptions{Params: map[string]interface{}{"lat": "34.95126", "lon": "29.69465", "radius": 1000, "units": "km"}, DialectVersion: 2}).Result()
+		res1, err := client.FTSearchWithArgs(ctx, "idx1", "@g:[$lon $lat $radius $units]", &kv.FTSearchOptions{Params: map[string]interface{}{"lat": "34.95126", "lon": "29.69465", "radius": 1000, "units": "km"}, DialectVersion: 2}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res1.Total).To(BeEquivalentTo(int64(3)))
 		Expect(res1.Docs[0].ID).To(BeEquivalentTo("doc1"))
@@ -1276,7 +1276,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 	})
 
-	It("should FTConfigGet return multiple fields", Label("search", "NonRedisEnterprise"), func() {
+	It("should FTConfigGet return multiple fields", Label("search", "NonKVEnterprise"), func() {
 		res, err := client.FTConfigSet(ctx, "DEFAULT_DIALECT", "1").Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(BeEquivalentTo("OK"))
@@ -1294,7 +1294,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(defDialect).To(BeEquivalentTo(map[string]interface{}{"DEFAULT_DIALECT": "2"}))
 	})
 
-	It("should FTConfigSet and FTConfigGet dialect", Label("search", "ftconfigget", "ftconfigset", "NonRedisEnterprise"), func() {
+	It("should FTConfigSet and FTConfigGet dialect", Label("search", "ftconfigget", "ftconfigset", "NonKVEnterprise"), func() {
 		res, err := client.FTConfigSet(ctx, "DEFAULT_DIALECT", "1").Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(BeEquivalentTo("OK"))
@@ -1313,7 +1313,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate WithSuffixtrie", Label("search", "ftcreate", "ftinfo"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1327,7 +1327,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(resDrop).To(BeEquivalentTo("OK"))
 
 		// create withsuffixtrie index - text field
-		val, err = client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText, WithSuffixtrie: true}).Result()
+		val, err = client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText, WithSuffixtrie: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1341,7 +1341,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(resDrop).To(BeEquivalentTo("OK"))
 
 		// create withsuffixtrie index - tag field
-		val, err = client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "t", FieldType: redis.SearchFieldTypeTag, WithSuffixtrie: true}).Result()
+		val, err = client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "t", FieldType: kv.SearchFieldTypeTag, WithSuffixtrie: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1351,22 +1351,22 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(res.Attributes[0].WithSuffixtrie).To(BeTrue())
 	})
 
-	It("should test dialect 4", Label("search", "ftcreate", "ftsearch", "NonRedisEnterprise"), func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{
+	It("should test dialect 4", Label("search", "ftcreate", "ftsearch", "NonKVEnterprise"), func() {
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{
 			Prefix: []interface{}{"resource:"},
-		}, &redis.FieldSchema{
+		}, &kv.FieldSchema{
 			FieldName: "uuid",
-			FieldType: redis.SearchFieldTypeTag,
-		}, &redis.FieldSchema{
+			FieldType: kv.SearchFieldTypeTag,
+		}, &kv.FieldSchema{
 			FieldName: "tags",
-			FieldType: redis.SearchFieldTypeTag,
-		}, &redis.FieldSchema{
+			FieldType: kv.SearchFieldTypeTag,
+		}, &kv.FieldSchema{
 			FieldName: "description",
-			FieldType: redis.SearchFieldTypeText,
-		}, &redis.FieldSchema{
+			FieldType: kv.SearchFieldTypeText,
+		}, &kv.FieldSchema{
 			FieldName: "rating",
-			FieldType: redis.SearchFieldTypeNumeric,
+			FieldType: kv.SearchFieldTypeNumeric,
 		}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -1385,7 +1385,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		})
 
 		res, err := client.FTSearchWithArgs(ctx, "idx1", "@uuid:{$uuid}",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 2,
 				Params:         map[string]interface{}{"uuid": "123e4567-e89b-12d3-a456-426614174000"},
 			}).Result()
@@ -1394,7 +1394,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("resource:1"))
 
 		res, err = client.FTSearchWithArgs(ctx, "idx1", "@uuid:{$uuid}",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 4,
 				Params:         map[string]interface{}{"uuid": "123e4567-e89b-12d3-a456-426614174000"},
 			}).Result()
@@ -1409,21 +1409,21 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		})
 
 		// Create the index
-		ftCreateOptions := &redis.FTCreateOptions{
+		ftCreateOptions := &kv.FTCreateOptions{
 			Prefix: []interface{}{"test:"},
 		}
-		schema := []*redis.FieldSchema{
+		schema := []*kv.FieldSchema{
 			{
 				FieldName: "uuid",
-				FieldType: redis.SearchFieldTypeTag,
+				FieldType: kv.SearchFieldTypeTag,
 			},
 			{
 				FieldName: "email",
-				FieldType: redis.SearchFieldTypeTag,
+				FieldType: kv.SearchFieldTypeTag,
 			},
 			{
 				FieldName: "num",
-				FieldType: redis.SearchFieldTypeNumeric,
+				FieldType: kv.SearchFieldTypeNumeric,
 			},
 		}
 
@@ -1432,7 +1432,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(val).To(Equal("OK"))
 		WaitForIndexing(client, "idx_hash")
 
-		ftSearchOptions := &redis.FTSearchOptions{
+		ftSearchOptions := &kv.FTSearchOptions{
 			DialectVersion: 4,
 			Params: map[string]interface{}{
 				"uuid":  "3d3586fe-0416-4572-8ce",
@@ -1458,7 +1458,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate GeoShape", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "geom", FieldType: redis.SearchFieldTypeGeoShape, GeoShapeFieldType: "FLAT"}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "geom", FieldType: kv.SearchFieldTypeGeoShape, GeoShapeFieldType: "FLAT"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1467,7 +1467,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "large", "geom", "POLYGON((1 1, 1 200, 200 200, 200 1, 1 1))")
 
 		res1, err := client.FTSearchWithArgs(ctx, "idx1", "@geom:[WITHIN $poly]",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 3,
 				Params:         map[string]interface{}{"poly": "POLYGON((0 0, 0 150, 150 150, 150 0, 0 0))"},
 			}).Result()
@@ -1476,7 +1476,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(res1.Docs[0].ID).To(BeEquivalentTo("small"))
 
 		res2, err := client.FTSearchWithArgs(ctx, "idx1", "@geom:[CONTAINS $poly]",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 3,
 				Params:         map[string]interface{}{"poly": "POLYGON((2 2, 2 50, 50 50, 50 2, 2 2))"},
 			}).Result()
@@ -1484,22 +1484,22 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(res2.Total).To(BeEquivalentTo(int64(2)))
 	})
 
-	It("should create search index with FLOAT16 and BFLOAT16 vectors", Label("search", "ftcreate", "NonRedisEnterprise"), func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
-		val, err := client.FTCreate(ctx, "index", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "float16", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{FlatOptions: &redis.FTFlatOptions{Type: "FLOAT16", Dim: 768, DistanceMetric: "COSINE"}}},
-			&redis.FieldSchema{FieldName: "bfloat16", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{FlatOptions: &redis.FTFlatOptions{Type: "BFLOAT16", Dim: 768, DistanceMetric: "COSINE"}}},
+	It("should create search index with FLOAT16 and BFLOAT16 vectors", Label("search", "ftcreate", "NonKVEnterprise"), func() {
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
+		val, err := client.FTCreate(ctx, "index", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "float16", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{FlatOptions: &kv.FTFlatOptions{Type: "FLOAT16", Dim: 768, DistanceMetric: "COSINE"}}},
+			&kv.FieldSchema{FieldName: "bfloat16", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{FlatOptions: &kv.FTFlatOptions{Type: "BFLOAT16", Dim: 768, DistanceMetric: "COSINE"}}},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "index")
 	})
 
-	It("should test geoshapes query intersects and disjoint", Label("NonRedisEnterprise"), func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
-		_, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{
+	It("should test geoshapes query intersects and disjoint", Label("NonKVEnterprise"), func() {
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
+		_, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{
 			FieldName:         "g",
-			FieldType:         redis.SearchFieldTypeGeoShape,
+			FieldType:         kv.SearchFieldTypeGeoShape,
 			GeoShapeFieldType: "FLAT",
 		}).Result()
 		Expect(err).NotTo(HaveOccurred())
@@ -1510,7 +1510,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc_polygon2", "g", "POLYGON ((60 60, 65 75, 70 70, 65 55, 60 60))")
 
 		intersection, err := client.FTSearchWithArgs(ctx, "idx1", "@g:[intersects $shape]",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 3,
 				Params:         map[string]interface{}{"shape": "POLYGON((15 15, 75 15, 50 70, 20 40, 15 15))"},
 			}).Result()
@@ -1518,7 +1518,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_assert_geosearch_result(&intersection, []string{"doc_point2", "doc_polygon1"})
 
 		disjunction, err := client.FTSearchWithArgs(ctx, "idx1", "@g:[disjoint $shape]",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 3,
 				Params:         map[string]interface{}{"shape": "POLYGON((15 15, 75 15, 50 70, 20 40, 15 15))"},
 			}).Result()
@@ -1527,9 +1527,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test geoshapes query contains and within", func() {
-		_, err := client.FTCreate(ctx, "idx2", &redis.FTCreateOptions{}, &redis.FieldSchema{
+		_, err := client.FTCreate(ctx, "idx2", &kv.FTCreateOptions{}, &kv.FieldSchema{
 			FieldName:         "g",
-			FieldType:         redis.SearchFieldTypeGeoShape,
+			FieldType:         kv.SearchFieldTypeGeoShape,
 			GeoShapeFieldType: "FLAT",
 		}).Result()
 		Expect(err).NotTo(HaveOccurred())
@@ -1540,7 +1540,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc_polygon2", "g", "POLYGON ((60 60, 65 75, 70 70, 65 55, 60 60))")
 
 		containsA, err := client.FTSearchWithArgs(ctx, "idx2", "@g:[contains $shape]",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 3,
 				Params:         map[string]interface{}{"shape": "POINT(25 25)"},
 			}).Result()
@@ -1548,7 +1548,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_assert_geosearch_result(&containsA, []string{"doc_polygon1"})
 
 		containsB, err := client.FTSearchWithArgs(ctx, "idx2", "@g:[contains $shape]",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 3,
 				Params:         map[string]interface{}{"shape": "POLYGON((24 24, 24 26, 25 25, 24 24))"},
 			}).Result()
@@ -1556,7 +1556,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_assert_geosearch_result(&containsB, []string{"doc_polygon1"})
 
 		within, err := client.FTSearchWithArgs(ctx, "idx2", "@g:[within $shape]",
-			&redis.FTSearchOptions{
+			&kv.FTSearchOptions{
 				DialectVersion: 3,
 				Params:         map[string]interface{}{"shape": "POLYGON((15 15, 75 15, 50 70, 20 40, 15 15))"},
 			}).Result()
@@ -1564,12 +1564,12 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_assert_geosearch_result(&within, []string{"doc_point2", "doc_polygon1"})
 	})
 
-	It("should search missing fields", Label("search", "ftcreate", "ftsearch", "NonRedisEnterprise"), func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{Prefix: []interface{}{"property:"}},
-			&redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText, Sortable: true},
-			&redis.FieldSchema{FieldName: "features", FieldType: redis.SearchFieldTypeTag, IndexMissing: true},
-			&redis.FieldSchema{FieldName: "description", FieldType: redis.SearchFieldTypeText, IndexMissing: true}).Result()
+	It("should search missing fields", Label("search", "ftcreate", "ftsearch", "NonKVEnterprise"), func() {
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{Prefix: []interface{}{"property:"}},
+			&kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText, Sortable: true},
+			&kv.FieldSchema{FieldName: "features", FieldType: kv.SearchFieldTypeTag, IndexMissing: true},
+			&kv.FieldSchema{FieldName: "description", FieldType: kv.SearchFieldTypeText, IndexMissing: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1590,31 +1590,31 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			"features": "beachfront,sun deck",
 		})
 
-		res, err := client.FTSearchWithArgs(ctx, "idx1", "ismissing(@features)", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "idx1", "ismissing(@features)", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:2"))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "-ismissing(@features)", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "-ismissing(@features)", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:1"))
 		Expect(res.Docs[1].ID).To(BeEquivalentTo("property:3"))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "ismissing(@description)", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "ismissing(@description)", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:3"))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "-ismissing(@description)", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "-ismissing(@description)", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:1"))
 		Expect(res.Docs[1].ID).To(BeEquivalentTo("property:2"))
 	})
 
-	It("should search empty fields", Label("search", "ftcreate", "ftsearch", "NonRedisEnterprise"), func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{Prefix: []interface{}{"property:"}},
-			&redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText, Sortable: true},
-			&redis.FieldSchema{FieldName: "features", FieldType: redis.SearchFieldTypeTag, IndexEmpty: true},
-			&redis.FieldSchema{FieldName: "description", FieldType: redis.SearchFieldTypeText, IndexEmpty: true}).Result()
+	It("should search empty fields", Label("search", "ftcreate", "ftsearch", "NonKVEnterprise"), func() {
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{Prefix: []interface{}{"property:"}},
+			&kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText, Sortable: true},
+			&kv.FieldSchema{FieldName: "features", FieldType: kv.SearchFieldTypeTag, IndexEmpty: true},
+			&kv.FieldSchema{FieldName: "description", FieldType: kv.SearchFieldTypeText, IndexEmpty: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1637,36 +1637,36 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			"description": "",
 		})
 
-		res, err := client.FTSearchWithArgs(ctx, "idx1", "@features:{\"\"}", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err := client.FTSearchWithArgs(ctx, "idx1", "@features:{\"\"}", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:2"))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "-@features:{\"\"}", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "-@features:{\"\"}", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:1"))
 		Expect(res.Docs[1].ID).To(BeEquivalentTo("property:3"))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "@description:''", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "@description:''", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:3"))
 
-		res, err = client.FTSearchWithArgs(ctx, "idx1", "-@description:''", &redis.FTSearchOptions{DialectVersion: 4, Return: []redis.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
+		res, err = client.FTSearchWithArgs(ctx, "idx1", "-@description:''", &kv.FTSearchOptions{DialectVersion: 4, Return: []kv.FTSearchReturn{{FieldName: "id"}}, NoContent: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Docs[0].ID).To(BeEquivalentTo("property:1"))
 		Expect(res.Docs[1].ID).To(BeEquivalentTo("property:2"))
 	})
 
 	It("should FTCreate VECTOR with int8 and uint8 types", Label("search", "ftcreate"), func() {
-		SkipBeforeRedisVersion(7.9, "doesn't work with older redis")
+		SkipBeforeKVVersion(7.9, "doesn't work with older kv")
 		// Define INT8 vector field
-		hnswOptionsInt8 := &redis.FTHNSWOptions{
+		hnswOptionsInt8 := &kv.FTHNSWOptions{
 			Type:           "INT8",
 			Dim:            2,
 			DistanceMetric: "L2",
 		}
 
 		// Define UINT8 vector field
-		hnswOptionsUint8 := &redis.FTHNSWOptions{
+		hnswOptionsUint8 := &kv.FTHNSWOptions{
 			Type:           "UINT8",
 			Dim:            2,
 			DistanceMetric: "L2",
@@ -1674,9 +1674,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		// Create index with INT8 and UINT8 vector fields
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "int8_vector", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{HNSWOptions: hnswOptionsInt8}},
-			&redis.FieldSchema{FieldName: "uint8_vector", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{HNSWOptions: hnswOptionsUint8}},
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "int8_vector", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{HNSWOptions: hnswOptionsInt8}},
+			&kv.FieldSchema{FieldName: "uint8_vector", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{HNSWOptions: hnswOptionsUint8}},
 		).Result()
 
 		Expect(err).NotTo(HaveOccurred())
@@ -1688,9 +1688,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc2", "int8_vector", "\x03\x04", "uint8_vector", "\x03\x04")
 
 		// Perform KNN search on INT8 vector
-		searchOptionsInt8 := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "int8_vector"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "int8_vector", Asc: true}},
+		searchOptionsInt8 := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "int8_vector"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "int8_vector", Asc: true}},
 			DialectVersion: 2,
 			Params:         map[string]interface{}{"vec": "\x01\x02"},
 		}
@@ -1700,9 +1700,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(resInt8.Docs[0].ID).To(BeEquivalentTo("doc1"))
 
 		// Perform KNN search on UINT8 vector
-		searchOptionsUint8 := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "uint8_vector"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "uint8_vector", Asc: true}},
+		searchOptionsUint8 := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "uint8_vector"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "uint8_vector", Asc: true}},
 			DialectVersion: 2,
 			Params:         map[string]interface{}{"vec": "\x01\x02"},
 		}
@@ -1713,16 +1713,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return special float scores in FT.SEARCH vecsim", Label("search", "ftsearch", "vecsim"), func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 
-		vecField := &redis.FTFlatOptions{
+		vecField := &kv.FTFlatOptions{
 			Type:           "FLOAT32",
 			Dim:            2,
 			DistanceMetric: "IP",
 		}
 		_, err := client.FTCreate(ctx, "idx_vec",
-			&redis.FTCreateOptions{OnHash: true, Prefix: []interface{}{"doc:"}},
-			&redis.FieldSchema{FieldName: "vector", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{FlatOptions: vecField}}).Result()
+			&kv.FTCreateOptions{OnHash: true, Prefix: []interface{}{"doc:"}},
+			&kv.FieldSchema{FieldName: "vector", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{FlatOptions: vecField}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		WaitForIndexing(client, "idx_vec")
 
@@ -1736,7 +1736,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc:3", "vector", encodeFloat32Vector(nanVec))
 		client.HSet(ctx, "doc:4", "vector", encodeFloat32Vector(negNanVec))
 
-		searchOptions := &redis.FTSearchOptions{WithScores: true, Params: map[string]interface{}{"vec": encodeFloat32Vector(bigPos)}}
+		searchOptions := &kv.FTSearchOptions{WithScores: true, Params: map[string]interface{}{"vec": encodeFloat32Vector(bigPos)}}
 		res, err := client.FTSearchWithArgs(ctx, "idx_vec", "*=>[KNN 4 @vector $vec]", searchOptions).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Total).To(BeEquivalentTo(4))
@@ -1763,15 +1763,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate VECTOR with VAMANA algorithm - basic", Label("search", "ftcreate"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            2,
 			DistanceMetric: "L2",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1780,9 +1780,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "b", "v", "aaaabaaa")
 		client.HSet(ctx, "c", "v", "aaaaabaa")
 
-		searchOptions := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "__v_score"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "__v_score"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
 			DialectVersion: 2,
 			Params:         map[string]interface{}{"vec": "aaaaaaaa"},
 		}
@@ -1793,8 +1793,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should FTCreate VECTOR with VAMANA algorithm - with compression", Label("search", "ftcreate"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:              "FLOAT16",
 			Dim:               256,
 			DistanceMetric:    "COSINE",
@@ -1802,16 +1802,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold: 10240,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 	})
 
 	It("should FTCreate VECTOR with VAMANA algorithm - advanced parameters", Label("search", "ftcreate"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:                   "FLOAT32",
 			Dim:                    512,
 			DistanceMetric:         "IP",
@@ -1823,8 +1823,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold:      20480,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1833,8 +1833,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	It("should fail FTCreate VECTOR with VAMANA - missing required parameters", Label("search", "ftcreate"), func() {
 		// Test missing Type
 		cmd := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: &redis.FTVamanaOptions{
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: &kv.FTVamanaOptions{
 				Dim:            2,
 				DistanceMetric: "L2",
 			}}})
@@ -1843,8 +1843,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		// Test missing Dim
 		cmd = client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: &redis.FTVamanaOptions{
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: &kv.FTVamanaOptions{
 				Type:           "FLOAT32",
 				DistanceMetric: "L2",
 			}}})
@@ -1853,8 +1853,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		// Test missing DistanceMetric
 		cmd = client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: &redis.FTVamanaOptions{
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: &kv.FTVamanaOptions{
 				Type: "FLOAT32",
 				Dim:  2,
 			}}})
@@ -1865,35 +1865,35 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	It("should fail FTCreate VECTOR with multiple vector options", Label("search", "ftcreate"), func() {
 		// Test VAMANA + HNSW
 		cmd := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{
-				VamanaOptions: &redis.FTVamanaOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
-				HNSWOptions:   &redis.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{
+				VamanaOptions: &kv.FTVamanaOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
+				HNSWOptions:   &kv.FTHNSWOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
 			}})
 		Expect(cmd.Err()).To(HaveOccurred())
 		Expect(cmd.Err().Error()).To(ContainSubstring("VectorArgs must have exactly one of FlatOptions, HNSWOptions, or VamanaOptions"))
 
 		// Test VAMANA + FLAT
 		cmd = client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{
-				VamanaOptions: &redis.FTVamanaOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
-				FlatOptions:   &redis.FTFlatOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{
+				VamanaOptions: &kv.FTVamanaOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
+				FlatOptions:   &kv.FTFlatOptions{Type: "FLOAT32", Dim: 2, DistanceMetric: "L2"},
 			}})
 		Expect(cmd.Err()).To(HaveOccurred())
 		Expect(cmd.Err().Error()).To(ContainSubstring("VectorArgs must have exactly one of FlatOptions, HNSWOptions, or VamanaOptions"))
 	})
 
 	It("should test VAMANA L2 distance metric", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            3,
 			DistanceMetric: "L2",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1910,9 +1910,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "score"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "score"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "score", Asc: true}},
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -1924,15 +1924,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA COSINE distance metric", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            3,
 			DistanceMetric: "COSINE",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1948,9 +1948,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "score"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "score"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "score", Asc: true}},
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -1962,15 +1962,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA IP distance metric", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            3,
 			DistanceMetric: "IP",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -1986,9 +1986,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "score"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "score"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "score", Asc: true}},
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2000,15 +2000,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA basic functionality", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            4,
 			DistanceMetric: "L2",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2024,9 +2024,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
-			Return:         []redis.FTSearchReturn{{FieldName: "__v_score"}},
-			SortBy:         []redis.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return:         []kv.FTSearchReturn{{FieldName: "__v_score"}},
+			SortBy:         []kv.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
 			DialectVersion: 2,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
 		}
@@ -2038,15 +2038,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA FLOAT16 type", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT16",
 			Dim:            4,
 			DistanceMetric: "L2",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2061,7 +2061,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat16Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat16Vector(vectors[0])},
@@ -2073,15 +2073,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA FLOAT32 type", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            4,
 			DistanceMetric: "L2",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2096,7 +2096,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2108,15 +2108,15 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA with default dialect", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            2,
 			DistanceMetric: "L2",
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2125,9 +2125,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "b", "v", "aaaabaaa")
 		client.HSet(ctx, "c", "v", "aaaaabaa")
 
-		searchOptions := &redis.FTSearchOptions{
-			Return: []redis.FTSearchReturn{{FieldName: "__v_score"}},
-			SortBy: []redis.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
+		searchOptions := &kv.FTSearchOptions{
+			Return: []kv.FTSearchReturn{{FieldName: "__v_score"}},
+			SortBy: []kv.FTSearchSortBy{{FieldName: "__v_score", Asc: true}},
 			Params: map[string]interface{}{"vec": "aaaaaaaa"},
 		}
 		res, err := client.FTSearchWithArgs(ctx, "idx1", "*=>[KNN 2 @v $vec]", searchOptions).Result()
@@ -2136,8 +2136,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA with LVQ8 compression", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:              "FLOAT32",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -2145,8 +2145,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold: 1024,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2161,7 +2161,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2173,10 +2173,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA compression with both vector types", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
 
 		// Test FLOAT16 with LVQ8
-		vamanaOptions16 := &redis.FTVamanaOptions{
+		vamanaOptions16 := &kv.FTVamanaOptions{
 			Type:              "FLOAT16",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -2184,14 +2184,14 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold: 1024,
 		}
 		val, err := client.FTCreate(ctx, "idx16",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v16", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions16}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v16", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions16}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx16")
 
 		// Test FLOAT32 with LVQ8
-		vamanaOptions32 := &redis.FTVamanaOptions{
+		vamanaOptions32 := &kv.FTVamanaOptions{
 			Type:              "FLOAT32",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -2199,8 +2199,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold: 1024,
 		}
 		val, err = client.FTCreate(ctx, "idx32",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v32", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions32}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v32", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions32}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx32")
@@ -2218,7 +2218,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		queryVec := []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0}
 
 		// Test FLOAT16 index
-		searchOptions16 := &redis.FTSearchOptions{
+		searchOptions16 := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat16Vector(queryVec)},
@@ -2228,7 +2228,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(res16.Total).To(BeEquivalentTo(3))
 
 		// Test FLOAT32 index
-		searchOptions32 := &redis.FTSearchOptions{
+		searchOptions32 := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(queryVec)},
@@ -2239,16 +2239,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA construction window size", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:                   "FLOAT32",
 			Dim:                    6,
 			DistanceMetric:         "L2",
 			ConstructionWindowSize: 300,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2263,7 +2263,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2275,16 +2275,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA graph max degree", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:           "FLOAT32",
 			Dim:            6,
 			DistanceMetric: "COSINE",
 			GraphMaxDegree: 64,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2299,7 +2299,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2311,16 +2311,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA search window size", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:             "FLOAT32",
 			Dim:              6,
 			DistanceMetric:   "L2",
 			SearchWindowSize: 20,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2335,7 +2335,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2347,8 +2347,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA all advanced parameters", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:                   "FLOAT32",
 			Dim:                    8,
 			DistanceMetric:         "L2",
@@ -2360,8 +2360,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold:      1024,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2376,7 +2376,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2388,10 +2388,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should fail when using a non-zero offset with a zero limit", Label("search", "ftsearch"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "testIdx", &redis.FTCreateOptions{}, &redis.FieldSchema{
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "testIdx", &kv.FTCreateOptions{}, &kv.FieldSchema{
 			FieldName: "txt",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2400,7 +2400,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		client.HSet(ctx, "doc1", "txt", "hello world")
 
 		// Attempt to search with a non-zero offset and zero limit.
-		_, err = client.FTSearchWithArgs(ctx, "testIdx", "hello", &redis.FTSearchOptions{
+		_, err = client.FTSearchWithArgs(ctx, "testIdx", "hello", &kv.FTSearchOptions{
 			LimitOffset: 5,
 			Limit:       0,
 		}).Result()
@@ -2408,10 +2408,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should evaluate exponentiation precedence in APPLY expressions correctly", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "txns", &redis.FTCreateOptions{}, &redis.FieldSchema{
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "txns", &kv.FTCreateOptions{}, &kv.FieldSchema{
 			FieldName: "dummy",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2419,8 +2419,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		client.HSet(ctx, "doc1", "dummy", "dummy")
 
-		correctOptions := &redis.FTAggregateOptions{
-			Apply: []redis.FTAggregateApply{
+		correctOptions := &kv.FTAggregateOptions{
+			Apply: []kv.FTAggregateApply{
 				{Field: "(2*3^2)", As: "Value"},
 			},
 			Limit:       1,
@@ -2432,10 +2432,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return a syntax error when empty strings are used for numeric parameters", Label("search", "ftsearch"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "idx", &redis.FTCreateOptions{}, &redis.FieldSchema{
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "idx", &kv.FTCreateOptions{}, &kv.FieldSchema{
 			FieldName: "n",
-			FieldType: redis.SearchFieldTypeNumeric,
+			FieldType: kv.SearchFieldTypeNumeric,
 		}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2443,8 +2443,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		client.HSet(ctx, "doc1", "n", 0)
 
-		_, err = client.FTSearchWithArgs(ctx, "idx", "*", &redis.FTSearchOptions{
-			Filters: []redis.FTSearchFilter{{
+		_, err = client.FTSearchWithArgs(ctx, "idx", "*", &kv.FTSearchOptions{
+			Filters: []kv.FTSearchFilter{{
 				FieldName: "n",
 				Min:       "",
 				Max:       "",
@@ -2455,10 +2455,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return NaN as default for AVG reducer when no numeric values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestAvg", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "n", FieldType: redis.SearchFieldTypeNumeric},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestAvg", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "n", FieldType: kv.SearchFieldTypeNumeric},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2466,13 +2466,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		client.HSet(ctx, "doc1", "grp", "g1")
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchAvg, Args: []interface{}{"@n"}, As: "avg"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchAvg, Args: []interface{}{"@n"}, As: "avg"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestAvg", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2481,10 +2481,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return 1 as default for COUNT reducer when no numeric values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestCount", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "n", FieldType: redis.SearchFieldTypeNumeric},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestCount", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "n", FieldType: kv.SearchFieldTypeNumeric},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2492,13 +2492,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		client.HSet(ctx, "doc1", "grp", "g1")
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchCount, As: "cnt"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchCount, As: "cnt"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestCount", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2507,10 +2507,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return NaN as default for SUM reducer when no numeric values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestSum", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "n", FieldType: redis.SearchFieldTypeNumeric},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestSum", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "n", FieldType: kv.SearchFieldTypeNumeric},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2518,13 +2518,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		client.HSet(ctx, "doc1", "grp", "g1")
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchSum, Args: []interface{}{"@n"}, As: "sum"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchSum, Args: []interface{}{"@n"}, As: "sum"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestSum", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2533,9 +2533,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return the full requested number of results by re-running the query when some results expire", Label("search", "ftsearch"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggExpired", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "order", FieldType: redis.SearchFieldTypeNumeric, Sortable: true},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggExpired", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "order", FieldType: kv.SearchFieldTypeNumeric, Sortable: true},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2550,8 +2550,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_, err = client.Del(ctx, "doc3", "doc7").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		options := &redis.FTSearchOptions{
-			SortBy:      []redis.FTSearchSortBy{{FieldName: "order", Asc: true}},
+		options := &kv.FTSearchOptions{
+			SortBy:      []kv.FTSearchSortBy{{FieldName: "order", Asc: true}},
 			LimitOffset: 0,
 			Limit:       10,
 		}
@@ -2566,9 +2566,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should stop processing and return an error when a timeout occurs", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTimeoutHeavy", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "n", FieldType: redis.SearchFieldTypeNumeric, Sortable: true},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTimeoutHeavy", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "n", FieldType: kv.SearchFieldTypeNumeric, Sortable: true},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2584,8 +2584,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		err = client.ConfigSet(ctx, "search-on-timeout", "fail").Err()
 		Expect(err).NotTo(HaveOccurred())
 
-		options := &redis.FTAggregateOptions{
-			SortBy:      []redis.FTAggregateSortBy{{FieldName: "@n", Desc: true}},
+		options := &kv.FTAggregateOptions{
+			SortBy:      []kv.FTAggregateSortBy{{FieldName: "@n", Desc: true}},
 			LimitOffset: 0,
 			Limit:       100000,
 			Timeout:     1, // 1 ms timeout, expected to trigger a timeout error.
@@ -2596,10 +2596,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return 0 as default for COUNT_DISTINCT reducer when no values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestCountDistinct", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "x", FieldType: redis.SearchFieldTypeText},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestCountDistinct", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "x", FieldType: kv.SearchFieldTypeText},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2607,13 +2607,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		client.HSet(ctx, "doc1", "grp", "g1")
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchCountDistinct, Args: []interface{}{"@x"}, As: "distinct_count"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchCountDistinct, Args: []interface{}{"@x"}, As: "distinct_count"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestCountDistinct", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
@@ -2622,10 +2622,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return 0 as default for COUNT_DISTINCTISH reducer when no values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestCountDistinctIsh", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "y", FieldType: redis.SearchFieldTypeText},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestCountDistinctIsh", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "y", FieldType: kv.SearchFieldTypeText},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2634,13 +2634,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_, err = client.HSet(ctx, "doc1", "grp", "g1").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchCountDistinctish, Args: []interface{}{"@y"}, As: "distinctish_count"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchCountDistinctish, Args: []interface{}{"@y"}, As: "distinctish_count"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestCountDistinctIsh", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2648,9 +2648,9 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should use BM25 as the default scorer", Label("search", "ftsearch"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "scoringTest", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "description", FieldType: redis.SearchFieldTypeText},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "scoringTest", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "description", FieldType: kv.SearchFieldTypeText},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2661,11 +2661,11 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_, err = client.HSet(ctx, "doc2", "description", "green apple").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		resDefault, err := client.FTSearchWithArgs(ctx, "scoringTest", "apple", &redis.FTSearchOptions{WithScores: true}).Result()
+		resDefault, err := client.FTSearchWithArgs(ctx, "scoringTest", "apple", &kv.FTSearchOptions{WithScores: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resDefault.Total).To(BeNumerically(">", 0))
 
-		resBM25, err := client.FTSearchWithArgs(ctx, "scoringTest", "apple", &redis.FTSearchOptions{WithScores: true, Scorer: "BM25"}).Result()
+		resBM25, err := client.FTSearchWithArgs(ctx, "scoringTest", "apple", &kv.FTSearchOptions{WithScores: true, Scorer: "BM25"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resBM25.Total).To(BeNumerically(">", 0))
 		Expect(resDefault.Total).To(BeEquivalentTo(resBM25.Total))
@@ -2674,10 +2674,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return 0 as default for STDDEV reducer when no numeric values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestStddev", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "n", FieldType: redis.SearchFieldTypeNumeric},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestStddev", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "n", FieldType: kv.SearchFieldTypeNumeric},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2686,13 +2686,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_, err = client.HSet(ctx, "doc1", "grp", "g1").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchStdDev, Args: []interface{}{"@n"}, As: "stddev"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchStdDev, Args: []interface{}{"@n"}, As: "stddev"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestStddev", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2701,10 +2701,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return NaN as default for QUANTILE reducer when no numeric values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestQuantile", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "n", FieldType: redis.SearchFieldTypeNumeric},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestQuantile", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "n", FieldType: kv.SearchFieldTypeNumeric},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2713,13 +2713,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_, err = client.HSet(ctx, "doc1", "grp", "g1").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchQuantile, Args: []interface{}{"@n", 0.5}, As: "quantile"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchQuantile, Args: []interface{}{"@n", 0.5}, As: "quantile"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestQuantile", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2727,10 +2727,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return nil as default for FIRST_VALUE reducer when no values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestFirstValue", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "t", FieldType: redis.SearchFieldTypeText},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestFirstValue", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "t", FieldType: kv.SearchFieldTypeText},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2739,13 +2739,13 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_, err = client.HSet(ctx, "doc1", "grp", "g1").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchFirstValue, Args: []interface{}{"@t"}, As: "first_val"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchFirstValue, Args: []interface{}{"@t"}, As: "first_val"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestFirstValue", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2753,16 +2753,16 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should fail to add an alias that is an existing index name", Label("search", "ftalias"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
 
-		val, err = client.FTCreate(ctx, "idx2", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "name", FieldType: redis.SearchFieldTypeText},
+		val, err = client.FTCreate(ctx, "idx2", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "name", FieldType: kv.SearchFieldTypeText},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2774,8 +2774,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test ft.search with CountOnly param", Label("search", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "txtIndex", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText},
+		val, err := client.FTCreate(ctx, "txtIndex", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2785,10 +2785,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(err).NotTo(HaveOccurred())
 		_, err = client.HSet(ctx, "doc2", "txt", "hello go").Result()
 		Expect(err).NotTo(HaveOccurred())
-		_, err = client.HSet(ctx, "doc3", "txt", "hello redis").Result()
+		_, err = client.HSet(ctx, "doc3", "txt", "hello kv").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		optsCountOnly := &redis.FTSearchOptions{
+		optsCountOnly := &kv.FTSearchOptions{
 			CountOnly:      true,
 			LimitOffset:    0,
 			Limit:          2, // even though we limit to 2, with count-only no docs are returned
@@ -2799,7 +2799,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		Expect(resCountOnly.Total).To(BeEquivalentTo(3))
 		Expect(len(resCountOnly.Docs)).To(BeEquivalentTo(0))
 
-		optsLimit := &redis.FTSearchOptions{
+		optsLimit := &kv.FTSearchOptions{
 			CountOnly:      false,
 			LimitOffset:    0,
 			Limit:          2, // we expect to get 2 documents even though total count is 3
@@ -2812,7 +2812,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should reject deprecated configuration keys", Label("search", "ftconfig"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
 		// List of deprecated configuration keys.
 		deprecatedKeys := []string{
 			"_FREE_RESOURCE_ON_THREAD",
@@ -2867,7 +2867,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 		val, err := client.ConfigGet(ctx, "*").Result()
 		Expect(err).NotTo(HaveOccurred())
-		// Since FT.CONFIG is deprecated since redis 8, use CONFIG instead with new search parameters.
+		// Since FT.CONFIG is deprecated since kv 8, use CONFIG instead with new search parameters.
 		keys := make([]string, 0, len(val))
 		for key := range val {
 			keys = append(keys, key)
@@ -2876,10 +2876,10 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should return INF for MIN reducer and -INF for MAX reducer when no numeric values are present", Label("search", "ftaggregate"), func() {
-		SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
-		val, err := client.FTCreate(ctx, "aggTestMinMax", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "grp", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "n", FieldType: redis.SearchFieldTypeNumeric},
+		SkipBeforeKVVersion(7.9, "requires KV 8.x")
+		val, err := client.FTCreate(ctx, "aggTestMinMax", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "grp", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "n", FieldType: kv.SearchFieldTypeNumeric},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -2888,14 +2888,14 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		_, err = client.HSet(ctx, "doc1", "grp", "g1").Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		reducers := []redis.FTAggregateReducer{
-			{Reducer: redis.SearchMin, Args: []interface{}{"@n"}, As: "minValue"},
-			{Reducer: redis.SearchMax, Args: []interface{}{"@n"}, As: "maxValue"},
+		reducers := []kv.FTAggregateReducer{
+			{Reducer: kv.SearchMin, Args: []interface{}{"@n"}, As: "minValue"},
+			{Reducer: kv.SearchMax, Args: []interface{}{"@n"}, As: "maxValue"},
 		}
-		groupBy := []redis.FTAggregateGroupBy{
+		groupBy := []kv.FTAggregateGroupBy{
 			{Fields: []interface{}{"@grp"}, Reduce: reducers},
 		}
-		options := &redis.FTAggregateOptions{GroupBy: groupBy}
+		options := &kv.FTAggregateOptions{GroupBy: groupBy}
 		res, err := client.FTAggregateWithArgs(ctx, "aggTestMinMax", "*", options).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res.Rows).ToNot(BeEmpty())
@@ -2905,8 +2905,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA with LVQ4 compression", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:              "FLOAT32",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -2914,8 +2914,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold: 1024,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2930,7 +2930,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2943,8 +2943,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA with LeanVec4x8 compression and reduce parameter", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:              "FLOAT32",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -2953,8 +2953,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			ReduceDim:         4, // Reduce dimension to 4 (half of original 8)
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -2969,7 +2969,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -2982,12 +2982,12 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA compression algorithms with FLOAT16 type", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
 
 		compressionAlgorithms := []string{"LVQ4", "LVQ4x4", "LVQ4x8", "LeanVec4x8", "LeanVec8x8"}
 
 		for _, compression := range compressionAlgorithms {
-			vamanaOptions := &redis.FTVamanaOptions{
+			vamanaOptions := &kv.FTVamanaOptions{
 				Type:              "FLOAT16",
 				Dim:               8,
 				DistanceMetric:    "L2",
@@ -3002,8 +3002,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 			indexName := fmt.Sprintf("idx_%s", compression)
 			val, err := client.FTCreate(ctx, indexName,
-				&redis.FTCreateOptions{},
-				&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+				&kv.FTCreateOptions{},
+				&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(BeEquivalentTo("OK"))
 			WaitForIndexing(client, indexName)
@@ -3017,7 +3017,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			}
 
 			queryVec := []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0}
-			searchOptions := &redis.FTSearchOptions{
+			searchOptions := &kv.FTSearchOptions{
 				DialectVersion: 2,
 				NoContent:      true,
 				Params:         map[string]interface{}{"vec": encodeFloat16Vector(queryVec)},
@@ -3029,12 +3029,12 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA compression algorithms with FLOAT32 type", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
 
 		compressionAlgorithms := []string{"LVQ4", "LVQ4x4", "LVQ4x8", "LeanVec4x8", "LeanVec8x8"}
 
 		for _, compression := range compressionAlgorithms {
-			vamanaOptions := &redis.FTVamanaOptions{
+			vamanaOptions := &kv.FTVamanaOptions{
 				Type:              "FLOAT32",
 				Dim:               8,
 				DistanceMetric:    "L2",
@@ -3049,8 +3049,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 			indexName := fmt.Sprintf("idx_%s", compression)
 			val, err := client.FTCreate(ctx, indexName,
-				&redis.FTCreateOptions{},
-				&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+				&kv.FTCreateOptions{},
+				&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(BeEquivalentTo("OK"))
 			WaitForIndexing(client, indexName)
@@ -3064,7 +3064,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			}
 
 			queryVec := []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0}
-			searchOptions := &redis.FTSearchOptions{
+			searchOptions := &kv.FTSearchOptions{
 				DialectVersion: 2,
 				NoContent:      true,
 				Params:         map[string]interface{}{"vec": encodeFloat32Vector(queryVec)},
@@ -3076,14 +3076,14 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA compression with different distance metrics", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
 
 		compressionAlgorithms := []string{"LVQ4", "LVQ4x4", "LVQ4x8", "LeanVec4x8", "LeanVec8x8"}
 		distanceMetrics := []string{"L2", "COSINE", "IP"}
 
 		for _, compression := range compressionAlgorithms {
 			for _, metric := range distanceMetrics {
-				vamanaOptions := &redis.FTVamanaOptions{
+				vamanaOptions := &kv.FTVamanaOptions{
 					Type:              "FLOAT32",
 					Dim:               8,
 					DistanceMetric:    metric,
@@ -3098,8 +3098,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 				indexName := fmt.Sprintf("idx_%s_%s", compression, metric)
 				val, err := client.FTCreate(ctx, indexName,
-					&redis.FTCreateOptions{},
-					&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+					&kv.FTCreateOptions{},
+					&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(val).To(BeEquivalentTo("OK"))
 				WaitForIndexing(client, indexName)
@@ -3113,7 +3113,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 				}
 
 				queryVec := []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0}
-				searchOptions := &redis.FTSearchOptions{
+				searchOptions := &kv.FTSearchOptions{
 					DialectVersion: 2,
 					NoContent:      true,
 					Params:         map[string]interface{}{"vec": encodeFloat32Vector(queryVec)},
@@ -3126,12 +3126,12 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA compression with all advanced parameters", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
 
 		compressionAlgorithms := []string{"LVQ4", "LVQ4x4", "LVQ4x8", "LeanVec4x8", "LeanVec8x8"}
 
 		for _, compression := range compressionAlgorithms {
-			vamanaOptions := &redis.FTVamanaOptions{
+			vamanaOptions := &kv.FTVamanaOptions{
 				Type:                   "FLOAT32",
 				Dim:                    8,
 				DistanceMetric:         "L2",
@@ -3150,8 +3150,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 			indexName := fmt.Sprintf("idx_%s_advanced", compression)
 			val, err := client.FTCreate(ctx, indexName,
-				&redis.FTCreateOptions{},
-				&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+				&kv.FTCreateOptions{},
+				&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(BeEquivalentTo("OK"))
 			WaitForIndexing(client, indexName)
@@ -3165,7 +3165,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			}
 
 			queryVec := []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0}
-			searchOptions := &redis.FTSearchOptions{
+			searchOptions := &kv.FTSearchOptions{
 				DialectVersion: 2,
 				NoContent:      true,
 				Params:         map[string]interface{}{"vec": encodeFloat32Vector(queryVec)},
@@ -3177,8 +3177,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should fail when using reduce parameter with non-LeanVec compression", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:              "FLOAT32",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -3187,14 +3187,14 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			ReduceDim:         4, // This should fail for LVQ8
 		}
 		_, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("should test VAMANA with LVQ4 compression in RESP3", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:              "FLOAT32",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -3202,8 +3202,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			TrainingThreshold: 1024,
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -3218,7 +3218,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -3231,8 +3231,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA with LeanVec4x8 compression and reduce parameter in RESP3", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
-		vamanaOptions := &redis.FTVamanaOptions{
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
+		vamanaOptions := &kv.FTVamanaOptions{
 			Type:              "FLOAT32",
 			Dim:               8,
 			DistanceMetric:    "L2",
@@ -3241,8 +3241,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			ReduceDim:         4, // Reduce dimension to 4 (half of original 8)
 		}
 		val, err := client.FTCreate(ctx, "idx1",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -3257,7 +3257,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			client.HSet(ctx, fmt.Sprintf("doc%d", i), "v", encodeFloat32Vector(vec))
 		}
 
-		searchOptions := &redis.FTSearchOptions{
+		searchOptions := &kv.FTSearchOptions{
 			DialectVersion: 2,
 			NoContent:      true,
 			Params:         map[string]interface{}{"vec": encodeFloat32Vector(vectors[0])},
@@ -3270,12 +3270,12 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 	})
 
 	It("should test VAMANA compression algorithms with FLOAT16 type in RESP3", Label("search", "ftcreate", "vamana"), func() {
-		SkipBeforeRedisVersion(8.2, "VAMANA requires Redis 8.2+")
+		SkipBeforeKVVersion(8.2, "VAMANA requires KV 8.2+")
 
 		compressionAlgorithms := []string{"LVQ4", "LVQ4x4", "LVQ4x8", "LeanVec4x8", "LeanVec8x8"}
 
 		for _, compression := range compressionAlgorithms {
-			vamanaOptions := &redis.FTVamanaOptions{
+			vamanaOptions := &kv.FTVamanaOptions{
 				Type:              "FLOAT16",
 				Dim:               8,
 				DistanceMetric:    "L2",
@@ -3290,8 +3290,8 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 
 			indexName := fmt.Sprintf("idx_resp3_%s", compression)
 			val, err := client.FTCreate(ctx, indexName,
-				&redis.FTCreateOptions{},
-				&redis.FieldSchema{FieldName: "v", FieldType: redis.SearchFieldTypeVector, VectorArgs: &redis.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
+				&kv.FTCreateOptions{},
+				&kv.FieldSchema{FieldName: "v", FieldType: kv.SearchFieldTypeVector, VectorArgs: &kv.FTVectorArgs{VamanaOptions: vamanaOptions}}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(BeEquivalentTo("OK"))
 			WaitForIndexing(client, indexName)
@@ -3306,7 +3306,7 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 			}
 
 			queryVec := []float32{1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0}
-			searchOptions := &redis.FTSearchOptions{
+			searchOptions := &kv.FTSearchOptions{
 				DialectVersion: 2,
 				NoContent:      true,
 				Params:         map[string]interface{}{"vec": encodeFloat16Vector(queryVec)},
@@ -3317,27 +3317,27 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 		}
 	})
 
-	It("should parse FTInfo response with vector fields", Label("search", "ftinfo", "NonRedisEnterprise"), func() {
+	It("should parse FTInfo response with vector fields", Label("search", "ftinfo", "NonKVEnterprise"), func() {
 		// Create an index with multiple field types including vector
 		val, err := client.FTCreate(ctx, "idx_vector",
-			&redis.FTCreateOptions{},
-			&redis.FieldSchema{
+			&kv.FTCreateOptions{},
+			&kv.FieldSchema{
 				FieldName: "prompt",
-				FieldType: redis.SearchFieldTypeText,
+				FieldType: kv.SearchFieldTypeText,
 			},
-			&redis.FieldSchema{
+			&kv.FieldSchema{
 				FieldName: "response",
-				FieldType: redis.SearchFieldTypeText,
+				FieldType: kv.SearchFieldTypeText,
 			},
-			&redis.FieldSchema{
+			&kv.FieldSchema{
 				FieldName: "exact_digest",
-				FieldType: redis.SearchFieldTypeTag,
+				FieldType: kv.SearchFieldTypeTag,
 				Separator: ",",
 			},
-			&redis.FieldSchema{
+			&kv.FieldSchema{
 				FieldName:  "prompt_vector",
-				FieldType:  redis.SearchFieldTypeVector,
-				VectorArgs: &redis.FTVectorArgs{HNSWOptions: &redis.FTHNSWOptions{Type: "FLOAT32", Dim: 1536, DistanceMetric: "COSINE", MaxEdgesPerNode: 16, MaxAllowedEdgesPerNode: 64}},
+				FieldType:  kv.SearchFieldTypeVector,
+				VectorArgs: &kv.FTVectorArgs{HNSWOptions: &kv.FTHNSWOptions{Type: "FLOAT32", Dim: 1536, DistanceMetric: "COSINE", MaxEdgesPerNode: 16, MaxAllowedEdgesPerNode: 64}},
 			},
 		).Result()
 		Expect(err).NotTo(HaveOccurred())
@@ -3448,33 +3448,33 @@ var _ = Describe("RediSearch commands Resp 2", Label("search"), func() {
 // Hybrid Search Tests
 var _ = Describe("FT.HYBRID Commands", func() {
 	ctx := context.TODO()
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(&redis.Options{Addr: ":6379", Protocol: 2})
+		client = kv.NewClient(&kv.Options{Addr: ":6379", Protocol: 2})
 		// Create index with text, numeric, tag fields and vector fields
-		err := client.FTCreate(ctx, "hybrid_idx", &redis.FTCreateOptions{},
-			&redis.FieldSchema{FieldName: "description", FieldType: redis.SearchFieldTypeText},
-			&redis.FieldSchema{FieldName: "price", FieldType: redis.SearchFieldTypeNumeric},
-			&redis.FieldSchema{FieldName: "color", FieldType: redis.SearchFieldTypeTag},
-			&redis.FieldSchema{FieldName: "item_type", FieldType: redis.SearchFieldTypeTag},
-			&redis.FieldSchema{FieldName: "size", FieldType: redis.SearchFieldTypeNumeric},
-			&redis.FieldSchema{
+		err := client.FTCreate(ctx, "hybrid_idx", &kv.FTCreateOptions{},
+			&kv.FieldSchema{FieldName: "description", FieldType: kv.SearchFieldTypeText},
+			&kv.FieldSchema{FieldName: "price", FieldType: kv.SearchFieldTypeNumeric},
+			&kv.FieldSchema{FieldName: "color", FieldType: kv.SearchFieldTypeTag},
+			&kv.FieldSchema{FieldName: "item_type", FieldType: kv.SearchFieldTypeTag},
+			&kv.FieldSchema{FieldName: "size", FieldType: kv.SearchFieldTypeNumeric},
+			&kv.FieldSchema{
 				FieldName: "embedding",
-				FieldType: redis.SearchFieldTypeVector,
-				VectorArgs: &redis.FTVectorArgs{
-					FlatOptions: &redis.FTFlatOptions{
+				FieldType: kv.SearchFieldTypeVector,
+				VectorArgs: &kv.FTVectorArgs{
+					FlatOptions: &kv.FTFlatOptions{
 						Type:           "FLOAT32",
 						Dim:            4,
 						DistanceMetric: "L2",
 					},
 				},
 			},
-			&redis.FieldSchema{
+			&kv.FieldSchema{
 				FieldName: "embedding_hnsw",
-				FieldType: redis.SearchFieldTypeVector,
-				VectorArgs: &redis.FTVectorArgs{
-					HNSWOptions: &redis.FTHNSWOptions{
+				FieldType: kv.SearchFieldTypeVector,
+				VectorArgs: &kv.FTVectorArgs{
+					HNSWOptions: &kv.FTHNSWOptions{
 						Type:           "FLOAT32",
 						Dim:            4,
 						DistanceMetric: "L2",
@@ -3520,12 +3520,12 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform basic hybrid search", Label("search", "fthybrid"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
+		SkipBeforeKVVersion(8.4, "no support")
 		// Basic hybrid search combining text and vector search
 		searchQuery := "@color:{red}"
 		vectorData := encodeFloat32Vector([]float32{-100, -200, -200, -300})
 
-		cmd := client.FTHybrid(ctx, "hybrid_idx", searchQuery, "embedding", &redis.VectorFP32{Val: vectorData})
+		cmd := client.FTHybrid(ctx, "hybrid_idx", searchQuery, "embedding", &kv.VectorFP32{Val: vectorData})
 
 		res, err := cmd.Result()
 		Expect(err).NotTo(HaveOccurred())
@@ -3540,20 +3540,20 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with scorer", Label("search", "fthybrid", "scorer"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
+		SkipBeforeKVVersion(8.4, "no support")
 		// Test with TFIDF scorer
-		options := &redis.FTHybridOptions{
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{
 					Query:  "@color:{red}",
 					Scorer: "TFIDF",
 				},
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField: "embedding",
-					VectorData:  &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 2, 3})},
+					VectorData:  &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 2, 3})},
 				},
 			},
 			Load:        []string{"@description", "@color", "@price", "@size", "@__score"},
@@ -3576,17 +3576,17 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with vector filter", Label("search", "fthybrid", "filter"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
+		SkipBeforeKVVersion(8.4, "no support")
 		// This query won't have results from search, so we can validate vector filter
-		options := &redis.FTHybridOptions{
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{none}"}, // This won't match anything
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField: "embedding",
-					VectorData:  &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 2, 3})},
+					VectorData:  &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 2, 3})},
 					Filter:      "@price:[15 16] @size:[10 11]",
 				},
 			},
@@ -3619,16 +3619,16 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with KNN method", Label("search", "fthybrid", "knn"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
-		options := &redis.FTHybridOptions{
+		SkipBeforeKVVersion(8.4, "no support")
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{none}"}, // This won't match anything
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField:  "embedding",
-					VectorData:   &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 2, 3})},
+					VectorData:   &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 2, 3})},
 					Method:       "KNN",
 					MethodParams: []interface{}{"K", 3}, // K=3 as key-value pair
 				},
@@ -3644,16 +3644,16 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with RANGE method", Label("search", "fthybrid", "range"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
-		options := &redis.FTHybridOptions{
+		SkipBeforeKVVersion(8.4, "no support")
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{none}"}, // This won't match anything
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField:  "embedding",
-					VectorData:   &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
+					VectorData:   &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
 					Method:       "RANGE",
 					MethodParams: []interface{}{"RADIUS", 2}, // RADIUS=2 as key-value pair
 				},
@@ -3671,20 +3671,20 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with LINEAR combine method", Label("search", "fthybrid", "combine"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
-		options := &redis.FTHybridOptions{
+		SkipBeforeKVVersion(8.4, "no support")
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{red}"},
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField: "embedding",
-					VectorData:  &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
+					VectorData:  &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
 				},
 			},
-			Combine: &redis.FTHybridCombineOptions{
-				Method: redis.FTHybridCombineLinear,
+			Combine: &kv.FTHybridCombineOptions{
+				Method: kv.FTHybridCombineLinear,
 				Alpha:  0.5,
 				Beta:   0.5,
 			},
@@ -3701,20 +3701,20 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with RRF combine method", Label("search", "fthybrid", "rrf"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
-		options := &redis.FTHybridOptions{
+		SkipBeforeKVVersion(8.4, "no support")
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{red}"},
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField: "embedding",
-					VectorData:  &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
+					VectorData:  &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
 				},
 			},
-			Combine: &redis.FTHybridCombineOptions{
-				Method:   redis.FTHybridCombineRRF,
+			Combine: &kv.FTHybridCombineOptions{
+				Method:   kv.FTHybridCombineRRF,
 				Window:   3,
 				Constant: 0.5,
 			},
@@ -3729,20 +3729,20 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with LOAD and APPLY", Label("search", "fthybrid", "load", "apply"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
-		options := &redis.FTHybridOptions{
+		SkipBeforeKVVersion(8.4, "no support")
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{red}"},
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField: "embedding",
-					VectorData:  &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
+					VectorData:  &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
 				},
 			},
 			Load: []string{"@description", "@color", "@price", "@size", "@__score"},
-			Apply: []redis.FTHybridApply{
+			Apply: []kv.FTHybridApply{
 				{
 					Expression: "@price - (@price * 0.1)",
 					AsField:    "price_discount",
@@ -3771,16 +3771,16 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with LIMIT", Label("search", "fthybrid", "limit"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
-		options := &redis.FTHybridOptions{
+		SkipBeforeKVVersion(8.4, "no support")
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{red}"},
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField: "embedding",
-					VectorData:  &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
+					VectorData:  &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
 				},
 			},
 			LimitOffset: 0,
@@ -3795,26 +3795,26 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 
 	It("should perform hybrid search with SORTBY", Label("search", "fthybrid", "sortby"), func() {
-		SkipBeforeRedisVersion(8.4, "no support")
-		options := &redis.FTHybridOptions{
+		SkipBeforeKVVersion(8.4, "no support")
+		options := &kv.FTHybridOptions{
 			CountExpressions: 2,
-			SearchExpressions: []redis.FTHybridSearchExpression{
+			SearchExpressions: []kv.FTHybridSearchExpression{
 				{Query: "@color:{red}"},
 			},
-			VectorExpressions: []redis.FTHybridVectorExpression{
+			VectorExpressions: []kv.FTHybridVectorExpression{
 				{
 					VectorField: "embedding",
-					VectorData:  &redis.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
+					VectorData:  &kv.VectorFP32{Val: encodeFloat32Vector([]float32{1, 2, 7, 6})},
 				},
 			},
 			Load: []string{"@color", "@price"},
-			Apply: []redis.FTHybridApply{
+			Apply: []kv.FTHybridApply{
 				{
 					Expression: "@price - (@price * 0.1)",
 					AsField:    "price_discount",
 				},
 			},
-			SortBy: []redis.FTSearchSortBy{
+			SortBy: []kv.FTSearchSortBy{
 				{FieldName: "@price_discount", Desc: true},
 				{FieldName: "@color", Asc: true},
 			},
@@ -3843,7 +3843,7 @@ var _ = Describe("FT.HYBRID Commands", func() {
 	})
 })
 
-func _assert_geosearch_result(result *redis.FTSearchResult, expectedDocIDs []string) {
+func _assert_geosearch_result(result *kv.FTSearchResult, expectedDocIDs []string) {
 	ids := make([]string, len(result.Docs))
 	for i, doc := range result.Docs {
 		ids[i] = doc.ID
@@ -3852,13 +3852,13 @@ func _assert_geosearch_result(result *redis.FTSearchResult, expectedDocIDs []str
 	Expect(result.Total).To(BeEquivalentTo(len(expectedDocIDs)))
 }
 
-var _ = Describe("RediSearch FT.Config with Resp2 and Resp3", Label("search", "NonRedisEnterprise"), func() {
+var _ = Describe("RediSearch FT.Config with Resp2 and Resp3", Label("search", "NonKVEnterprise"), func() {
 
-	var clientResp2 *redis.Client
-	var clientResp3 *redis.Client
+	var clientResp2 *kv.Client
+	var clientResp3 *kv.Client
 	BeforeEach(func() {
-		clientResp2 = redis.NewClient(&redis.Options{Addr: ":6379", Protocol: 2})
-		clientResp3 = redis.NewClient(&redis.Options{Addr: ":6379", Protocol: 3, UnstableResp3: true})
+		clientResp2 = kv.NewClient(&kv.Options{Addr: ":6379", Protocol: 2})
+		clientResp3 = kv.NewClient(&kv.Options{Addr: ":6379", Protocol: 3, UnstableResp3: true})
 		Expect(clientResp3.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -3867,7 +3867,7 @@ var _ = Describe("RediSearch FT.Config with Resp2 and Resp3", Label("search", "N
 		Expect(clientResp3.Close()).NotTo(HaveOccurred())
 	})
 
-	It("should FTConfigSet and FTConfigGet with resp2 and resp3", Label("search", "ftconfigget", "ftconfigset", "NonRedisEnterprise"), func() {
+	It("should FTConfigSet and FTConfigGet with resp2 and resp3", Label("search", "ftconfigget", "ftconfigset", "NonKVEnterprise"), func() {
 		val, err := clientResp3.FTConfigSet(ctx, "MINPREFIX", "1").Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
@@ -3881,7 +3881,7 @@ var _ = Describe("RediSearch FT.Config with Resp2 and Resp3", Label("search", "N
 		Expect(res3).To(BeEquivalentTo(map[string]interface{}{"MINPREFIX": "1"}))
 	})
 
-	It("should FTConfigGet all resp2 and resp3", Label("search", "NonRedisEnterprise"), func() {
+	It("should FTConfigGet all resp2 and resp3", Label("search", "NonKVEnterprise"), func() {
 		res2, err := clientResp2.FTConfigGet(ctx, "*").Result()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -3894,12 +3894,12 @@ var _ = Describe("RediSearch FT.Config with Resp2 and Resp3", Label("search", "N
 
 var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 	ctx := context.TODO()
-	var client *redis.Client
-	var client2 *redis.Client
+	var client *kv.Client
+	var client2 *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(&redis.Options{Addr: ":6379", Protocol: 3, UnstableResp3: true})
-		client2 = redis.NewClient(&redis.Options{Addr: ":6379", Protocol: 3})
+		client = kv.NewClient(&kv.Options{Addr: ":6379", Protocol: 3, UnstableResp3: true})
+		client2 = kv.NewClient(&kv.Options{Addr: ":6379", Protocol: 3})
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -3908,9 +3908,9 @@ var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 	})
 
 	It("should handle FTAggregate with Unstable RESP3 Search Module and without stability", Label("search", "ftcreate", "ftaggregate"), func() {
-		text1 := &redis.FieldSchema{FieldName: "PrimaryKey", FieldType: redis.SearchFieldTypeText, Sortable: true}
-		num1 := &redis.FieldSchema{FieldName: "CreatedDateTimeUTC", FieldType: redis.SearchFieldTypeNumeric, Sortable: true}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, num1).Result()
+		text1 := &kv.FieldSchema{FieldName: "PrimaryKey", FieldType: kv.SearchFieldTypeText, Sortable: true}
+		num1 := &kv.FieldSchema{FieldName: "CreatedDateTimeUTC", FieldType: kv.SearchFieldTypeNumeric, Sortable: true}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, num1).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -3918,7 +3918,7 @@ var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 		client.HSet(ctx, "doc1", "PrimaryKey", "9::362330", "CreatedDateTimeUTC", "637387878524969984")
 		client.HSet(ctx, "doc2", "PrimaryKey", "9::362329", "CreatedDateTimeUTC", "637387875859270016")
 
-		options := &redis.FTAggregateOptions{Apply: []redis.FTAggregateApply{{Field: "@CreatedDateTimeUTC * 10", As: "CreatedDateTimeUTC"}}}
+		options := &kv.FTAggregateOptions{Apply: []kv.FTAggregateApply{{Field: "@CreatedDateTimeUTC * 10", As: "CreatedDateTimeUTC"}}}
 		res, err := client.FTAggregateWithArgs(ctx, "idx1", "*", options).RawResult()
 		results := res.(map[interface{}]interface{})["results"].([]interface{})
 		Expect(results[0].(map[interface{}]interface{})["extra_attributes"].(map[interface{}]interface{})["CreatedDateTimeUTC"]).
@@ -3933,7 +3933,7 @@ var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 		Expect(rawValResults[1]).To(Or(BeEquivalentTo(results[0]), BeEquivalentTo(results[1])))
 
 		// Test with UnstableResp3 false - should return error instead of panic
-		options = &redis.FTAggregateOptions{Apply: []redis.FTAggregateApply{{Field: "@CreatedDateTimeUTC * 10", As: "CreatedDateTimeUTC"}}}
+		options = &kv.FTAggregateOptions{Apply: []kv.FTAggregateApply{{Field: "@CreatedDateTimeUTC * 10", As: "CreatedDateTimeUTC"}}}
 		rawRes, err := client2.FTAggregateWithArgs(ctx, "idx1", "*", options).RawResult()
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("RESP3 responses for this command are disabled"))
@@ -3946,7 +3946,7 @@ var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 	})
 
 	It("should handle FTInfo with Unstable RESP3 Search Module and without stability", Label("search", "ftcreate", "ftinfo"), func() {
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText, Sortable: true, NoStem: true}).Result()
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText, Sortable: true, NoStem: true}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -3974,9 +3974,9 @@ var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 	})
 
 	It("should handle FTSpellCheck with Unstable RESP3 Search Module and without stability", Label("search", "ftcreate", "ftspellcheck"), func() {
-		text1 := &redis.FieldSchema{FieldName: "f1", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "f2", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "f1", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "f2", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -4003,37 +4003,37 @@ var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 	})
 
 	It("should handle FTSearch with Unstable RESP3 Search Module and without stability", Label("search", "ftcreate", "ftsearch"), func() {
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{StopWords: []interface{}{"foo", "bar", "baz"}}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{StopWords: []interface{}{"foo", "bar", "baz"}}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
 		client.HSet(ctx, "doc1", "txt", "foo baz")
 		client.HSet(ctx, "doc2", "txt", "hello world")
-		res1, err := client.FTSearchWithArgs(ctx, "txt", "foo bar", &redis.FTSearchOptions{NoContent: true}).RawResult()
-		val1 := client.FTSearchWithArgs(ctx, "txt", "foo bar", &redis.FTSearchOptions{NoContent: true}).RawVal()
+		res1, err := client.FTSearchWithArgs(ctx, "txt", "foo bar", &kv.FTSearchOptions{NoContent: true}).RawResult()
+		val1 := client.FTSearchWithArgs(ctx, "txt", "foo bar", &kv.FTSearchOptions{NoContent: true}).RawVal()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val1).To(BeEquivalentTo(res1))
 		totalResults := res1.(map[interface{}]interface{})["total_results"]
 		Expect(totalResults).To(BeEquivalentTo(int64(0)))
-		res2, err := client.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &redis.FTSearchOptions{NoContent: true}).RawResult()
+		res2, err := client.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &kv.FTSearchOptions{NoContent: true}).RawResult()
 		Expect(err).NotTo(HaveOccurred())
 		totalResults2 := res2.(map[interface{}]interface{})["total_results"]
 		Expect(totalResults2).To(BeEquivalentTo(int64(1)))
 
 		// Test with UnstableResp3 false - should return error instead of panic
-		rawRes2, err := client2.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &redis.FTSearchOptions{NoContent: true}).RawResult()
+		rawRes2, err := client2.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &kv.FTSearchOptions{NoContent: true}).RawResult()
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("RESP3 responses for this command are disabled"))
 		Expect(rawRes2).To(BeNil())
 
-		rawVal2 := client2.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &redis.FTSearchOptions{NoContent: true}).RawVal()
-		Expect(client2.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &redis.FTSearchOptions{NoContent: true}).Err()).To(HaveOccurred())
+		rawVal2 := client2.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &kv.FTSearchOptions{NoContent: true}).RawVal()
+		Expect(client2.FTSearchWithArgs(ctx, "txt", "foo bar hello world", &kv.FTSearchOptions{NoContent: true}).Err()).To(HaveOccurred())
 		Expect(rawVal2).To(BeNil())
 	})
 	It("should handle FTSynDump with Unstable RESP3 Search Module and without stability", Label("search", "ftsyndump"), func() {
-		text1 := &redis.FieldSchema{FieldName: "title", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "body", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "idx1", &redis.FTCreateOptions{OnHash: true}, text1, text2).Result()
+		text1 := &kv.FieldSchema{FieldName: "title", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "body", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "idx1", &kv.FTCreateOptions{OnHash: true}, text1, text2).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "idx1")
@@ -4068,10 +4068,10 @@ var _ = Describe("RediSearch commands Resp 3", Label("search"), func() {
 	})
 
 	It("should test not affected Resp 3 Search method - FTExplain", Label("search", "ftexplain"), func() {
-		text1 := &redis.FieldSchema{FieldName: "f1", FieldType: redis.SearchFieldTypeText}
-		text2 := &redis.FieldSchema{FieldName: "f2", FieldType: redis.SearchFieldTypeText}
-		text3 := &redis.FieldSchema{FieldName: "f3", FieldType: redis.SearchFieldTypeText}
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{}, text1, text2, text3).Result()
+		text1 := &kv.FieldSchema{FieldName: "f1", FieldType: kv.SearchFieldTypeText}
+		text2 := &kv.FieldSchema{FieldName: "f2", FieldType: kv.SearchFieldTypeText}
+		text3 := &kv.FieldSchema{FieldName: "f3", FieldType: kv.SearchFieldTypeText}
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{}, text1, text2, text3).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")

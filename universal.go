@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -338,7 +338,7 @@ var (
 //  4. Otherwise, a single-node Client is returned.
 func NewUniversalClient(opts *UniversalOptions) UniversalClient {
 	if opts == nil {
-		panic("redis: NewUniversalClient nil options")
+		panic("kv: NewUniversalClient nil options")
 	}
 
 	switch {

@@ -6,14 +6,14 @@ package push
 // This struct allows handlers to make informed decisions based on the source of the notification
 // with strongly typed access to different client types using concrete types.
 type NotificationHandlerContext struct {
-	// Client is the Redis client instance that received the notification.
+	// Client is the KV client instance that received the notification.
 	// It is interface to both allow for future expansion and to avoid
 	// circular dependencies. The developer is responsible for type assertion.
 	// It can be one of the following types:
-	// - *redis.baseClient
-	// - *redis.Client
-	// - *redis.ClusterClient
-	// - *redis.Conn
+	// - *kv.baseClient
+	// - *kv.Client
+	// - *kv.ClusterClient
+	// - *kv.Conn
 	Client interface{}
 
 	// ConnPool is the connection pool from which the connection was obtained.
@@ -29,7 +29,7 @@ type NotificationHandlerContext struct {
 	// It is interface to both allow for future expansion and to avoid
 	// circular dependencies. The developer is responsible for type assertion.
 	// It can be one of the following types:
-	// - *redis.PubSub
+	// - *kv.PubSub
 	PubSub interface{}
 
 	// Conn is the specific connection on which the notification was received.

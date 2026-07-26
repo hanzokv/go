@@ -1,4 +1,4 @@
-package redisprometheus
+package kvprometheus
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
@@ -8,10 +8,10 @@ import (
 
 // StatGetter provides a method to get pool statistics.
 type StatGetter interface {
-	PoolStats() *redis.PoolStats
+	PoolStats() *kv.PoolStats
 }
 
-// Collector collects statistics from a redis client.
+// Collector collects statistics from a kv client.
 // It implements the prometheus.Collector interface.
 type Collector struct {
 	getter      StatGetter

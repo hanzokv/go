@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -22,7 +22,7 @@ import (
 	"github.com/hanzokv/go/v9/internal/rand"
 )
 
-var errRingShardsDown = errors.New("redis: all ring shards are down")
+var errRingShardsDown = errors.New("kv: all ring shards are down")
 
 // defaultHeartbeatFn is the default function used to check the shard liveness
 var defaultHeartbeatFn = func(ctx context.Context, client *Client) bool {
@@ -468,7 +468,7 @@ func (c *ringSharding) GetByName(shardName string) (*ringShard, error) {
 
 	shard, ok := c.shards.m[shardName]
 	if !ok {
-		return nil, errors.New("redis: the shard is not in the ring")
+		return nil, errors.New("kv: the shard is not in the ring")
 	}
 
 	return shard, nil
@@ -563,8 +563,8 @@ func (c *ringSharding) Close() error {
 
 //------------------------------------------------------------------------------
 
-// Ring is a Redis client that uses consistent hashing to distribute
-// keys across multiple Redis servers (shards). It's safe for
+// Ring is a KV client that uses consistent hashing to distribute
+// keys across multiple KV servers (shards). It's safe for
 // concurrent use by multiple goroutines.
 //
 // Ring monitors the state of each shard and removes dead shards from
@@ -574,9 +574,9 @@ func (c *ringSharding) Close() error {
 // uses shards that are available to the client and does not do any
 // coordination when shard state is changed.
 //
-// Ring should be used when you need multiple Redis servers for caching
+// Ring should be used when you need multiple KV servers for caching
 // and can tolerate losing data when one of the servers dies.
-// Otherwise you should use Redis Cluster.
+// Otherwise you should use KV Cluster.
 type Ring struct {
 	cmdable
 	hooksMixin
@@ -589,7 +589,7 @@ type Ring struct {
 
 func NewRing(opt *RingOptions) *Ring {
 	if opt == nil {
-		panic("redis: NewRing nil options")
+		panic("kv: NewRing nil options")
 	}
 	opt.init()
 
@@ -874,7 +874,7 @@ func (c *Ring) generalProcessPipeline(
 
 func (c *Ring) Watch(ctx context.Context, fn func(*Tx) error, keys ...string) error {
 	if len(keys) == 0 {
-		return fmt.Errorf("redis: Watch requires at least one key")
+		return fmt.Errorf("kv: Watch requires at least one key")
 	}
 
 	var shards []*ringShard
@@ -891,13 +891,13 @@ func (c *Ring) Watch(ctx context.Context, fn func(*Tx) error, keys ...string) er
 	}
 
 	if len(shards) == 0 {
-		return fmt.Errorf("redis: Watch requires at least one shard")
+		return fmt.Errorf("kv: Watch requires at least one shard")
 	}
 
 	if len(shards) > 1 {
 		for _, shard := range shards[1:] {
 			if shard.Client != shards[0].Client {
-				err := fmt.Errorf("redis: Watch requires all keys to be in the same shard")
+				err := fmt.Errorf("kv: Watch requires all keys to be in the same shard")
 				return err
 			}
 		}

@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -38,10 +38,10 @@ var _ = Describe("error", func() {
 			nil:                      false,
 			context.Canceled:         false,
 			context.DeadlineExceeded: false,
-			redis.ErrPoolTimeout:     true,
+			kv.ErrPoolTimeout:     true,
 			// Use typed errors instead of plain errors.New()
 			proto.ParseErrorReply([]byte("-ERR max number of clients reached")):                      true,
-			proto.ParseErrorReply([]byte("-LOADING Redis is loading the dataset in memory")):         true,
+			proto.ParseErrorReply([]byte("-LOADING KV is loading the dataset in memory")):         true,
 			proto.ParseErrorReply([]byte("-READONLY You can't write against a read only replica")):   true,
 			proto.ParseErrorReply([]byte("-CLUSTERDOWN The cluster is down")):                        true,
 			proto.ParseErrorReply([]byte("-TRYAGAIN Command cannot be processed, please try again")): true,
@@ -50,18 +50,18 @@ var _ = Describe("error", func() {
 		}
 
 		for err, expected := range data {
-			Expect(redis.ShouldRetry(err, false)).To(Equal(expected))
-			Expect(redis.ShouldRetry(err, true)).To(Equal(expected))
+			Expect(kv.ShouldRetry(err, false)).To(Equal(expected))
+			Expect(kv.ShouldRetry(err, true)).To(Equal(expected))
 		}
 	})
 
 	It("should retry timeout", func() {
 		t1 := testTimeout{timeout: true}
-		Expect(redis.ShouldRetry(t1, true)).To(Equal(true))
-		Expect(redis.ShouldRetry(t1, false)).To(Equal(false))
+		Expect(kv.ShouldRetry(t1, true)).To(Equal(true))
+		Expect(kv.ShouldRetry(t1, false)).To(Equal(false))
 
 		t2 := testTimeout{timeout: false}
-		Expect(redis.ShouldRetry(t2, true)).To(Equal(true))
-		Expect(redis.ShouldRetry(t2, false)).To(Equal(true))
+		Expect(kv.ShouldRetry(t2, true)).To(Equal(true))
+		Expect(kv.ShouldRetry(t2, false)).To(Equal(true))
 	})
 })

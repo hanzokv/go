@@ -1,20 +1,20 @@
 # E2E Test Scenarios for Push Notifications
 
-This directory contains comprehensive end-to-end test scenarios for Redis push notifications and maintenance notifications functionality. Each scenario tests different aspects of the system under various conditions.
+This directory contains comprehensive end-to-end test scenarios for KV push notifications and maintenance notifications functionality. Each scenario tests different aspects of the system under various conditions.
 
 ## ⚠️ **Important Note**
-**Maintenance notifications are currently supported only in standalone Redis clients.** Cluster clients (ClusterClient, FailoverClient, etc.) do not yet support maintenance notifications functionality.
+**Maintenance notifications are currently supported only in standalone KV clients.** Cluster clients (ClusterClient, FailoverClient, etc.) do not yet support maintenance notifications functionality.
 
 ## Introduction
 
 To run those tests you would need a fault injector service, please review the client and feel free to implement your
-fault injector of choice. Those tests are tailored for Redis Enterprise, but can be adapted to other Redis distributions where
+fault injector of choice. Those tests are tailored for KV Enterprise, but can be adapted to other KV distributions where
 a fault injector is available.
 
 Once you have fault injector service up and running, you can execute the tests by running the `run-e2e-tests.sh` script.
 there are three environment variables that need to be set before running the tests:
 
-- `REDIS_ENDPOINTS_CONFIG_PATH`: Path to Redis endpoints configuration
+- `KV_ENDPOINTS_CONFIG_PATH`: Path to KV endpoints configuration
 - `FAULT_INJECTION_API_URL`: URL of the fault injector server
 - `E2E_SCENARIO_TESTS`: Set to `true` to enable scenario tests
 
@@ -22,7 +22,7 @@ there are three environment variables that need to be set before running the tes
 
 ### 1. Basic Push Notifications (`scenario_push_notifications_test.go`)
 **Original template scenario**
-- **Purpose**: Basic functionality test for Redis Enterprise push notifications
+- **Purpose**: Basic functionality test for KV Enterprise push notifications
 - **Features Tested**: FAILING_OVER, FAILED_OVER, MIGRATING, MIGRATED, MOVING notifications
 - **Configuration**: Standard enterprise cluster setup
 - **Duration**: ~10 minutes
@@ -52,7 +52,7 @@ there are three environment variables that need to be set before running the tes
 - **Duration**: ~10 minutes
 - **Key Validations**:
   - Database creation with different configurations
-  - Database creation with Redis modules (ReJSON, search, timeseries, bf)
+  - Database creation with KV modules (ReJSON, search, timeseries, bf)
   - Database deletion
   - Complete lifecycle (create → use → delete)
   - Configuration validation
@@ -84,7 +84,7 @@ See [DATABASE_MANAGEMENT.md](DATABASE_MANAGEMENT.md) for detailed documentation 
   - Performance impact of encryption
   - Certificate handling (where applicable)
   - Security compliance
-- **Note**: TLS configuration is handled at the Redis connection config level, not client options level
+- **Note**: TLS configuration is handled at the KV connection config level, not client options level
 
 ### 6. Stress Test Scenario (`scenario_stress_test.go`)
 **Extreme load and concurrent operations**
@@ -107,10 +107,10 @@ See [DATABASE_MANAGEMENT.md](DATABASE_MANAGEMENT.md) for detailed documentation 
 
 ### Prerequisites
 - Set environment variable: `E2E_SCENARIO_TESTS=true`
-- Redis Enterprise cluster available
+- KV Enterprise cluster available
 - Fault injection service available
 - Appropriate network access and permissions
-- **Note**: Tests use standalone Redis clients only (cluster clients not supported)
+- **Note**: Tests use standalone KV clients only (cluster clients not supported)
 
 ### Individual Scenario Execution
 ```bash
@@ -143,7 +143,7 @@ E2E_SCENARIO_TESTS=true go test -v -timeout 30m ./maintnotifications/e2e -run Te
 ## Troubleshooting
 
 ### Common Issues
-1. **Enterprise cluster not available**: Most scenarios require Redis Enterprise
+1. **Enterprise cluster not available**: Most scenarios require KV Enterprise
 2. **Fault injector unavailable**: Some scenarios need fault injection service
 3. **Network timeouts**: Increase test timeouts for slow networks
 4. **TLS certificate issues**: Some TLS scenarios may fail without proper certs

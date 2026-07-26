@@ -1,4 +1,4 @@
-package rediscensus
+package kvcensus
 
 import (
 	"context"
@@ -6,25 +6,25 @@ import (
 
 	"go.opencensus.io/trace"
 
-	"github.com/hanzokv/go/extra/rediscmd/v9"
+	"github.com/hanzokv/go/extra/kvcmd/v9"
 	"github.com/hanzokv/go/v9"
 )
 
 type TracingHook struct{}
 
-var _ redis.Hook = (*TracingHook)(nil)
+var _ kv.Hook = (*TracingHook)(nil)
 
 func NewTracingHook() *TracingHook {
 	return new(TracingHook)
 }
 
-func (TracingHook) DialHook(next redis.DialHook) redis.DialHook {
+func (TracingHook) DialHook(next kv.DialHook) kv.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		ctx, span := trace.StartSpan(ctx, "dial")
 		defer span.End()
 
 		span.AddAttributes(
-			trace.StringAttribute("db.system", "redis"),
+			trace.StringAttribute("db.system", "kv"),
 			trace.StringAttribute("network", network),
 			trace.StringAttribute("addr", addr),
 		)
@@ -40,14 +40,14 @@ func (TracingHook) DialHook(next redis.DialHook) redis.DialHook {
 	}
 }
 
-func (TracingHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
-	return func(ctx context.Context, cmd redis.Cmder) error {
+func (TracingHook) ProcessHook(next kv.ProcessHook) kv.ProcessHook {
+	return func(ctx context.Context, cmd kv.Cmder) error {
 		ctx, span := trace.StartSpan(ctx, cmd.FullName())
 		defer span.End()
 
 		span.AddAttributes(
-			trace.StringAttribute("db.system", "redis"),
-			trace.StringAttribute("redis.cmd", rediscmd.CmdString(cmd)),
+			trace.StringAttribute("db.system", "kv"),
+			trace.StringAttribute("kv.cmd", kvcmd.CmdString(cmd)),
 		)
 
 		err := next(ctx, cmd)
@@ -64,13 +64,13 @@ func (TracingHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
 	}
 }
 
-func (TracingHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+func (TracingHook) ProcessPipelineHook(next kv.ProcessPipelineHook) kv.ProcessPipelineHook {
 	return next
 }
 
 func recordErrorOnOCSpan(ctx context.Context, span *trace.Span, err error) {
-	if err != redis.Nil {
+	if err != kv.Nil {
 		span.AddAttributes(trace.BoolAttribute("error", true))
-		span.Annotate([]trace.Attribute{trace.StringAttribute("Error", "redis error")}, err.Error())
+		span.Annotate([]trace.Attribute{trace.StringAttribute("Error", "kv error")}, err.Error())
 	}
 }

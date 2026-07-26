@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"bytes"
@@ -13,8 +13,8 @@ import (
 	"github.com/hanzokv/go/v9"
 )
 
-func benchmarkRedisClient(ctx context.Context, poolSize int) *redis.Client {
-	client := redis.NewClient(&redis.Options{
+func benchmarkKVClient(ctx context.Context, poolSize int) *kv.Client {
+	client := kv.NewClient(&kv.Options{
 		Addr:         ":6379",
 		DialTimeout:  time.Second,
 		ReadTimeout:  time.Second,
@@ -27,9 +27,9 @@ func benchmarkRedisClient(ctx context.Context, poolSize int) *redis.Client {
 	return client
 }
 
-func BenchmarkRedisPing(b *testing.B) {
+func BenchmarkKVPing(b *testing.B) {
 	ctx := context.Background()
-	rdb := benchmarkRedisClient(ctx, 10)
+	rdb := benchmarkKVClient(ctx, 10)
 	defer rdb.Close()
 
 	b.ResetTimer()
@@ -45,7 +45,7 @@ func BenchmarkRedisPing(b *testing.B) {
 
 func BenchmarkSetGoroutines(b *testing.B) {
 	ctx := context.Background()
-	rdb := benchmarkRedisClient(ctx, 10)
+	rdb := benchmarkKVClient(ctx, 10)
 	defer rdb.Close()
 
 	for i := 0; i < b.N; i++ {
@@ -67,16 +67,16 @@ func BenchmarkSetGoroutines(b *testing.B) {
 	}
 }
 
-func BenchmarkRedisGetNil(b *testing.B) {
+func BenchmarkKVGetNil(b *testing.B) {
 	ctx := context.Background()
-	client := benchmarkRedisClient(ctx, 10)
+	client := benchmarkKVClient(ctx, 10)
 	defer client.Close()
 
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			if err := client.Get(ctx, "key").Err(); err != redis.Nil {
+			if err := client.Get(ctx, "key").Err(); err != kv.Nil {
 				b.Fatal(err)
 			}
 		}
@@ -92,7 +92,7 @@ func (bm setStringBenchmark) String() string {
 	return fmt.Sprintf("pool=%d value=%d", bm.poolSize, bm.valueSize)
 }
 
-func BenchmarkRedisSetString(b *testing.B) {
+func BenchmarkKVSetString(b *testing.B) {
 	benchmarks := []setStringBenchmark{
 		{10, 64},
 		{10, 1024},
@@ -109,7 +109,7 @@ func BenchmarkRedisSetString(b *testing.B) {
 	for _, bm := range benchmarks {
 		b.Run(bm.String(), func(b *testing.B) {
 			ctx := context.Background()
-			client := benchmarkRedisClient(ctx, bm.poolSize)
+			client := benchmarkKVClient(ctx, bm.poolSize)
 			defer client.Close()
 
 			value := strings.Repeat("1", bm.valueSize)
@@ -128,9 +128,9 @@ func BenchmarkRedisSetString(b *testing.B) {
 	}
 }
 
-func BenchmarkRedisSetGetBytes(b *testing.B) {
+func BenchmarkKVSetGetBytes(b *testing.B) {
 	ctx := context.Background()
-	client := benchmarkRedisClient(ctx, 10)
+	client := benchmarkKVClient(ctx, 10)
 	defer client.Close()
 
 	value := bytes.Repeat([]byte{'1'}, 10000)
@@ -154,9 +154,9 @@ func BenchmarkRedisSetGetBytes(b *testing.B) {
 	})
 }
 
-func BenchmarkRedisMGet(b *testing.B) {
+func BenchmarkKVMGet(b *testing.B) {
 	ctx := context.Background()
-	client := benchmarkRedisClient(ctx, 10)
+	client := benchmarkKVClient(ctx, 10)
 	defer client.Close()
 
 	if err := client.MSet(ctx, "key1", "hello1", "key2", "hello2").Err(); err != nil {
@@ -176,7 +176,7 @@ func BenchmarkRedisMGet(b *testing.B) {
 
 func BenchmarkSetExpire(b *testing.B) {
 	ctx := context.Background()
-	client := benchmarkRedisClient(ctx, 10)
+	client := benchmarkKVClient(ctx, 10)
 	defer client.Close()
 
 	b.ResetTimer()
@@ -195,14 +195,14 @@ func BenchmarkSetExpire(b *testing.B) {
 
 func BenchmarkPipeline(b *testing.B) {
 	ctx := context.Background()
-	client := benchmarkRedisClient(ctx, 10)
+	client := benchmarkKVClient(ctx, 10)
 	defer client.Close()
 
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			_, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Set(ctx, "key", "hello", 0)
 				pipe.Expire(ctx, "key", time.Second)
 				return nil
@@ -216,14 +216,14 @@ func BenchmarkPipeline(b *testing.B) {
 
 func BenchmarkZAdd(b *testing.B) {
 	ctx := context.Background()
-	client := benchmarkRedisClient(ctx, 10)
+	client := benchmarkKVClient(ctx, 10)
 	defer client.Close()
 
 	b.ResetTimer()
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			err := client.ZAdd(ctx, "key", redis.Z{
+			err := client.ZAdd(ctx, "key", kv.Z{
 				Score:  float64(1),
 				Member: "hello",
 			}).Err()
@@ -236,10 +236,10 @@ func BenchmarkZAdd(b *testing.B) {
 
 func BenchmarkXRead(b *testing.B) {
 	ctx := context.Background()
-	client := benchmarkRedisClient(ctx, 10)
+	client := benchmarkKVClient(ctx, 10)
 	defer client.Close()
 
-	args := redis.XAddArgs{
+	args := kv.XAddArgs{
 		Stream: "1",
 		ID:     "*",
 		Values: map[string]string{"uno": "dos"},
@@ -261,7 +261,7 @@ func BenchmarkXRead(b *testing.B) {
 		for pb.Next() {
 			client.XAdd(ctx, &args)
 
-			err := client.XRead(ctx, &redis.XReadArgs{
+			err := client.XRead(ctx, &kv.XReadArgs{
 				Streams: streams,
 				Count:   1,
 				Block:   time.Second,
@@ -279,7 +279,7 @@ func newClusterScenario() *clusterScenario {
 	return &clusterScenario{
 		ports:   []string{"16600", "16601", "16602", "16603", "16604", "16605"},
 		nodeIDs: make([]string, 6),
-		clients: make(map[string]*redis.Client, 6),
+		clients: make(map[string]*kv.Client, 6),
 	}
 }
 
@@ -298,7 +298,7 @@ func BenchmarkClusterPing(b *testing.B) {
 		}
 	}
 
-	client := clusterBench.newClusterClient(ctx, redisClusterOptions())
+	client := clusterBench.newClusterClient(ctx, kvClusterOptions())
 	defer client.Close()
 
 	b.Run("cluster ping", func(b *testing.B) {
@@ -328,7 +328,7 @@ func BenchmarkClusterDoInt(b *testing.B) {
 		}
 	}
 
-	client := clusterBench.newClusterClient(ctx, redisClusterOptions())
+	client := clusterBench.newClusterClient(ctx, kvClusterOptions())
 	defer client.Close()
 
 	b.Run("cluster do set int", func(b *testing.B) {
@@ -357,7 +357,7 @@ func BenchmarkClusterSetString(b *testing.B) {
 		}
 	}
 
-	client := clusterBench.newClusterClient(ctx, redisClusterOptions())
+	client := clusterBench.newClusterClient(ctx, kvClusterOptions())
 	defer client.Close()
 
 	value := string(bytes.Repeat([]byte{'1'}, 10000))
@@ -382,14 +382,14 @@ func BenchmarkExecRingSetAddrsCmd(b *testing.B) {
 		ringShard2Name = "ringShardTwo"
 	)
 
-	ring := redis.NewRing(&redis.RingOptions{
+	ring := kv.NewRing(&kv.RingOptions{
 		Addrs: map[string]string{
 			"ringShardOne": ":" + ringShard1Port,
 		},
-		NewClient: func(opt *redis.Options) *redis.Client {
+		NewClient: func(opt *kv.Options) *kv.Client {
 			// Simulate slow shard creation
 			time.Sleep(100 * time.Millisecond)
-			return redis.NewClient(opt)
+			return kv.NewClient(opt)
 		},
 	})
 	defer ring.Close()
@@ -426,7 +426,7 @@ func BenchmarkExecRingSetAddrsCmd(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if _, err := ring.Ping(context.Background()).Result(); err != nil {
-			if err == redis.ErrClosed {
+			if err == kv.ErrClosed {
 				// The shard client could be closed while ping command is in progress
 				continue
 			} else {

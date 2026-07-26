@@ -1,13 +1,13 @@
-module github.com/hanzokv/go/extra/rediscensus/v9
+module github.com/hanzokv/go/extra/kvcensus/v9
 
 go 1.26
 
 replace github.com/hanzokv/go/v9 => ../..
 
-replace github.com/hanzokv/go/extra/rediscmd/v9 => ../rediscmd
+replace github.com/hanzokv/go/extra/kvcmd/v9 => ../kvcmd
 
 require (
-	github.com/hanzokv/go/extra/rediscmd/v9 v9.21.1
+	github.com/hanzokv/go/extra/kvcmd/v9 v9.21.1
 	github.com/hanzokv/go/v9 v9.21.1
 	go.opencensus.io v0.24.0
 )

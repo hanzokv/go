@@ -24,7 +24,7 @@
 //   # Run with CPU profiling
 //   go test -bench=BenchmarkPoolGetPut -run='^$' -cpuprofile=cpu.prof pool_pubsub_bench_test.go
 
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -180,9 +180,9 @@ func BenchmarkPoolConcurrentGetPut(b *testing.B) {
 // PUBSUB BENCHMARKS
 // =============================================================================
 
-// benchmarkClient creates a Redis client for benchmarking with mock dialer
-func benchmarkClient(poolSize int) *redis.Client {
-	return redis.NewClient(&redis.Options{
+// benchmarkClient creates a KV client for benchmarking with mock dialer
+func benchmarkClient(poolSize int) *kv.Client {
+	return kv.NewClient(&kv.Options{
 		Addr:         "localhost:6379", // Mock address
 		DialTimeout:  time.Second,
 		ReadTimeout:  time.Second,
@@ -308,7 +308,7 @@ func BenchmarkPubSubReuse(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		// Benchmark just the creation and closing of PubSub connections
-		// This simulates reuse patterns without requiring actual Redis operations
+		// This simulates reuse patterns without requiring actual KV operations
 		pubsub := client.Subscribe(ctx, fmt.Sprintf("test-channel-%d", i))
 		pubsub.Close()
 	}

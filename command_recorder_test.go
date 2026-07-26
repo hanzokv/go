@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/hanzokv/go/v9"
 )
 
-// commandRecorder records the last N commands executed by a Redis client.
+// commandRecorder records the last N commands executed by a KV client.
 type commandRecorder struct {
 	mu       sync.Mutex
 	commands []string
@@ -55,29 +55,29 @@ func (r *commandRecorder) Contains(cmd string) bool {
 	return false
 }
 
-// Hook returns a Redis hook that records commands.
-func (r *commandRecorder) Hook() redis.Hook {
+// Hook returns a KV hook that records commands.
+func (r *commandRecorder) Hook() kv.Hook {
 	return &commandHook{recorder: r}
 }
 
-// commandHook implements the redis.Hook interface to record commands.
+// commandHook implements the kv.Hook interface to record commands.
 type commandHook struct {
 	recorder *commandRecorder
 }
 
-func (h *commandHook) DialHook(next redis.DialHook) redis.DialHook {
+func (h *commandHook) DialHook(next kv.DialHook) kv.DialHook {
 	return next
 }
 
-func (h *commandHook) ProcessHook(next redis.ProcessHook) redis.ProcessHook {
-	return func(ctx context.Context, cmd redis.Cmder) error {
+func (h *commandHook) ProcessHook(next kv.ProcessHook) kv.ProcessHook {
+	return func(ctx context.Context, cmd kv.Cmder) error {
 		h.recorder.Record(cmd.String())
 		return next(ctx, cmd)
 	}
 }
 
-func (h *commandHook) ProcessPipelineHook(next redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-	return func(ctx context.Context, cmds []redis.Cmder) error {
+func (h *commandHook) ProcessPipelineHook(next kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []kv.Cmder) error {
 		for _, cmd := range cmds {
 			h.recorder.Record(cmd.String())
 		}

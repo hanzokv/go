@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -15,18 +15,18 @@ import (
 	"github.com/hanzokv/go/v9"
 )
 
-var _ = Describe("Redis Ring PROTO 2", func() {
+var _ = Describe("KV Ring PROTO 2", func() {
 	const heartbeat = 100 * time.Millisecond
 
-	var ring *redis.Ring
+	var ring *kv.Ring
 
 	BeforeEach(func() {
-		opt := redisRingOptions()
+		opt := kvRingOptions()
 		opt.Protocol = 2
 		opt.HeartbeatFrequency = heartbeat
-		ring = redis.NewRing(opt)
+		ring = kv.NewRing(opt)
 
-		err := ring.ForEachShard(ctx, func(ctx context.Context, cl *redis.Client) error {
+		err := ring.ForEachShard(ctx, func(ctx context.Context, cl *kv.Client) error {
 			return cl.FlushDB(ctx).Err()
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -37,7 +37,7 @@ var _ = Describe("Redis Ring PROTO 2", func() {
 	})
 
 	It("should ring PROTO 2", func() {
-		_ = ring.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_ = ring.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			val, err := c.Do(ctx, "HELLO").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).Should(ContainElements("proto", int64(2)))
@@ -46,10 +46,10 @@ var _ = Describe("Redis Ring PROTO 2", func() {
 	})
 })
 
-var _ = Describe("Redis Ring", func() {
+var _ = Describe("KV Ring", func() {
 	const heartbeat = 100 * time.Millisecond
 
-	var ring *redis.Ring
+	var ring *kv.Ring
 
 	setRingKeys := func() {
 		for i := 0; i < 100; i++ {
@@ -59,12 +59,12 @@ var _ = Describe("Redis Ring", func() {
 	}
 
 	BeforeEach(func() {
-		opt := redisRingOptions()
+		opt := kvRingOptions()
 		opt.ClientName = "ring_hi"
 		opt.HeartbeatFrequency = heartbeat
-		ring = redis.NewRing(opt)
+		ring = kv.NewRing(opt)
 
-		err := ring.ForEachShard(ctx, func(ctx context.Context, cl *redis.Client) error {
+		err := ring.ForEachShard(ctx, func(ctx context.Context, cl *kv.Client) error {
 			return cl.FlushDB(ctx).Err()
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -89,12 +89,12 @@ var _ = Describe("Redis Ring", func() {
 	})
 
 	It("should ring client setname", func() {
-		err := ring.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		err := ring.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			return c.Ping(ctx).Err()
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		_ = ring.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_ = ring.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			val, err := c.ClientList(ctx).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).Should(ContainSubstring("name=ring_hi"))
@@ -103,7 +103,7 @@ var _ = Describe("Redis Ring", func() {
 	})
 
 	It("should ring PROTO 3", func() {
-		_ = ring.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_ = ring.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			val, err := c.Do(ctx, "HELLO").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).Should(HaveKeyWithValue("proto", int64(3)))
@@ -120,8 +120,8 @@ var _ = Describe("Redis Ring", func() {
 	})
 
 	It("distributes keys when using EVAL", func() {
-		script := redis.NewScript(`
-			local r = redis.call('SET', KEYS[1], ARGV[1])
+		script := kv.NewScript(`
+			local r = kv.call('SET', KEYS[1], ARGV[1])
 			return r
 		`)
 
@@ -233,7 +233,7 @@ var _ = Describe("Redis Ring", func() {
 
 			for _, cmd := range cmds {
 				Expect(cmd.Err()).NotTo(HaveOccurred())
-				Expect(cmd.(*redis.StatusCmd).Val()).To(Equal("OK"))
+				Expect(cmd.(*kv.StatusCmd).Val()).To(Equal("OK"))
 			}
 
 			// Both shards should have some keys now.
@@ -250,7 +250,7 @@ var _ = Describe("Redis Ring", func() {
 				keys = append(keys, string(key))
 			}
 
-			_, err := ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := ring.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				for _, key := range keys {
 					pipe.Set(ctx, key, "value", 0).Err()
 				}
@@ -266,7 +266,7 @@ var _ = Describe("Redis Ring", func() {
 		})
 
 		It("supports hash tags", func() {
-			_, err := ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := ring.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				for i := 0; i < 100; i++ {
 					pipe.Set(ctx, fmt.Sprintf("key%d{tag}", i), "value", 0).Err()
 				}
@@ -279,12 +279,12 @@ var _ = Describe("Redis Ring", func() {
 		})
 
 		It("return dial timeout error", func() {
-			opt := redisRingOptions()
+			opt := kvRingOptions()
 			opt.DialTimeout = 250 * time.Millisecond
 			opt.Addrs = map[string]string{"ringShardNotExist": ":1997"}
-			ring = redis.NewRing(opt)
+			ring = kv.NewRing(opt)
 
-			_, err := ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := ring.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.HSet(ctx, "key", "value")
 				pipe.Expire(ctx, "key", time.Minute)
 				return nil
@@ -296,13 +296,13 @@ var _ = Describe("Redis Ring", func() {
 
 	Describe("new client callback", func() {
 		It("can be initialized with a new client callback", func() {
-			opts := redisRingOptions()
-			opts.NewClient = func(opt *redis.Options) *redis.Client {
+			opts := kvRingOptions()
+			opts.NewClient = func(opt *kv.Options) *kv.Client {
 				opt.Username = "username1"
 				opt.Password = "password1"
-				return redis.NewClient(opt)
+				return kv.NewClient(opt)
 			}
-			ring = redis.NewRing(opts)
+			ring = kv.NewRing(opts)
 
 			err := ring.Ping(ctx).Err()
 			Expect(err).To(HaveOccurred())
@@ -314,9 +314,9 @@ var _ = Describe("Redis Ring", func() {
 		BeforeEach(func() {
 			// the health check leads to data race for variable "stack []string".
 			// here, the health check time is set to 72 hours to avoid health check
-			opt := redisRingOptions()
+			opt := kvRingOptions()
 			opt.HeartbeatFrequency = 72 * time.Hour
-			ring = redis.NewRing(opt)
+			ring = kv.NewRing(opt)
 		})
 		It("supports Process hook", func() {
 			err := ring.Set(ctx, "key", "test", 0).Err()
@@ -325,8 +325,8 @@ var _ = Describe("Redis Ring", func() {
 			var stack []string
 
 			ring.AddHook(&hook{
-				processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-					return func(ctx context.Context, cmd redis.Cmder) error {
+				processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+					return func(ctx context.Context, cmd kv.Cmder) error {
 						Expect(cmd.String()).To(Equal("get key: "))
 						stack = append(stack, "ring.BeforeProcess")
 
@@ -340,10 +340,10 @@ var _ = Describe("Redis Ring", func() {
 				},
 			})
 
-			ring.ForEachShard(ctx, func(ctx context.Context, shard *redis.Client) error {
+			ring.ForEachShard(ctx, func(ctx context.Context, shard *kv.Client) error {
 				shard.AddHook(&hook{
-					processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-						return func(ctx context.Context, cmd redis.Cmder) error {
+					processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+						return func(ctx context.Context, cmd kv.Cmder) error {
 							Expect(cmd.String()).To(Equal("get key: "))
 							stack = append(stack, "shard.BeforeProcess")
 
@@ -376,8 +376,8 @@ var _ = Describe("Redis Ring", func() {
 			var stack []string
 
 			ring.AddHook(&hook{
-				processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-					return func(ctx context.Context, cmds []redis.Cmder) error {
+				processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+					return func(ctx context.Context, cmds []kv.Cmder) error {
 						// skip the connection initialization
 						if cmds[0].Name() == "hello" || cmds[0].Name() == "client" {
 							return nil
@@ -397,10 +397,10 @@ var _ = Describe("Redis Ring", func() {
 				},
 			})
 
-			ring.ForEachShard(ctx, func(ctx context.Context, shard *redis.Client) error {
+			ring.ForEachShard(ctx, func(ctx context.Context, shard *kv.Client) error {
 				shard.AddHook(&hook{
-					processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-						return func(ctx context.Context, cmds []redis.Cmder) error {
+					processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+						return func(ctx context.Context, cmds []kv.Cmder) error {
 							// skip the connection initialization
 							if cmds[0].Name() == "hello" || cmds[0].Name() == "client" {
 								return nil
@@ -422,7 +422,7 @@ var _ = Describe("Redis Ring", func() {
 				return nil
 			})
 
-			_, err = ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err = ring.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
@@ -442,8 +442,8 @@ var _ = Describe("Redis Ring", func() {
 			var stack []string
 
 			ring.AddHook(&hook{
-				processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-					return func(ctx context.Context, cmds []redis.Cmder) error {
+				processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+					return func(ctx context.Context, cmds []kv.Cmder) error {
 						defer GinkgoRecover()
 						// skip the connection initialization
 						if cmds[0].Name() == "hello" || cmds[0].Name() == "client" {
@@ -465,10 +465,10 @@ var _ = Describe("Redis Ring", func() {
 				},
 			})
 
-			ring.ForEachShard(ctx, func(ctx context.Context, shard *redis.Client) error {
+			ring.ForEachShard(ctx, func(ctx context.Context, shard *kv.Client) error {
 				shard.AddHook(&hook{
-					processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-						return func(ctx context.Context, cmds []redis.Cmder) error {
+					processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+						return func(ctx context.Context, cmds []kv.Cmder) error {
 							defer GinkgoRecover()
 							// skip the connection initialization
 							if cmds[0].Name() == "hello" || cmds[0].Name() == "client" {
@@ -492,7 +492,7 @@ var _ = Describe("Redis Ring", func() {
 				return nil
 			})
 
-			_, err = ring.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err = ring.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
@@ -507,11 +507,11 @@ var _ = Describe("Redis Ring", func() {
 	})
 })
 
-var _ = Describe("empty Redis Ring", func() {
-	var ring *redis.Ring
+var _ = Describe("empty KV Ring", func() {
+	var ring *kv.Ring
 
 	BeforeEach(func() {
-		ring = redis.NewRing(&redis.RingOptions{})
+		ring = kv.NewRing(&kv.RingOptions{})
 	})
 
 	AfterEach(func() {
@@ -520,29 +520,29 @@ var _ = Describe("empty Redis Ring", func() {
 
 	It("returns an error", func() {
 		err := ring.Ping(ctx).Err()
-		Expect(err).To(MatchError("redis: all ring shards are down"))
+		Expect(err).To(MatchError("kv: all ring shards are down"))
 	})
 
 	It("pipeline returns an error", func() {
-		_, err := ring.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		_, err := ring.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 			pipe.Ping(ctx)
 			return nil
 		})
-		Expect(err).To(MatchError("redis: all ring shards are down"))
+		Expect(err).To(MatchError("kv: all ring shards are down"))
 	})
 })
 
 var _ = Describe("Ring watch", func() {
 	const heartbeat = 100 * time.Millisecond
 
-	var ring *redis.Ring
+	var ring *kv.Ring
 
 	BeforeEach(func() {
-		opt := redisRingOptions()
+		opt := kvRingOptions()
 		opt.HeartbeatFrequency = heartbeat
-		ring = redis.NewRing(opt)
+		ring = kv.NewRing(opt)
 
-		err := ring.ForEachShard(ctx, func(ctx context.Context, cl *redis.Client) error {
+		err := ring.ForEachShard(ctx, func(ctx context.Context, cl *kv.Client) error {
 			return cl.FlushDB(ctx).Err()
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -557,19 +557,19 @@ var _ = Describe("Ring watch", func() {
 
 		// Transactionally increments key using GET and SET commands.
 		incr = func(key string) error {
-			err := ring.Watch(ctx, func(tx *redis.Tx) error {
+			err := ring.Watch(ctx, func(tx *kv.Tx) error {
 				n, err := tx.Get(ctx, key).Int64()
-				if err != nil && err != redis.Nil {
+				if err != nil && err != kv.Nil {
 					return err
 				}
 
-				_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+				_, err = tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					pipe.Set(ctx, key, strconv.FormatInt(n+1, 10), 0)
 					return nil
 				})
 				return err
 			}, key)
-			if err == redis.TxFailedErr {
+			if err == kv.TxFailedErr {
 				return incr(key)
 			}
 			return err
@@ -594,8 +594,8 @@ var _ = Describe("Ring watch", func() {
 	})
 
 	It("should discard", func() {
-		err := ring.Watch(ctx, func(tx *redis.Tx) error {
-			cmds, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		err := ring.Watch(ctx, func(tx *kv.Tx) error {
+			cmds, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Set(ctx, "{shard}key1", "hello1", 0)
 				pipe.Discard()
 				pipe.Set(ctx, "{shard}key2", "hello2", 0)
@@ -608,7 +608,7 @@ var _ = Describe("Ring watch", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		get := ring.Get(ctx, "{shard}key1")
-		Expect(get.Err()).To(Equal(redis.Nil))
+		Expect(get.Err()).To(Equal(kv.Nil))
 		Expect(get.Val()).To(Equal(""))
 
 		get = ring.Get(ctx, "{shard}key2")
@@ -617,8 +617,8 @@ var _ = Describe("Ring watch", func() {
 	})
 
 	It("returns no error when there are no commands", func() {
-		err := ring.Watch(ctx, func(tx *redis.Tx) error {
-			_, err := tx.TxPipelined(ctx, func(redis.Pipeliner) error { return nil })
+		err := ring.Watch(ctx, func(tx *kv.Tx) error {
+			_, err := tx.TxPipelined(ctx, func(kv.Pipeliner) error { return nil })
 			return err
 		}, "key")
 		Expect(err).NotTo(HaveOccurred())
@@ -631,8 +631,8 @@ var _ = Describe("Ring watch", func() {
 	It("should exec bulks", func() {
 		const N = 20000
 
-		err := ring.Watch(ctx, func(tx *redis.Tx) error {
-			cmds, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		err := ring.Watch(ctx, func(tx *kv.Tx) error {
+			cmds, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				for i := 0; i < N; i++ {
 					pipe.Incr(ctx, "key")
 				}
@@ -660,22 +660,22 @@ var _ = Describe("Ring watch", func() {
 
 		perform(C, func(id int) {
 			for i := 0; i < N; i++ {
-				err := ring.Watch(ctx, func(tx *redis.Tx) error {
+				err := ring.Watch(ctx, func(tx *kv.Tx) error {
 					val, err := tx.Get(ctx, "key").Result()
 					Expect(err).NotTo(HaveOccurred())
-					Expect(val).NotTo(Equal(redis.Nil))
+					Expect(val).NotTo(Equal(kv.Nil))
 
 					num, err := strconv.ParseInt(val, 10, 64)
 					Expect(err).NotTo(HaveOccurred())
 
-					cmds, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+					cmds, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 						pipe.Set(ctx, "key", strconv.FormatInt(num+1, 10), 0)
 						return nil
 					})
 					Expect(cmds).To(HaveLen(1))
 					return err
 				}, "key")
-				if err == redis.TxFailedErr {
+				if err == kv.TxFailedErr {
 					i--
 					continue
 				}
@@ -689,8 +689,8 @@ var _ = Describe("Ring watch", func() {
 	})
 
 	It("should close Tx without closing the client", func() {
-		err := ring.Watch(ctx, func(tx *redis.Tx) error {
-			_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		err := ring.Watch(ctx, func(tx *kv.Tx) error {
+			_, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
@@ -706,17 +706,17 @@ var _ = Describe("Ring watch", func() {
 		//if the health check is performed at the same time
 		//conn will be used, resulting in an abnormal number of "pool.conn".
 		//
-		//redis.NewRing() does not have an option to prohibit health checks.
+		//kv.NewRing() does not have an option to prohibit health checks.
 		//set a relatively large time here to avoid health checks.
-		opt := redisRingOptions()
+		opt := kvRingOptions()
 		opt.HeartbeatFrequency = 72 * time.Hour
-		ring = redis.NewRing(opt)
+		ring = kv.NewRing(opt)
 
 		perform(1000, func(id int) {
-			var ping *redis.StatusCmd
+			var ping *kv.StatusCmd
 
-			err := ring.Watch(ctx, func(tx *redis.Tx) error {
-				cmds, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			err := ring.Watch(ctx, func(tx *kv.Tx) error {
+				cmds, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					ping = pipe.Ping(ctx)
 					return nil
 				})
@@ -730,7 +730,7 @@ var _ = Describe("Ring watch", func() {
 			Expect(ping.Val()).To(Equal("PONG"))
 		})
 
-		ring.ForEachShard(ctx, func(ctx context.Context, cl *redis.Client) error {
+		ring.ForEachShard(ctx, func(ctx context.Context, cl *kv.Client) error {
 			defer GinkgoRecover()
 
 			pool := cl.Pool()
@@ -746,7 +746,7 @@ var _ = Describe("Ring watch", func() {
 var _ = Describe("Ring Tx timeout", func() {
 	const heartbeat = 100 * time.Millisecond
 
-	var ring *redis.Ring
+	var ring *kv.Ring
 
 	AfterEach(func() {
 		_ = ring.Close()
@@ -754,7 +754,7 @@ var _ = Describe("Ring Tx timeout", func() {
 
 	testTimeout := func() {
 		It("Tx timeouts", func() {
-			err := ring.Watch(ctx, func(tx *redis.Tx) error {
+			err := ring.Watch(ctx, func(tx *kv.Tx) error {
 				return tx.Ping(ctx).Err()
 			}, "foo")
 			Expect(err).To(HaveOccurred())
@@ -762,8 +762,8 @@ var _ = Describe("Ring Tx timeout", func() {
 		})
 
 		It("Tx Pipeline timeouts", func() {
-			err := ring.Watch(ctx, func(tx *redis.Tx) error {
-				_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			err := ring.Watch(ctx, func(tx *kv.Tx) error {
+				_, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					pipe.Ping(ctx)
 					return nil
 				})
@@ -778,20 +778,20 @@ var _ = Describe("Ring Tx timeout", func() {
 
 	Context("read/write timeout", func() {
 		BeforeEach(func() {
-			opt := redisRingOptions()
+			opt := kvRingOptions()
 			opt.ReadTimeout = 250 * time.Millisecond
 			opt.WriteTimeout = 250 * time.Millisecond
 			opt.HeartbeatFrequency = heartbeat
-			ring = redis.NewRing(opt)
+			ring = kv.NewRing(opt)
 
-			err := ring.ForEachShard(ctx, func(ctx context.Context, client *redis.Client) error {
+			err := ring.ForEachShard(ctx, func(ctx context.Context, client *kv.Client) error {
 				return client.ClientPause(ctx, pause).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			_ = ring.ForEachShard(ctx, func(ctx context.Context, client *redis.Client) error {
+			_ = ring.ForEachShard(ctx, func(ctx context.Context, client *kv.Client) error {
 				defer GinkgoRecover()
 				Eventually(func() error {
 					return client.Ping(ctx).Err()
@@ -805,10 +805,10 @@ var _ = Describe("Ring Tx timeout", func() {
 })
 
 var _ = Describe("Ring GetShardClients and GetShardClientForKey", func() {
-	var ring *redis.Ring
+	var ring *kv.Ring
 
 	BeforeEach(func() {
-		ring = redis.NewRing(&redis.RingOptions{
+		ring = kv.NewRing(&kv.RingOptions{
 			Addrs: map[string]string{
 				"shard1": ":6379",
 				"shard2": ":6380",
@@ -822,13 +822,13 @@ var _ = Describe("Ring GetShardClients and GetShardClientForKey", func() {
 
 	It("GetShardClients returns active shard clients", func() {
 		shards := ring.GetShardClients()
-		// Note: This test will pass even if Redis servers are not running,
+		// Note: This test will pass even if KV servers are not running,
 		// because GetShardClients only returns clients that are marked as "up",
 		// and newly created shards start as "up" until the first health check fails.
 
 		if len(shards) == 0 {
-			// Expected if Redis servers are not running
-			Skip("No active shards found (Redis servers not running)")
+			// Expected if KV servers are not running
+			Skip("No active shards found (KV servers not running)")
 		} else {
 			Expect(len(shards)).To(BeNumerically(">", 0))
 			for _, client := range shards {
@@ -852,7 +852,7 @@ var _ = Describe("Ring GetShardClients and GetShardClientForKey", func() {
 
 		// Call GetShardClientForKey multiple times with the same key
 		// Should always return the same shard
-		var firstClient *redis.Client
+		var firstClient *kv.Client
 		for i := 0; i < 5; i++ {
 			client, err := ring.GetShardClientForKey(key)
 			Expect(err).NotTo(HaveOccurred())

@@ -10,7 +10,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 	})
 	_ = rdb.FlushDB(ctx).Err()

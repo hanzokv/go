@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	. "github.com/bsm/ginkgo/v2"
@@ -8,7 +8,7 @@ import (
 )
 
 var _ = Describe("UniversalClient", func() {
-	var client redis.UniversalClient
+	var client kv.UniversalClient
 
 	AfterEach(func() {
 		if client != nil {
@@ -16,40 +16,40 @@ var _ = Describe("UniversalClient", func() {
 		}
 	})
 
-	It("should connect to failover servers", Label("NonRedisEnterprise"), func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
+	It("should connect to failover servers", Label("NonKVEnterprise"), func() {
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
 			MasterName: sentinelName,
 			Addrs:      sentinelAddrs,
 		})
 		Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
 	})
 
-	It("should connect to failover cluster", Label("NonRedisEnterprise"), func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
+	It("should connect to failover cluster", Label("NonKVEnterprise"), func() {
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
 			MasterName:    sentinelName,
 			RouteRandomly: true,
 			Addrs:         sentinelAddrs,
 		})
-		_, ok := client.(*redis.ClusterClient)
+		_, ok := client.(*kv.ClusterClient)
 		Expect(ok).To(BeTrue(), "expected a ClusterClient")
 	})
 
 	It("should connect to simple servers", func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
-			Addrs: []string{redisAddr},
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
+			Addrs: []string{kvAddr},
 		})
 		Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
 	})
 
-	It("should connect to clusters", Label("NonRedisEnterprise"), func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
+	It("should connect to clusters", Label("NonKVEnterprise"), func() {
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
 			Addrs: cluster.addrs(),
 		})
 		Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
 	})
 
-	It("connect to clusters with UniversalClient and UnstableResp3", Label("NonRedisEnterprise"), func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
+	It("connect to clusters with UniversalClient and UnstableResp3", Label("NonKVEnterprise"), func() {
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
 			Addrs:         cluster.addrs(),
 			Protocol:      3,
 			UnstableResp3: true,
@@ -59,8 +59,8 @@ var _ = Describe("UniversalClient", func() {
 		Expect(a).ToNot(Panic())
 	})
 
-	It("connect to clusters with ClusterClient and UnstableResp3", Label("NonRedisEnterprise"), func() {
-		client = redis.NewClusterClient(&redis.ClusterOptions{
+	It("connect to clusters with ClusterClient and UnstableResp3", Label("NonKVEnterprise"), func() {
+		client = kv.NewClusterClient(&kv.ClusterOptions{
 			Addrs:         cluster.addrs(),
 			Protocol:      3,
 			UnstableResp3: true,
@@ -70,8 +70,8 @@ var _ = Describe("UniversalClient", func() {
 		Expect(a).ToNot(Panic())
 	})
 
-	It("should connect to failover servers on slaves when readonly Options is ok", Label("NonRedisEnterprise"), func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
+	It("should connect to failover servers on slaves when readonly Options is ok", Label("NonKVEnterprise"), func() {
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
 			MasterName: sentinelName,
 			Addrs:      sentinelAddrs,
 			ReadOnly:   true,
@@ -90,17 +90,17 @@ var _ = Describe("UniversalClient", func() {
 		Expect(err).To(HaveOccurred())
 	})
 
-	It("should connect to clusters if IsClusterMode is set even if only a single address is provided", Label("NonRedisEnterprise"), func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
+	It("should connect to clusters if IsClusterMode is set even if only a single address is provided", Label("NonKVEnterprise"), func() {
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
 			Addrs:         []string{cluster.addrs()[0]},
 			IsClusterMode: true,
 		})
-		_, ok := client.(*redis.ClusterClient)
+		_, ok := client.(*kv.ClusterClient)
 		Expect(ok).To(BeTrue(), "expected a ClusterClient")
 	})
 
-	It("should return all slots after instantiating UniversalClient with IsClusterMode", Label("NonRedisEnterprise"), func() {
-		client = redis.NewUniversalClient(&redis.UniversalOptions{
+	It("should return all slots after instantiating UniversalClient with IsClusterMode", Label("NonKVEnterprise"), func() {
+		client = kv.NewUniversalClient(&kv.UniversalOptions{
 			Addrs:         []string{cluster.addrs()[0]},
 			IsClusterMode: true,
 		})

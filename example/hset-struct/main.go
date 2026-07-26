@@ -10,28 +10,28 @@ import (
 )
 
 type Model struct {
-	Str1    string     `redis:"str1"`
-	Str2    string     `redis:"str2"`
-	Str3    *string    `redis:"str3"`
-	Str4    *string    `redis:"str4"`
-	Bytes   []byte     `redis:"bytes"`
-	Int     int        `redis:"int"`
-	Int2    *int       `redis:"int2"`
-	Int3    *int       `redis:"int3"`
-	Bool    bool       `redis:"bool"`
-	Bool2   *bool      `redis:"bool2"`
-	Bool3   *bool      `redis:"bool3"`
-	Bool4   *bool      `redis:"bool4,omitempty"`
-	Time    time.Time  `redis:"time"`
-	Time2   *time.Time `redis:"time2"`
-	Time3   *time.Time `redis:"time3"`
-	Ignored struct{}   `redis:"-"`
+	Str1    string     `kv:"str1"`
+	Str2    string     `kv:"str2"`
+	Str3    *string    `kv:"str3"`
+	Str4    *string    `kv:"str4"`
+	Bytes   []byte     `kv:"bytes"`
+	Int     int        `kv:"int"`
+	Int2    *int       `kv:"int2"`
+	Int3    *int       `kv:"int3"`
+	Bool    bool       `kv:"bool"`
+	Bool2   *bool      `kv:"bool2"`
+	Bool3   *bool      `kv:"bool3"`
+	Bool4   *bool      `kv:"bool4,omitempty"`
+	Time    time.Time  `kv:"time"`
+	Time2   *time.Time `kv:"time2"`
+	Time3   *time.Time `kv:"time3"`
+	Ignored struct{}   `kv:"-"`
 }
 
 func main() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 	})
 
@@ -58,7 +58,7 @@ func main() {
 	}
 
 	// Set some fields.
-	if _, err := rdb.Pipelined(ctx, func(rdb redis.Pipeliner) error {
+	if _, err := rdb.Pipelined(ctx, func(rdb kv.Pipeliner) error {
 		rdb.HMSet(ctx, "key", data)
 		return nil
 	}); err != nil {

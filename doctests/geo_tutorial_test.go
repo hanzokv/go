@@ -14,7 +14,7 @@ import (
 func ExampleClient_geoadd() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -28,7 +28,7 @@ func ExampleClient_geoadd() {
 
 	// STEP_START geoadd
 	res1, err := rdb.GeoAdd(ctx, "bikes:rentable",
-		&redis.GeoLocation{
+		&kv.GeoLocation{
 			Longitude: -122.27652,
 			Latitude:  37.805186,
 			Name:      "station:1",
@@ -41,7 +41,7 @@ func ExampleClient_geoadd() {
 	fmt.Println(res1) // >>> 1
 
 	res2, err := rdb.GeoAdd(ctx, "bikes:rentable",
-		&redis.GeoLocation{
+		&kv.GeoLocation{
 			Longitude: -122.2674626,
 			Latitude:  37.8062344,
 			Name:      "station:2",
@@ -54,7 +54,7 @@ func ExampleClient_geoadd() {
 	fmt.Println(res2) // >>> 1
 
 	res3, err := rdb.GeoAdd(ctx, "bikes:rentable",
-		&redis.GeoLocation{
+		&kv.GeoLocation{
 			Longitude: -122.2469854,
 			Latitude:  37.8104049,
 			Name:      "station:3",
@@ -76,7 +76,7 @@ func ExampleClient_geoadd() {
 func ExampleClient_geosearch() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -88,7 +88,7 @@ func ExampleClient_geosearch() {
 	rdb.Del(ctx, "bikes:rentable")
 
 	_, err := rdb.GeoAdd(ctx, "bikes:rentable",
-		&redis.GeoLocation{
+		&kv.GeoLocation{
 			Longitude: -122.27652,
 			Latitude:  37.805186,
 			Name:      "station:1",
@@ -99,7 +99,7 @@ func ExampleClient_geosearch() {
 	}
 
 	_, err = rdb.GeoAdd(ctx, "bikes:rentable",
-		&redis.GeoLocation{
+		&kv.GeoLocation{
 			Longitude: -122.2674626,
 			Latitude:  37.8062344,
 			Name:      "station:2",
@@ -110,7 +110,7 @@ func ExampleClient_geosearch() {
 	}
 
 	_, err = rdb.GeoAdd(ctx, "bikes:rentable",
-		&redis.GeoLocation{
+		&kv.GeoLocation{
 			Longitude: -122.2469854,
 			Latitude:  37.8104049,
 			Name:      "station:3",
@@ -123,7 +123,7 @@ func ExampleClient_geosearch() {
 
 	// STEP_START geosearch
 	res4, err := rdb.GeoSearch(ctx, "bikes:rentable",
-		&redis.GeoSearchQuery{
+		&kv.GeoSearchQuery{
 			Longitude:  -122.27652,
 			Latitude:   37.805186,
 			Radius:     5,

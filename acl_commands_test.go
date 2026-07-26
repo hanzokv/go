@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -9,23 +9,23 @@ import (
 	. "github.com/bsm/gomega"
 )
 
-var TestUserName string = "goredis"
+var TestUserName string = "gokv"
 var _ = Describe("ACL", func() {
-	var client *redis.Client
+	var client *kv.Client
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		opt := redisOptions()
-		client = redis.NewClient(opt)
+		opt := kvOptions()
+		client = kv.NewClient(opt)
 	})
 
-	It("should ACL LOG", Label("NonRedisEnterprise"), func() {
+	It("should ACL LOG", Label("NonKVEnterprise"), func() {
 		Expect(client.ACLLogReset(ctx).Err()).NotTo(HaveOccurred())
 		err := client.Do(ctx, "acl", "setuser", "test", ">test", "on", "allkeys", "+get").Err()
 		Expect(err).NotTo(HaveOccurred())
 
-		clientAcl := redis.NewClient(redisOptions())
+		clientAcl := kv.NewClient(kvOptions())
 		clientAcl.Options().Username = "test"
 		clientAcl.Options().Password = "test"
 		clientAcl.Options().DB = 0
@@ -58,7 +58,7 @@ var _ = Describe("ACL", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("should ACL LOG RESET", Label("NonRedisEnterprise"), func() {
+	It("should ACL LOG RESET", Label("NonKVEnterprise"), func() {
 		// Call ACL LOG RESET
 		resetCmd := client.ACLLogReset(ctx)
 		Expect(resetCmd.Err()).NotTo(HaveOccurred())
@@ -71,14 +71,14 @@ var _ = Describe("ACL", func() {
 	})
 
 })
-var _ = Describe("ACL user commands", Label("NonRedisEnterprise"), func() {
-	var client *redis.Client
+var _ = Describe("ACL user commands", Label("NonKVEnterprise"), func() {
+	var client *kv.Client
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		opt := redisOptions()
-		client = redis.NewClient(opt)
+		opt := kvOptions()
+		client = kv.NewClient(opt)
 	})
 
 	AfterEach(func() {
@@ -149,15 +149,15 @@ var _ = Describe("ACL user commands", Label("NonRedisEnterprise"), func() {
 	})
 })
 
-var _ = Describe("ACL permissions", Label("NonRedisEnterprise"), func() {
-	var client *redis.Client
+var _ = Describe("ACL permissions", Label("NonKVEnterprise"), func() {
+	var client *kv.Client
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		opt := redisOptions()
+		opt := kvOptions()
 		opt.UnstableResp3 = true
-		client = redis.NewClient(opt)
+		client = kv.NewClient(opt)
 	})
 
 	AfterEach(func() {
@@ -265,9 +265,9 @@ var _ = Describe("ACL permissions", Label("NonRedisEnterprise"), func() {
 	})
 
 	It("set permissions for module commands", func() {
-		SkipBeforeRedisVersion(8, "permissions for modules are supported for Redis Version >=8")
+		SkipBeforeKVVersion(8, "permissions for modules are supported for KV Version >=8")
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
@@ -345,9 +345,9 @@ var _ = Describe("ACL permissions", Label("NonRedisEnterprise"), func() {
 	})
 
 	It("set permissions for module categories", func() {
-		SkipBeforeRedisVersion(8, "permissions for modules are supported for Redis Version >=8")
+		SkipBeforeKVVersion(8, "permissions for modules are supported for KV Version >=8")
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
-		val, err := client.FTCreate(ctx, "txt", &redis.FTCreateOptions{}, &redis.FieldSchema{FieldName: "txt", FieldType: redis.SearchFieldTypeText}).Result()
+		val, err := client.FTCreate(ctx, "txt", &kv.FTCreateOptions{}, &kv.FieldSchema{FieldName: "txt", FieldType: kv.SearchFieldTypeText}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(val).To(BeEquivalentTo("OK"))
 		WaitForIndexing(client, "txt")
@@ -407,13 +407,13 @@ var _ = Describe("ACL permissions", Label("NonRedisEnterprise"), func() {
 })
 
 var _ = Describe("ACL Categories", func() {
-	var client *redis.Client
+	var client *kv.Client
 	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		opt := redisOptions()
-		client = redis.NewClient(opt)
+		opt := kvOptions()
+		client = kv.NewClient(opt)
 	})
 
 	AfterEach(func() {
@@ -436,13 +436,13 @@ var _ = Describe("ACL Categories", func() {
 			"hash",
 		))
 
-		res, err = client.ACLCatArgs(ctx, &redis.ACLCatArgs{Category: "read"}).Result()
+		res, err = client.ACLCatArgs(ctx, &kv.ACLCatArgs{Category: "read"}).Result()
 		Expect(err).NotTo(HaveOccurred())
 		Expect(res).To(ContainElement("get"))
 	})
 
 	It("lists acl categories and subcategories with Modules", func() {
-		SkipBeforeRedisVersion(8, "modules are included in acl for redis version >= 8")
+		SkipBeforeKVVersion(8, "modules are included in acl for kv version >= 8")
 		aclTestCase := map[string]string{
 			"search":     "FT.CREATE",
 			"bloom":      "bf.add",
@@ -458,7 +458,7 @@ var _ = Describe("ACL Categories", func() {
 		for cat, subitem := range aclTestCase {
 			cats = append(cats, cat)
 
-			res, err := client.ACLCatArgs(ctx, &redis.ACLCatArgs{
+			res, err := client.ACLCatArgs(ctx, &kv.ACLCatArgs{
 				Category: cat,
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())

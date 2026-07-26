@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -12,11 +12,11 @@ import (
 
 var (
 	ctx = context.Background()
-	rdb *redis.Client
+	rdb *kv.Client
 )
 
 func init() {
-	rdb = redis.NewClient(&redis.Options{
+	rdb = kv.NewClient(&kv.Options{
 		Addr:         ":6379",
 		DialTimeout:  10 * time.Second,
 		ReadTimeout:  30 * time.Second,
@@ -27,7 +27,7 @@ func init() {
 }
 
 func ExampleNewClient() {
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379", // use default Addr
 		Password: "",               // no password set
 		DB:       0,                // use default DB
@@ -39,7 +39,7 @@ func ExampleNewClient() {
 }
 
 func ExampleParseURL() {
-	opt, err := redis.ParseURL("redis://:qwerty@localhost:6379/1?dial_timeout=5s")
+	opt, err := kv.ParseURL("kv://:qwerty@localhost:6379/1?dial_timeout=5s")
 	if err != nil {
 		panic(err)
 	}
@@ -49,7 +49,7 @@ func ExampleParseURL() {
 	fmt.Println("dial timeout is", opt.DialTimeout)
 
 	// Create client as usually.
-	_ = redis.NewClient(opt)
+	_ = kv.NewClient(opt)
 
 	// Output: addr is localhost:6379
 	// db is 1
@@ -58,9 +58,9 @@ func ExampleParseURL() {
 }
 
 func ExampleNewFailoverClient() {
-	// See http://redis.io/topics/sentinel for instructions how to
-	// setup Redis Sentinel.
-	rdb := redis.NewFailoverClient(&redis.FailoverOptions{
+	// See http://kv.io/topics/sentinel for instructions how to
+	// setup KV Sentinel.
+	rdb := kv.NewFailoverClient(&kv.FailoverOptions{
 		MasterName:    "master",
 		SentinelAddrs: []string{":26379"},
 	})
@@ -68,27 +68,27 @@ func ExampleNewFailoverClient() {
 }
 
 func ExampleNewClusterClient() {
-	// See http://redis.io/topics/cluster-tutorial for instructions
-	// how to setup Redis Cluster.
-	rdb := redis.NewClusterClient(&redis.ClusterOptions{
+	// See http://kv.io/topics/cluster-tutorial for instructions
+	// how to setup KV Cluster.
+	rdb := kv.NewClusterClient(&kv.ClusterOptions{
 		Addrs: []string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
 	})
 	rdb.Ping(ctx)
 }
 
 // Following example creates a cluster from 2 master nodes and 2 slave nodes
-// without using cluster mode or Redis Sentinel.
+// without using cluster mode or KV Sentinel.
 func ExampleNewClusterClient_manualSetup() {
 	// clusterSlots returns cluster slots information.
 	// It can use service like ZooKeeper to maintain configuration information
 	// and Cluster.ReloadState to manually trigger state reloading.
-	clusterSlots := func(ctx context.Context) ([]redis.ClusterSlot, error) {
-		slots := []redis.ClusterSlot{
+	clusterSlots := func(ctx context.Context) ([]kv.ClusterSlot, error) {
+		slots := []kv.ClusterSlot{
 			// First node with 1 master and 1 slave.
 			{
 				Start: 0,
 				End:   8191,
-				Nodes: []redis.ClusterNode{{
+				Nodes: []kv.ClusterNode{{
 					Addr: ":7000", // master
 				}, {
 					Addr: ":8000", // 1st slave
@@ -98,7 +98,7 @@ func ExampleNewClusterClient_manualSetup() {
 			{
 				Start: 8192,
 				End:   16383,
-				Nodes: []redis.ClusterNode{{
+				Nodes: []kv.ClusterNode{{
 					Addr: ":7001", // master
 				}, {
 					Addr: ":8001", // 1st slave
@@ -108,7 +108,7 @@ func ExampleNewClusterClient_manualSetup() {
 		return slots, nil
 	}
 
-	rdb := redis.NewClusterClient(&redis.ClusterOptions{
+	rdb := kv.NewClusterClient(&kv.ClusterOptions{
 		ClusterSlots:  clusterSlots,
 		RouteRandomly: true,
 	})
@@ -120,7 +120,7 @@ func ExampleNewClusterClient_manualSetup() {
 }
 
 func ExampleNewRing() {
-	rdb := redis.NewRing(&redis.RingOptions{
+	rdb := kv.NewRing(&kv.RingOptions{
 		Addrs: map[string]string{
 			"shard1": ":7000",
 			"shard2": ":7001",
@@ -143,7 +143,7 @@ func ExampleClient() {
 	fmt.Println("key", val)
 
 	val2, err := rdb.Get(ctx, "missing_key").Result()
-	if err == redis.Nil {
+	if err == kv.Nil {
 		fmt.Println("missing_key does not exist")
 	} else if err != nil {
 		panic(err)
@@ -178,7 +178,7 @@ func ExampleConn_name() {
 func ExampleConn_client_setInfo_libraryVersion() {
 	conn := rdb.Conn()
 
-	err := conn.ClientSetInfo(ctx, redis.WithLibraryVersion("1.2.3")).Err()
+	err := conn.ClientSetInfo(ctx, kv.WithLibraryVersion("1.2.3")).Err()
 	if err != nil {
 		panic(err)
 	}
@@ -220,10 +220,10 @@ func ExampleClient_SetEx() {
 }
 
 func ExampleClient_HSet() {
-	// Set "redis" tag for hash key
+	// Set "kv" tag for hash key
 	type ExampleUser struct {
-		Name string `redis:"name"`
-		Age  int    `redis:"age"`
+		Name string `kv:"name"`
+		Age  int    `kv:"age"`
 	}
 
 	items := ExampleUser{"jane", 22}
@@ -363,9 +363,9 @@ func ExampleMapStringStringCmd_Scan() {
 	}
 
 	type data struct {
-		Name    string `redis:"name"`
-		Count   int    `redis:"count"`
-		Correct bool   `redis:"correct"`
+		Name    string `kv:"name"`
+		Count   int    `kv:"count"`
+		Correct bool   `kv:"correct"`
 	}
 
 	// Scan the results into the struct.
@@ -396,9 +396,9 @@ func ExampleSliceCmd_Scan() {
 	}
 
 	type data struct {
-		Name    string `redis:"name"`
-		Count   int    `redis:"count"`
-		Correct bool   `redis:"correct"`
+		Name    string `kv:"name"`
+		Count   int    `kv:"count"`
+		Correct bool   `kv:"correct"`
 	}
 
 	// Scan the results into the struct.
@@ -412,8 +412,8 @@ func ExampleSliceCmd_Scan() {
 }
 
 func ExampleClient_Pipelined() {
-	var incr *redis.IntCmd
-	_, err := rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	var incr *kv.IntCmd
+	_, err := rdb.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 		incr = pipe.Incr(ctx, "pipelined_counter")
 		pipe.Expire(ctx, "pipelined_counter", time.Hour)
 		return nil
@@ -440,8 +440,8 @@ func ExampleClient_Pipeline() {
 }
 
 func ExampleClient_TxPipelined() {
-	var incr *redis.IntCmd
-	_, err := rdb.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	var incr *kv.IntCmd
+	_, err := rdb.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 		incr = pipe.Incr(ctx, "tx_pipelined_counter")
 		pipe.Expire(ctx, "tx_pipelined_counter", time.Hour)
 		return nil
@@ -475,10 +475,10 @@ func ExampleClient_Watch() {
 	// Increment transactionally increments key using GET and SET commands.
 	increment := func(key string) error {
 		// Transactional function.
-		txf := func(tx *redis.Tx) error {
+		txf := func(tx *kv.Tx) error {
 			// Get current value or zero.
 			n, err := tx.Get(ctx, key).Int()
-			if err != nil && err != redis.Nil {
+			if err != nil && err != kv.Nil {
 				return err
 			}
 
@@ -486,7 +486,7 @@ func ExampleClient_Watch() {
 			n++
 
 			// Operation is committed only if the watched keys remain unchanged.
-			_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err = tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Set(ctx, key, n, 0)
 				return nil
 			})
@@ -499,7 +499,7 @@ func ExampleClient_Watch() {
 				// Success.
 				return nil
 			}
-			if err == redis.TxFailedErr {
+			if err == kv.TxFailedErr {
 				// Optimistic lock lost. Retry.
 				continue
 			}
@@ -571,14 +571,14 @@ func ExamplePubSub_Receive() {
 		}
 
 		switch msg := msgi.(type) {
-		case *redis.Subscription:
+		case *kv.Subscription:
 			fmt.Println("subscribed to", msg.Channel)
 
 			_, err := rdb.Publish(ctx, "mychannel2", "hello").Result()
 			if err != nil {
 				panic(err)
 			}
-		case *redis.Message:
+		case *kv.Message:
 			fmt.Println("received", msg.Payload, "from", msg.Channel)
 		default:
 			panic("unreached")
@@ -590,9 +590,9 @@ func ExamplePubSub_Receive() {
 }
 
 func ExampleScript() {
-	IncrByXX := redis.NewScript(`
-		if redis.call("GET", KEYS[1]) ~= false then
-			return redis.call("INCRBY", KEYS[1], ARGV[1])
+	IncrByXX := kv.NewScript(`
+		if kv.call("GET", KEYS[1]) ~= false then
+			return kv.call("INCRBY", KEYS[1], ARGV[1])
 		end
 		return false
 	`)
@@ -608,26 +608,26 @@ func ExampleScript() {
 	n, err = IncrByXX.Run(ctx, rdb, []string{"xx_counter"}, 2).Result()
 	fmt.Println(n, err)
 
-	// Output: <nil> redis: nil
+	// Output: <nil> kv: nil
 	// 42 <nil>
 }
 
 func Example_customCommand() {
-	Get := func(ctx context.Context, rdb *redis.Client, key string) *redis.StringCmd {
-		cmd := redis.NewStringCmd(ctx, "get", key)
+	Get := func(ctx context.Context, rdb *kv.Client, key string) *kv.StringCmd {
+		cmd := kv.NewStringCmd(ctx, "get", key)
 		rdb.Process(ctx, cmd)
 		return cmd
 	}
 
 	v, err := Get(ctx, rdb, "key_does_not_exist").Result()
 	fmt.Printf("%q %s", v, err)
-	// Output: "" redis: nil
+	// Output: "" kv: nil
 }
 
 func Example_customCommand2() {
 	v, err := rdb.Do(ctx, "get", "key_does_not_exist").Text()
 	fmt.Printf("%q %s", v, err)
-	// Output: "" redis: nil
+	// Output: "" kv: nil
 }
 
 func ExampleScanIterator() {
@@ -651,7 +651,7 @@ func ExampleScanCmd_Iterator() {
 }
 
 func ExampleNewUniversalClient_simple() {
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
+	rdb := kv.NewUniversalClient(&kv.UniversalOptions{
 		Addrs: []string{":6379"},
 	})
 	defer rdb.Close()
@@ -660,7 +660,7 @@ func ExampleNewUniversalClient_simple() {
 }
 
 func ExampleNewUniversalClient_failover() {
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
+	rdb := kv.NewUniversalClient(&kv.UniversalOptions{
 		MasterName: "master",
 		Addrs:      []string{":26379"},
 	})
@@ -670,7 +670,7 @@ func ExampleNewUniversalClient_failover() {
 }
 
 func ExampleNewUniversalClient_cluster() {
-	rdb := redis.NewUniversalClient(&redis.UniversalOptions{
+	rdb := kv.NewUniversalClient(&kv.UniversalOptions{
 		Addrs: []string{":7000", ":7001", ":7002", ":7003", ":7004", ":7005"},
 	})
 	defer rdb.Close()

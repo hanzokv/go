@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -81,7 +81,7 @@ type DelExArgs struct {
 	MatchDigest uint64
 }
 
-// DelExArgs Redis `DELEX key [IFEQ|IFNE|IFDEQ|IFDNE] match-value` command.
+// DelExArgs KV `DELEX key [IFEQ|IFNE|IFDEQ|IFDNE] match-value` command.
 // Compare-and-delete with flexible conditions.
 //
 // Returns the number of keys that were removed (0 or 1).
@@ -120,7 +120,7 @@ func (c cmdable) DelExArgs(ctx context.Context, key string, a DelExArgs) *IntCmd
 // For examples of client-side digest generation and usage patterns, see:
 // example/digest-optimistic-locking/
 //
-// Redis 8.4+. See https://redis.io/commands/digest/
+// KV 8.4+. See https://kv.io/commands/digest/
 //
 // NOTE Digest is still experimental
 // it's signature and behaviour may change
@@ -130,7 +130,7 @@ func (c cmdable) Digest(ctx context.Context, key string) *DigestCmd {
 	return cmd
 }
 
-// Get Redis `GET key` command. It returns redis.Nil error when key does not exist.
+// Get KV `GET key` command. It returns kv.Nil error when key does not exist.
 func (c cmdable) Get(ctx context.Context, key string) *StringCmd {
 	cmd := NewStringCmd(ctx, "get", key)
 	_ = c(ctx, cmd)
@@ -145,7 +145,7 @@ func (c cmdable) GetRange(ctx context.Context, key string, start, end int64) *St
 
 // GetSet returns the old value stored at key and sets it to the new value.
 //
-// Deprecated: Use SetArgs with Get option instead as of Redis 6.2.0.
+// Deprecated: Use SetArgs with Get option instead as of KV 6.2.0.
 func (c cmdable) GetSet(ctx context.Context, key string, value interface{}) *StringCmd {
 	cmd := NewStringCmd(ctx, "getset", key, value)
 	_ = c(ctx, cmd)
@@ -153,7 +153,7 @@ func (c cmdable) GetSet(ctx context.Context, key string, value interface{}) *Str
 }
 
 // GetEx An expiration of zero removes the TTL associated with the key (i.e. GETEX key persist).
-// Requires Redis >= 6.2.0.
+// Requires KV >= 6.2.0.
 func (c cmdable) GetEx(ctx context.Context, key string, expiration time.Duration) *StringCmd {
 	args := make([]interface{}, 0, 4)
 	args = append(args, "getex", key)
@@ -172,7 +172,7 @@ func (c cmdable) GetEx(ctx context.Context, key string, expiration time.Duration
 	return cmd
 }
 
-// GetDel redis-server version >= 6.2.0.
+// GetDel kv-server version >= 6.2.0.
 func (c cmdable) GetDel(ctx context.Context, key string) *StringCmd {
 	cmd := NewStringCmd(ctx, "getdel", key)
 	_ = c(ctx, cmd)
@@ -278,10 +278,10 @@ type MSetEXArgs struct {
 
 // MSetEX sets the given keys to their respective values.
 // This command is an extension of the MSETNX that adds expiration and XX options.
-// Available since Redis 8.4
+// Available since KV 8.4
 // Important: When this method is used with Cluster clients, all keys
 // must be in the same hash slot, otherwise CROSSSLOT error will be returned.
-// For more information, see https://redis.io/commands/msetex
+// For more information, see https://kv.io/commands/msetex
 func (c cmdable) MSetEX(ctx context.Context, args MSetEXArgs, values ...interface{}) *IntCmd {
 	expandedArgs := appendArgs([]interface{}{}, values)
 	numkeys := len(expandedArgs) / 2
@@ -314,11 +314,11 @@ func (c cmdable) MSetEX(ctx context.Context, args MSetEXArgs, values ...interfac
 	return cmd
 }
 
-// Set Redis `SET key value [expiration]` command.
+// Set KV `SET key value [expiration]` command.
 // Use expiration for `SETEx`-like behavior.
 //
 // Zero expiration means the key has no expiration time.
-// KeepTTL is a Redis KEEPTTL option to keep existing TTL, it requires your redis-server version >= 6.0,
+// KeepTTL is a KV KEEPTTL option to keep existing TTL, it requires your kv-server version >= 6.0,
 // otherwise you will receive an error: (error) ERR syntax error.
 func (c cmdable) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *StatusCmd {
 	args := make([]interface{}, 3, 5)
@@ -367,7 +367,7 @@ type SetArgs struct {
 	// When Get is true, the command returns the old value stored at key, or nil when key did not exist.
 	Get bool
 
-	// KeepTTL is a Redis KEEPTTL option to keep existing TTL, it requires your redis-server version >= 6.0,
+	// KeepTTL is a KV KEEPTTL option to keep existing TTL, it requires your kv-server version >= 6.0,
 	// otherwise you will receive an error: (error) ERR syntax error.
 	KeepTTL bool
 }
@@ -420,7 +420,7 @@ func (c cmdable) SetArgs(ctx context.Context, key string, value interface{}, a S
 
 // SetEx sets the value and expiration of a key.
 //
-// Deprecated: Use Set with expiration instead as of Redis 2.6.12.
+// Deprecated: Use Set with expiration instead as of KV 2.6.12.
 func (c cmdable) SetEx(ctx context.Context, key string, value interface{}, expiration time.Duration) *StatusCmd {
 	cmd := NewStatusCmd(ctx, "setex", key, formatSec(ctx, expiration), value)
 	_ = c(ctx, cmd)
@@ -429,16 +429,16 @@ func (c cmdable) SetEx(ctx context.Context, key string, value interface{}, expir
 
 // SetNX sets the value of a key only if the key does not exist.
 //
-// Deprecated: Use Set with NX option instead as of Redis 2.6.12.
+// Deprecated: Use Set with NX option instead as of KV 2.6.12.
 //
 // Zero expiration means the key has no expiration time.
-// KeepTTL is a Redis KEEPTTL option to keep existing TTL, it requires your redis-server version >= 6.0,
+// KeepTTL is a KV KEEPTTL option to keep existing TTL, it requires your kv-server version >= 6.0,
 // otherwise you will receive an error: (error) ERR syntax error.
 func (c cmdable) SetNX(ctx context.Context, key string, value interface{}, expiration time.Duration) *BoolCmd {
 	var cmd *BoolCmd
 	switch expiration {
 	case 0:
-		// Use old `SETNX` to support old Redis versions.
+		// Use old `SETNX` to support old KV versions.
 		cmd = NewBoolCmd(ctx, "setnx", key, value)
 	case KeepTTL:
 		cmd = NewBoolCmd(ctx, "set", key, value, "keepttl", "nx")
@@ -454,10 +454,10 @@ func (c cmdable) SetNX(ctx context.Context, key string, value interface{}, expir
 	return cmd
 }
 
-// SetXX Redis `SET key value [expiration] XX` command.
+// SetXX KV `SET key value [expiration] XX` command.
 //
 // Zero expiration means the key has no expiration time.
-// KeepTTL is a Redis KEEPTTL option to keep existing TTL, it requires your redis-server version >= 6.0,
+// KeepTTL is a KV KEEPTTL option to keep existing TTL, it requires your kv-server version >= 6.0,
 // otherwise you will receive an error: (error) ERR syntax error.
 func (c cmdable) SetXX(ctx context.Context, key string, value interface{}, expiration time.Duration) *BoolCmd {
 	var cmd *BoolCmd
@@ -478,7 +478,7 @@ func (c cmdable) SetXX(ctx context.Context, key string, value interface{}, expir
 	return cmd
 }
 
-// SetIFEQ Redis `SET key value [expiration] IFEQ match-value` command.
+// SetIFEQ KV `SET key value [expiration] IFEQ match-value` command.
 // Compare-and-set: only sets the value if the current value equals matchValue.
 //
 // Returns "OK" on success.
@@ -507,7 +507,7 @@ func (c cmdable) SetIFEQ(ctx context.Context, key string, value interface{}, mat
 	return cmd
 }
 
-// SetIFEQGet Redis `SET key value [expiration] IFEQ match-value GET` command.
+// SetIFEQGet KV `SET key value [expiration] IFEQ match-value GET` command.
 // Compare-and-set with GET: only sets the value if the current value equals matchValue,
 // and returns the previous value.
 //
@@ -537,7 +537,7 @@ func (c cmdable) SetIFEQGet(ctx context.Context, key string, value interface{}, 
 	return cmd
 }
 
-// SetIFNE Redis `SET key value [expiration] IFNE match-value` command.
+// SetIFNE KV `SET key value [expiration] IFNE match-value` command.
 // Compare-and-set: only sets the value if the current value does not equal matchValue.
 //
 // Returns "OK" on success.
@@ -566,7 +566,7 @@ func (c cmdable) SetIFNE(ctx context.Context, key string, value interface{}, mat
 	return cmd
 }
 
-// SetIFNEGet Redis `SET key value [expiration] IFNE match-value GET` command.
+// SetIFNEGet KV `SET key value [expiration] IFNE match-value GET` command.
 // Compare-and-set with GET: only sets the value if the current value does not equal matchValue,
 // and returns the previous value.
 //
@@ -602,13 +602,13 @@ func (c cmdable) SetIFNEGet(ctx context.Context, key string, value interface{}, 
 // The matchDigest parameter is a uint64 xxh3 hash value.
 //
 // Returns "OK" on success.
-// Returns redis.Nil if the digest doesn't match (value was modified).
+// Returns kv.Nil if the digest doesn't match (value was modified).
 // Zero expiration means the key has no expiration time.
 //
 // For examples of client-side digest generation and usage patterns, see:
 // example/digest-optimistic-locking/
 //
-// Redis 8.4+. See https://redis.io/commands/set/
+// KV 8.4+. See https://kv.io/commands/set/
 //
 // NOTE SetIFNEQ is still experimental
 // it's signature and behaviour may change
@@ -639,13 +639,13 @@ func (c cmdable) SetIFDEQ(ctx context.Context, key string, value interface{}, ma
 // The matchDigest parameter is a uint64 xxh3 hash value.
 //
 // Returns the previous value on success.
-// Returns redis.Nil if the digest doesn't match (value was modified).
+// Returns kv.Nil if the digest doesn't match (value was modified).
 // Zero expiration means the key has no expiration time.
 //
 // For examples of client-side digest generation and usage patterns, see:
 // example/digest-optimistic-locking/
 //
-// Redis 8.4+. See https://redis.io/commands/set/
+// KV 8.4+. See https://kv.io/commands/set/
 //
 // NOTE SetIFNEQGet is still experimental
 // it's signature and behaviour may change
@@ -675,13 +675,13 @@ func (c cmdable) SetIFDEQGet(ctx context.Context, key string, value interface{},
 // The matchDigest parameter is a uint64 xxh3 hash value.
 //
 // Returns "OK" on success (digest didn't match, value was set).
-// Returns redis.Nil if the digest matches (value was not modified).
+// Returns kv.Nil if the digest matches (value was not modified).
 // Zero expiration means the key has no expiration time.
 //
 // For examples of client-side digest generation and usage patterns, see:
 // example/digest-optimistic-locking/
 //
-// Redis 8.4+. See https://redis.io/commands/set/
+// KV 8.4+. See https://kv.io/commands/set/
 //
 // NOTE SetIFDNE is still experimental
 // it's signature and behaviour may change
@@ -712,13 +712,13 @@ func (c cmdable) SetIFDNE(ctx context.Context, key string, value interface{}, ma
 // The matchDigest parameter is a uint64 xxh3 hash value.
 //
 // Returns the previous value on success (digest didn't match, value was set).
-// Returns redis.Nil if the digest matches (value was not modified).
+// Returns kv.Nil if the digest matches (value was not modified).
 // Zero expiration means the key has no expiration time.
 //
 // For examples of client-side digest generation and usage patterns, see:
 // example/digest-optimistic-locking/
 //
-// Redis 8.4+. See https://redis.io/commands/set/
+// KV 8.4+. See https://kv.io/commands/set/
 //
 // NOTE SetIFDNEGet is still experimental
 // it's signature and behaviour may change

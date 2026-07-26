@@ -13,7 +13,7 @@ import (
 func ExampleClient_query_agg() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -28,34 +28,34 @@ func ExampleClient_query_agg() {
 	// REMOVE_END
 
 	_, err := rdb.FTCreate(ctx, "idx:bicycle",
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnJSON: true,
 			Prefix: []interface{}{"bicycle:"},
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.brand",
 			As:        "brand",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.model",
 			As:        "model",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.description",
 			As:        "description",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.price",
 			As:        "price",
-			FieldType: redis.SearchFieldTypeNumeric,
+			FieldType: kv.SearchFieldTypeNumeric,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.condition",
 			As:        "condition",
-			FieldType: redis.SearchFieldTypeTag,
+			FieldType: kv.SearchFieldTypeTag,
 		},
 	).Result()
 
@@ -173,7 +173,7 @@ func ExampleClient_query_agg() {
 				"The rear-inclined seat tube facilitates stability by allowing you to put a foot " +
 				"on the ground to balance at a stop, and the low step-over frame makes it " +
 				"accessible for all ability and mobility levels. The saddle is very soft, with " +
-				"a wide back to support your hip joints and a cutout in the center to redistribute " +
+				"a wide back to support your hip joints and a cutout in the center to kvtribute " +
 				"that pressure. Rim brakes deliver satisfactory braking control, and the wide tires " +
 				"provide a smooth, stable ride on paved roads and gravel. Rack and fender mounts " +
 				"facilitate setting up the Roll Low-Entry as your preferred commuter, and the " +
@@ -227,14 +227,14 @@ func ExampleClient_query_agg() {
 	res1, err := rdb.FTAggregateWithArgs(ctx,
 		"idx:bicycle",
 		"@condition:{new}",
-		&redis.FTAggregateOptions{
-			Apply: []redis.FTAggregateApply{
+		&kv.FTAggregateOptions{
+			Apply: []kv.FTAggregateApply{
 				{
 					Field: "@price - (@price * 0.1)",
 					As:    "discounted",
 				},
 			},
-			Load: []redis.FTAggregateLoad{
+			Load: []kv.FTAggregateLoad{
 				{Field: "__key"},
 				{Field: "price"},
 			},
@@ -270,22 +270,22 @@ func ExampleClient_query_agg() {
 	// STEP_START agg2
 	res2, err := rdb.FTAggregateWithArgs(ctx,
 		"idx:bicycle", "*",
-		&redis.FTAggregateOptions{
-			Load: []redis.FTAggregateLoad{
+		&kv.FTAggregateOptions{
+			Load: []kv.FTAggregateLoad{
 				{Field: "price"},
 			},
-			Apply: []redis.FTAggregateApply{
+			Apply: []kv.FTAggregateApply{
 				{
 					Field: "@price<1000",
 					As:    "price_category",
 				},
 			},
-			GroupBy: []redis.FTAggregateGroupBy{
+			GroupBy: []kv.FTAggregateGroupBy{
 				{
 					Fields: []interface{}{"@condition"},
-					Reduce: []redis.FTAggregateReducer{
+					Reduce: []kv.FTAggregateReducer{
 						{
-							Reducer: redis.SearchSum,
+							Reducer: kv.SearchSum,
 							Args:    []interface{}{"@price_category"},
 							As:      "num_affordable",
 						},
@@ -322,19 +322,19 @@ func ExampleClient_query_agg() {
 
 	res3, err := rdb.FTAggregateWithArgs(ctx,
 		"idx:bicycle", "*",
-		&redis.FTAggregateOptions{
-			Apply: []redis.FTAggregateApply{
+		&kv.FTAggregateOptions{
+			Apply: []kv.FTAggregateApply{
 				{
 					Field: "'bicycle'",
 					As:    "type",
 				},
 			},
-			GroupBy: []redis.FTAggregateGroupBy{
+			GroupBy: []kv.FTAggregateGroupBy{
 				{
 					Fields: []interface{}{"@type"},
-					Reduce: []redis.FTAggregateReducer{
+					Reduce: []kv.FTAggregateReducer{
 						{
-							Reducer: redis.SearchCount,
+							Reducer: kv.SearchCount,
 							As:      "num_total",
 						},
 					},
@@ -362,16 +362,16 @@ func ExampleClient_query_agg() {
 	// STEP_START agg4
 	res4, err := rdb.FTAggregateWithArgs(ctx,
 		"idx:bicycle", "*",
-		&redis.FTAggregateOptions{
-			Load: []redis.FTAggregateLoad{
+		&kv.FTAggregateOptions{
+			Load: []kv.FTAggregateLoad{
 				{Field: "__key"},
 			},
-			GroupBy: []redis.FTAggregateGroupBy{
+			GroupBy: []kv.FTAggregateGroupBy{
 				{
 					Fields: []interface{}{"@condition"},
-					Reduce: []redis.FTAggregateReducer{
+					Reduce: []kv.FTAggregateReducer{
 						{
-							Reducer: redis.SearchToList,
+							Reducer: kv.SearchToList,
 							Args:    []interface{}{"__key"},
 							As:      "bicycles",
 						},

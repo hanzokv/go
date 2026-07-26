@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-// TestTypedRedisErrors tests that typed Redis errors are created correctly
-func TestTypedRedisErrors(t *testing.T) {
+// TestTypedKVErrors tests that typed KV errors are created correctly
+func TestTypedKVErrors(t *testing.T) {
 	tests := []struct {
 		name         string
 		errorMsg     string
@@ -18,9 +18,9 @@ func TestTypedRedisErrors(t *testing.T) {
 	}{
 		{
 			name:         "LOADING error",
-			errorMsg:     "LOADING Redis is loading the dataset in memory",
+			errorMsg:     "LOADING KV is loading the dataset in memory",
 			expectedType: &LoadingError{},
-			expectedMsg:  "LOADING Redis is loading the dataset in memory",
+			expectedMsg:  "LOADING KV is loading the dataset in memory",
 			checkFunc:    IsLoadingError,
 		},
 		{
@@ -143,7 +143,7 @@ func TestTypedRedisErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := parseTypedRedisError(tt.errorMsg)
+			err := parseTypedKVError(tt.errorMsg)
 
 			// Check error message is preserved
 			if err.Error() != tt.expectedMsg {
@@ -180,7 +180,7 @@ func TestWrappedTypedErrors(t *testing.T) {
 	}{
 		{
 			name:      "Wrapped LOADING error",
-			errorMsg:  "LOADING Redis is loading the dataset in memory",
+			errorMsg:  "LOADING KV is loading the dataset in memory",
 			checkFunc: IsLoadingError,
 		},
 		{
@@ -243,7 +243,7 @@ func TestWrappedTypedErrors(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create the typed error
-			err := parseTypedRedisError(tt.errorMsg)
+			err := parseTypedKVError(tt.errorMsg)
 
 			// Wrap it multiple times (simulating hook wrapping)
 			wrappedErr := fmt.Errorf("hook error: %w", err)
@@ -276,8 +276,8 @@ func TestMovedAndAskErrorAddressExtraction(t *testing.T) {
 		},
 		{
 			name:         "MOVED with hostname",
-			errorMsg:     "MOVED 3999 redis-node-1:6379",
-			expectedAddr: "redis-node-1:6379",
+			errorMsg:     "MOVED 3999 kv-node-1:6379",
+			expectedAddr: "kv-node-1:6379",
 		},
 		{
 			name:         "ASK with IP address",
@@ -286,14 +286,14 @@ func TestMovedAndAskErrorAddressExtraction(t *testing.T) {
 		},
 		{
 			name:         "ASK with hostname",
-			errorMsg:     "ASK 3999 redis-node-2:6379",
-			expectedAddr: "redis-node-2:6379",
+			errorMsg:     "ASK 3999 kv-node-2:6379",
+			expectedAddr: "kv-node-2:6379",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := parseTypedRedisError(tt.errorMsg)
+			err := parseTypedKVError(tt.errorMsg)
 
 			var addr string
 			if movedErr, ok := IsMovedError(err); ok {
@@ -325,8 +325,8 @@ func TestMovedAndAskErrorAddressExtraction(t *testing.T) {
 	}
 }
 
-// TestGenericRedisError tests that unknown Redis errors fall back to generic RedisError
-func TestGenericRedisError(t *testing.T) {
+// TestGenericKVError tests that unknown KV errors fall back to generic KVError
+func TestGenericKVError(t *testing.T) {
 	tests := []struct {
 		name     string
 		errorMsg string
@@ -347,11 +347,11 @@ func TestGenericRedisError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := parseTypedRedisError(tt.errorMsg)
+			err := parseTypedKVError(tt.errorMsg)
 
-			// Should be a generic RedisError
-			if _, ok := err.(RedisError); !ok {
-				t.Errorf("Expected RedisError, got %T", err)
+			// Should be a generic KVError
+			if _, ok := err.(KVError); !ok {
+				t.Errorf("Expected KVError, got %T", err)
 			}
 
 			// Should preserve the error message
@@ -377,7 +377,7 @@ func TestBackwardCompatibility(t *testing.T) {
 		input    string
 		expected string
 	}{
-		{"LOADING Redis is loading the dataset in memory", "LOADING Redis is loading the dataset in memory"},
+		{"LOADING KV is loading the dataset in memory", "LOADING KV is loading the dataset in memory"},
 		{"READONLY You can't write against a read only replica", "READONLY You can't write against a read only replica"},
 		{"MOVED 3999 127.0.0.1:6381", "MOVED 3999 127.0.0.1:6381"},
 		{"ASK 3999 127.0.0.1:6381", "ASK 3999 127.0.0.1:6381"},
@@ -389,7 +389,7 @@ func TestBackwardCompatibility(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			err := parseTypedRedisError(tt.input)
+			err := parseTypedKVError(tt.input)
 			if err.Error() != tt.expected {
 				t.Errorf("Error message changed! Got %q, want %q", err.Error(), tt.expected)
 			}

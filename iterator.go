@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -49,7 +49,7 @@ func (it *ScanIterator) Next(ctx context.Context) bool {
 
 		it.pos = 1
 
-		// Redis can occasionally return empty page.
+		// KV can occasionally return empty page.
 		if len(it.cmd.page) > 0 {
 			return true
 		}
