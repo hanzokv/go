@@ -6,7 +6,7 @@ replace github.com/hanzoai/kv-go/v9 => ../..
 
 require (
 	github.com/prometheus/client_golang v1.14.0
-	github.com/hanzoai/kv-go/v9 v9.18.0-beta.2
+	github.com/hanzoai/kv-go/v9 v9.21.0
 )
 
 require (
