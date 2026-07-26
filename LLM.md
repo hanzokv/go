@@ -40,7 +40,7 @@ which the server merely records.
 | `hanzokv/js` | the TypeScript client — npm **`@hanzo/kv`** |
 | `hanzokv/mock` | the test mock — typed against this client, so it moves in lockstep |
 | `hanzokv/lock` | distributed locks — its adapter is typed against this client too |
-| `hanzokv/valkey` | the server fork |
+| `hanzoai/kv` | the server fork — Valkey-based, `kv-cli` is the first-party command |
 
 Named for the language or the concern; the org supplies the product noun. A repo
 called `kv-go` under `hanzokv` would say it twice. Same convention as `hanzo-ds`.
