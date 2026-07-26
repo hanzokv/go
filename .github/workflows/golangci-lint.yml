@@ -20,7 +20,7 @@ jobs:
     name: lint
     runs-on: hanzo-build-linux-amd64
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9.2.1
         with:
