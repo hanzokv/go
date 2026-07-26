@@ -7,8 +7,8 @@ replace github.com/hanzokv/go/v9 => ../..
 replace github.com/hanzokv/go/extra/rediscmd/v9 => ../rediscmd
 
 require (
-	github.com/hanzokv/go/extra/rediscmd/v9 v9.21.0
-	github.com/hanzokv/go/v9 v9.21.0
+	github.com/hanzokv/go/extra/rediscmd/v9 v9.21.1
+	github.com/hanzokv/go/v9 v9.21.1
 	go.opentelemetry.io/otel v1.22.0
 	go.opentelemetry.io/otel/metric v1.22.0
 	go.opentelemetry.io/otel/sdk v1.22.0
