@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Maintenance Notifications feature enables seamless Redis connection handoffs during cluster maintenance operations without dropping active connections. This feature leverages Redis RESP3 push notifications to provide zero-downtime maintenance for Redis Enterprise and compatible Redis deployments.
+The Maintenance Notifications feature enables seamless KV connection handoffs during cluster maintenance operations without dropping active connections. This feature leverages KV RESP3 push notifications to provide zero-downtime maintenance for KV Enterprise and compatible KV deployments.
 
 ## Important
 
@@ -17,7 +17,7 @@ This is necessary to prevent false failures due to increased latency during hand
 - **Graceful Degradation**: Falls back to standard reconnection if handoff fails
 
 ### Push Notification Support
-Supports all Redis Enterprise maintenance notification types:
+Supports all KV Enterprise maintenance notification types:
 - **MOVING** - Slot moving to a new node
 - **MIGRATING** - Slot in migration state
 - **MIGRATED** - Migration completed
@@ -53,7 +53,7 @@ Supports all Redis Enterprise maintenance notification types:
 - **Retry Mechanism**: Configurable retry attempts with exponential backoff
 
 ### Connection Pool Integration
-- **Pool Hook Interface**: Seamless integration with go-redis connection pool
+- **Pool Hook Interface**: Seamless integration with go-kv connection pool
 - **Connection State Management**: Atomic flags for connection usability tracking
 - **Graceful Shutdown**: Ensures all in-flight handoffs complete before shutdown
 
@@ -142,7 +142,7 @@ Capped by: min(MaxActiveConns + 1, 5 × PoolSize)
 - Hook system integration testing
 
 ### E2E Tests
-- Real Redis Enterprise cluster testing
+- Real KV Enterprise cluster testing
 - Multiple scenario coverage (timeouts, endpoint types, stress tests)
 - Fault injection testing
 - TLS configuration testing
@@ -150,13 +150,13 @@ Capped by: min(MaxActiveConns + 1, 5 × PoolSize)
 ## Compatibility
 
 ### Requirements
-- **Redis Protocol**: RESP3 required for push notifications
-- **Redis Version**: Redis Enterprise or compatible Redis with maintenance notifications
+- **KV Protocol**: RESP3 required for push notifications
+- **KV Version**: KV Enterprise or compatible KV with maintenance notifications
 - **Go Version**: Go 1.18+ (uses generics and atomic types)
 
 ### Client Support
 #### Currently Supported
-- **Standalone Client** (`redis.NewClient`)
+- **Standalone Client** (`kv.NewClient`)
 
 #### Planned Support
 - **Cluster Client** (not yet supported)
@@ -171,7 +171,7 @@ Capped by: min(MaxActiveConns + 1, 5 × PoolSize)
 
 **Before:**
 ```go
-client := redis.NewClient(&redis.Options{
+client := kv.NewClient(&kv.Options{
     Addr:     "localhost:6379",
     Protocol: 2, // RESP2
 })
@@ -179,7 +179,7 @@ client := redis.NewClient(&redis.Options{
 
 **After:**
 ```go
-client := redis.NewClient(&redis.Options{
+client := kv.NewClient(&kv.Options{
     Addr:     "localhost:6379",
     Protocol: 3, // RESP3 required
     MaintNotificationsConfig: &maintnotifications.Config{
@@ -206,9 +206,9 @@ if manager != nil {
 
 ## Known Limitations
 
-1. **Standalone Only**: Currently only supported in standalone Redis clients
+1. **Standalone Only**: Currently only supported in standalone KV clients
 2. **RESP3 Required**: Push notifications require RESP3 protocol
-3. **Server Support**: Requires Redis Enterprise or compatible Redis with maintenance notifications
+3. **Server Support**: Requires KV Enterprise or compatible KV with maintenance notifications
 4. **Single Connection Commands**: Some commands (MULTI/EXEC, WATCH) may need special handling
 5. **No Failover/Ring Client Support**: Failover and Ring clients are not supported and there are no plans to add support
 

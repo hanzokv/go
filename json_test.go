@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -17,10 +17,10 @@ type JSONGetTestStruct struct {
 
 var _ = Describe("JSON Commands", Label("json"), func() {
 	ctx := context.TODO()
-	var client *redis.Client
+	var client *kv.Client
 
-	setupRedisClient := func(protocolVersion int) *redis.Client {
-		return redis.NewClient(&redis.Options{
+	setupKVClient := func(protocolVersion int) *kv.Client {
+		return kv.NewClient(&kv.Options{
 			Addr:          "localhost:6379",
 			DB:            0,
 			Protocol:      protocolVersion,
@@ -38,7 +38,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 	protocols := []int{2, 3}
 	for _, protocol := range protocols {
 		BeforeEach(func() {
-			client = setupRedisClient(protocol)
+			client = setupKVClient(protocol)
 			Expect(client.FlushAll(ctx).Err()).NotTo(HaveOccurred())
 		})
 
@@ -78,17 +78,17 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res[0]).To(Equal(int64(4)))
 
-				res, err = client.JSONArrIndexWithArgs(ctx, "index2", "$", &redis.JSONArrIndexArgs{}, 4).Result()
+				res, err = client.JSONArrIndexWithArgs(ctx, "index2", "$", &kv.JSONArrIndexArgs{}, 4).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res[0]).To(Equal(int64(4)))
 
 				stop := 5000
-				res, err = client.JSONArrIndexWithArgs(ctx, "index2", "$", &redis.JSONArrIndexArgs{Stop: &stop}, 4).Result()
+				res, err = client.JSONArrIndexWithArgs(ctx, "index2", "$", &kv.JSONArrIndexArgs{Stop: &stop}, 4).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res[0]).To(Equal(int64(4)))
 
 				stop = -1
-				res, err = client.JSONArrIndexWithArgs(ctx, "index2", "$", &redis.JSONArrIndexArgs{Stop: &stop}, 4).Result()
+				res, err = client.JSONArrIndexWithArgs(ctx, "index2", "$", &kv.JSONArrIndexArgs{Stop: &stop}, 4).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res[0]).To(Equal(int64(-1)))
 			})
@@ -145,7 +145,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 
 				_, err = client.JSONGet(ctx, "this-key-does-not-exist", "$").Result()
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(BeIdenticalTo(redis.Nil))
+				Expect(err).To(BeIdenticalTo(kv.Nil))
 			})
 
 			It("should JSONArrInsert", Label("json.arrinsert", "json"), func() {
@@ -195,7 +195,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd1).To(Equal("OK"))
 
 				stop := 3
-				cmd2, err := client.JSONArrTrimWithArgs(ctx, "trim1", "$", &redis.JSONArrTrimArgs{Start: 1, Stop: &stop}).Result()
+				cmd2, err := client.JSONArrTrimWithArgs(ctx, "trim1", "$", &kv.JSONArrTrimArgs{Start: 1, Stop: &stop}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cmd2).To(Equal([]int64{3}))
 
@@ -208,7 +208,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd3).To(Equal("OK"))
 
 				stop = 3
-				cmd4, err := client.JSONArrTrimWithArgs(ctx, "trim2", "$", &redis.JSONArrTrimArgs{Start: -1, Stop: &stop}).Result()
+				cmd4, err := client.JSONArrTrimWithArgs(ctx, "trim2", "$", &kv.JSONArrTrimArgs{Start: -1, Stop: &stop}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cmd4).To(Equal([]int64{0}))
 
@@ -217,7 +217,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd5).To(Equal("OK"))
 
 				stop = 99
-				cmd6, err := client.JSONArrTrimWithArgs(ctx, "trim3", "$", &redis.JSONArrTrimArgs{Start: 3, Stop: &stop}).Result()
+				cmd6, err := client.JSONArrTrimWithArgs(ctx, "trim3", "$", &kv.JSONArrTrimArgs{Start: 3, Stop: &stop}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cmd6).To(Equal([]int64{2}))
 
@@ -226,7 +226,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd7).To(Equal("OK"))
 
 				stop = 1
-				cmd8, err := client.JSONArrTrimWithArgs(ctx, "trim4", "$", &redis.JSONArrTrimArgs{Start: 9, Stop: &stop}).Result()
+				cmd8, err := client.JSONArrTrimWithArgs(ctx, "trim4", "$", &kv.JSONArrTrimArgs{Start: 9, Stop: &stop}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cmd8).To(Equal([]int64{0}))
 
@@ -235,7 +235,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd9).To(Equal("OK"))
 
 				stop = 11
-				cmd10, err := client.JSONArrTrimWithArgs(ctx, "trim5", "$", &redis.JSONArrTrimArgs{Start: 9, Stop: &stop}).Result()
+				cmd10, err := client.JSONArrTrimWithArgs(ctx, "trim5", "$", &kv.JSONArrTrimArgs{Start: 9, Stop: &stop}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(cmd10).To(Equal([]int64{0}))
 			})
@@ -262,16 +262,16 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd.Val()).To(Equal("OK"))
 			})
 
-			It("should JSONGet", Label("json.get", "json", "NonRedisEnterprise"), func() {
+			It("should JSONGet", Label("json.get", "json", "NonKVEnterprise"), func() {
 				res, err := client.JSONSet(ctx, "get3", "$", `{"a": 1, "b": 2}`).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal("OK"))
 
-				res, err = client.JSONGetWithArgs(ctx, "get3", &redis.JSONGetArgs{Indent: "-"}).Result()
+				res, err = client.JSONGetWithArgs(ctx, "get3", &kv.JSONGetArgs{Indent: "-"}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal(`{-"a":1,-"b":2}`))
 
-				res, err = client.JSONGetWithArgs(ctx, "get3", &redis.JSONGetArgs{Indent: "-", Newline: `~`, Space: `!`}).Result()
+				res, err = client.JSONGetWithArgs(ctx, "get3", &kv.JSONGetArgs{Indent: "-", Newline: `~`, Space: `!`}).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal(`{~-"a":!1,~-"b":!2~}`))
 			})
@@ -290,10 +290,10 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(res).To(Equal(`[{"a":1,"b":3,"c":4}]`))
 			})
 
-			It("should JSONMSet", Label("json.mset", "json", "NonRedisEnterprise"), func() {
-				doc1 := redis.JSONSetArgs{Key: "mset1", Path: "$", Value: `{"a": 1}`}
-				doc2 := redis.JSONSetArgs{Key: "mset2", Path: "$", Value: 2}
-				docs := []redis.JSONSetArgs{doc1, doc2}
+			It("should JSONMSet", Label("json.mset", "json", "NonKVEnterprise"), func() {
+				doc1 := kv.JSONSetArgs{Key: "mset1", Path: "$", Value: `{"a": 1}`}
+				doc2 := kv.JSONSetArgs{Key: "mset2", Path: "$", Value: 2}
+				docs := []kv.JSONSetArgs{doc1, doc2}
 
 				mSetResult, err := client.JSONMSetArgs(ctx, docs).Result()
 				Expect(err).NotTo(HaveOccurred())
@@ -311,7 +311,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(err).NotTo(HaveOccurred())
 			})
 
-			It("should JSONMGet", Label("json.mget", "json", "NonRedisEnterprise"), func() {
+			It("should JSONMGet", Label("json.mget", "json", "NonKVEnterprise"), func() {
 				cmd1 := client.JSONSet(ctx, "mget2a", "$", `{"a": ["aa", "ab", "ac", "ad"], "b": {"a": ["ba", "bb", "bc", "bd"]}}`)
 				Expect(cmd1.Err()).NotTo(HaveOccurred())
 				Expect(cmd1.Val()).To(Equal("OK"))
@@ -326,7 +326,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd3.Val()[1]).To(Equal(`[[100,200,300,200],[100,200,300,200]]`))
 			})
 
-			It("should JSONMget with $", Label("json.mget", "json", "NonRedisEnterprise"), func() {
+			It("should JSONMget with $", Label("json.mget", "json", "NonKVEnterprise"), func() {
 				res, err := client.JSONSet(ctx, "doc1", "$", `{"a": 1, "b": 2, "nested": {"a": 3}, "c": "", "nested2": {"a": ""}}`).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(res).To(Equal("OK"))
@@ -406,7 +406,7 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 				Expect(cmd2.Val()).To(Equal(int64(1)))
 
 				cmd3 := client.JSONGet(ctx, "del1", "$")
-				Expect(cmd3.Err()).To(Equal(redis.Nil))
+				Expect(cmd3.Err()).To(Equal(kv.Nil))
 				Expect(cmd3.Val()).To(Equal(""))
 			})
 
@@ -679,9 +679,9 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 		})
 
 		Describe("JSON Nil Handling", func() {
-			It("should return redis.Nil for non-existent key", func() {
+			It("should return kv.Nil for non-existent key", func() {
 				_, err := client.JSONGet(ctx, "non-existent-key", "$").Result()
-				Expect(err).To(Equal(redis.Nil))
+				Expect(err).To(Equal(kv.Nil))
 			})
 
 			It("should return empty array for non-existent path in existing key", func() {
@@ -732,12 +732,12 @@ var _ = Describe("JSON Commands", Label("json"), func() {
 	}
 })
 
-var _ = Describe("Go-Redis Advanced JSON and RediSearch Tests", func() {
-	var client *redis.Client
+var _ = Describe("Go-KV Advanced JSON and RediSearch Tests", func() {
+	var client *kv.Client
 	var ctx = context.Background()
 
-	setupRedisClient := func(protocolVersion int) *redis.Client {
-		return redis.NewClient(&redis.Options{
+	setupKVClient := func(protocolVersion int) *kv.Client {
+		return kv.NewClient(&kv.Options{
 			Addr:          "localhost:6379",
 			DB:            0,
 			Protocol:      protocolVersion, // Setting RESP2 or RESP3 protocol
@@ -758,7 +758,7 @@ var _ = Describe("Go-Redis Advanced JSON and RediSearch Tests", func() {
 		for _, protocol := range protocols {
 			When("using protocol version", func() {
 				BeforeEach(func() {
-					client = setupRedisClient(protocol)
+					client = setupKVClient(protocol)
 				})
 
 				It("should perform complex JSON and RediSearch operations", func() {
@@ -818,7 +818,7 @@ var _ = Describe("Go-Redis Advanced JSON and RediSearch Tests", func() {
 
 					start := 0
 					stop := 1
-					arrTrimCmd := client.JSONArrTrimWithArgs(ctx, "person:1", "$.person.friends", &redis.JSONArrTrimArgs{Start: start, Stop: &stop})
+					arrTrimCmd := client.JSONArrTrimWithArgs(ctx, "person:1", "$.person.friends", &kv.JSONArrTrimArgs{Start: start, Stop: &stop})
 					Expect(arrTrimCmd.Err()).NotTo(HaveOccurred(), "JSON.ARRTRIM failed")
 
 					mergeData := map[string]interface{}{
@@ -843,7 +843,7 @@ var _ = Describe("Go-Redis Advanced JSON and RediSearch Tests", func() {
 					)
 					Expect(createIndexCmd.Err()).NotTo(HaveOccurred(), "FT.CREATE failed")
 
-					searchCmd := client.FTSearchWithArgs(ctx, "person_idx", "@contact_value:(alice\\@example\\.com alice_wonder)", &redis.FTSearchOptions{Return: []redis.FTSearchReturn{{FieldName: "$.person.name"}, {FieldName: "$.person.age"}, {FieldName: "$.person.address.city"}}})
+					searchCmd := client.FTSearchWithArgs(ctx, "person_idx", "@contact_value:(alice\\@example\\.com alice_wonder)", &kv.FTSearchOptions{Return: []kv.FTSearchReturn{{FieldName: "$.person.name"}, {FieldName: "$.person.age"}, {FieldName: "$.person.address.city"}}})
 					searchResult, err := searchCmd.Result()
 					Expect(err).NotTo(HaveOccurred(), "FT.SEARCH failed")
 					GinkgoWriter.Printf("Advanced Search result: %+v\n", searchResult)

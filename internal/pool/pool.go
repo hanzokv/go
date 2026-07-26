@@ -15,17 +15,17 @@ import (
 
 var (
 	// ErrClosed performs any operation on the closed client will return this error.
-	ErrClosed = errors.New("redis: client is closed")
+	ErrClosed = errors.New("kv: client is closed")
 
 	// ErrPoolExhausted is returned from a pool connection method
 	// when the maximum number of database connections in the pool has been reached.
-	ErrPoolExhausted = errors.New("redis: connection pool exhausted")
+	ErrPoolExhausted = errors.New("kv: connection pool exhausted")
 
 	// ErrPoolTimeout timed out waiting to get a connection from the connection pool.
-	ErrPoolTimeout = errors.New("redis: connection pool timeout")
+	ErrPoolTimeout = errors.New("kv: connection pool timeout")
 
 	// ErrConnUnusableTimeout is returned when a connection is not usable and we timed out trying to mark it as unusable.
-	ErrConnUnusableTimeout = errors.New("redis: timed out trying to mark connection as unusable")
+	ErrConnUnusableTimeout = errors.New("kv: timed out trying to mark connection as unusable")
 
 	// errHookRequestedRemoval is returned when a hook requests connection removal.
 	errHookRequestedRemoval = errors.New("hook requested removal")
@@ -287,7 +287,7 @@ func (p *ConnPool) addIdleConn() error {
 		return err
 	}
 
-	// NOTE: Connection is in CREATED state and will be initialized by redis.go:initConn()
+	// NOTE: Connection is in CREATED state and will be initialized by kv.go:initConn()
 	// when first acquired from the pool. Do NOT transition to IDLE here - that happens
 	// after initialization completes.
 
@@ -335,7 +335,7 @@ func (p *ConnPool) newConn(ctx context.Context, pooled bool) (*Conn, error) {
 		return nil, err
 	}
 
-	// NOTE: Connection is in CREATED state and will be initialized by redis.go:initConn()
+	// NOTE: Connection is in CREATED state and will be initialized by kv.go:initConn()
 	// when first used. Do NOT transition to IDLE here - that happens after initialization completes.
 	// The state machine flow is: CREATED → INITIALIZING (in initConn) → IDLE (after init success)
 
@@ -419,7 +419,7 @@ func (p *ConnPool) dialConn(ctx context.Context, pooled bool) (*Conn, error) {
 		return cn, nil
 	}
 
-	internal.Logger.Printf(ctx, "redis: connection pool: failed to dial after %d attempts: %v", attempt, lastErr)
+	internal.Logger.Printf(ctx, "kv: connection pool: failed to dial after %d attempts: %v", attempt, lastErr)
 	// All retries failed - handle error tracking
 	p.setLastDialError(lastErr)
 	if atomic.AddUint32(&p.dialErrorsNum, 1) == uint32(p.cfg.PoolSize) {
@@ -532,10 +532,10 @@ func (p *ConnPool) getConn(ctx context.Context) (*Conn, error) {
 			acceptConn, err := hookManager.ProcessOnGet(ctx, cn, false)
 			if err != nil || !acceptConn {
 				if err != nil {
-					internal.Logger.Printf(ctx, "redis: connection pool: failed to process idle connection by hook: %v", err)
+					internal.Logger.Printf(ctx, "kv: connection pool: failed to process idle connection by hook: %v", err)
 					_ = p.CloseConn(cn)
 				} else {
-					internal.Logger.Printf(ctx, "redis: connection pool: conn[%d] rejected by hook, returning to pool", cn.GetID())
+					internal.Logger.Printf(ctx, "kv: connection pool: conn[%d] rejected by hook, returning to pool", cn.GetID())
 					// Return connection to pool without freeing the turn that this Get() call holds.
 					// We use putConnWithoutTurn() to run all the Put hooks and logic without freeing a turn.
 					p.putConnWithoutTurn(ctx, cn)
@@ -563,7 +563,7 @@ func (p *ConnPool) getConn(ctx context.Context) (*Conn, error) {
 		// this should not happen with a new connection, but we handle it gracefully
 		if err != nil || !acceptConn {
 			// Failed to process connection, discard it
-			internal.Logger.Printf(ctx, "redis: connection pool: failed to process new connection conn[%d] by hook: accept=%v, err=%v", newcn.GetID(), acceptConn, err)
+			internal.Logger.Printf(ctx, "kv: connection pool: failed to process new connection conn[%d] by hook: accept=%v, err=%v", newcn.GetID(), acceptConn, err)
 			_ = p.CloseConn(newcn)
 			return nil, err
 		}
@@ -758,7 +758,7 @@ func (p *ConnPool) popIdle() (*Conn, error) {
 
 	// If we exhausted all attempts without finding a usable connection, return nil
 	if attempts > 1 && attempts >= maxAttempts && int32(attempts) >= p.poolSize.Load() {
-		internal.Logger.Printf(context.Background(), "redis: connection pool: failed to get a usable connection after %d attempts", attempts)
+		internal.Logger.Printf(context.Background(), "kv: connection pool: failed to get a usable connection after %d attempts", attempts)
 		return nil, nil
 	}
 

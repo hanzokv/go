@@ -1,13 +1,13 @@
 # Database Management with Fault Injector
 
-This document describes how to use the fault injector's database management endpoints to create and delete Redis databases during E2E testing.
+This document describes how to use the fault injector's database management endpoints to create and delete KV databases during E2E testing.
 
 ## Overview
 
 The fault injector now supports two new endpoints for database management:
 
-1. **CREATE_DATABASE** - Create a new Redis database with custom configuration
-2. **DELETE_DATABASE** - Delete an existing Redis database
+1. **CREATE_DATABASE** - Create a new KV database with custom configuration
+2. **DELETE_DATABASE** - Delete an existing KV database
 
 These endpoints are useful for E2E tests that need to dynamically create and destroy databases as part of their test scenarios.
 
@@ -15,7 +15,7 @@ These endpoints are useful for E2E tests that need to dynamically create and des
 
 ### CREATE_DATABASE
 
-Creates a new Redis database with the specified configuration.
+Creates a new KV database with the specified configuration.
 
 **Parameters:**
 - `cluster_index` (int): The index of the cluster where the database should be created
@@ -26,7 +26,7 @@ Creates a new Redis database with the specified configuration.
 
 ### DELETE_DATABASE
 
-Deletes an existing Redis database.
+Deletes an existing KV database.
 
 **Parameters:**
 - `cluster_index` (int): The index of the cluster containing the database
@@ -89,7 +89,7 @@ type ShardKeyRegexPattern struct {
 
 ```json
 {
-  "name": "ioredis-cluster",
+  "name": "iokv-cluster",
   "port": 11112,
   "memory_size": 1273741824,
   "replication": true,

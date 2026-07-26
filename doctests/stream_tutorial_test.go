@@ -19,7 +19,7 @@ func UNUSED(v ...interface{}) {}
 func ExampleClient_xadd() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -32,7 +32,7 @@ func ExampleClient_xadd() {
 	// REMOVE_END
 
 	// STEP_START xadd
-	res1, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res1, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Castilla",
@@ -48,7 +48,7 @@ func ExampleClient_xadd() {
 
 	// fmt.Println(res1) // >>> 1692632086370-0
 
-	res2, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res2, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Norem",
@@ -64,7 +64,7 @@ func ExampleClient_xadd() {
 
 	// fmt.PrintLn(res2) // >>> 1692632094485-0
 
-	res3, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res3, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Prickett",
@@ -100,7 +100,7 @@ func ExampleClient_xadd() {
 func ExampleClient_racefrance1() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -112,7 +112,7 @@ func ExampleClient_racefrance1() {
 	rdb.Del(ctx, "race:france")
 	// REMOVE_END
 
-	_, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Castilla",
@@ -127,7 +127,7 @@ func ExampleClient_racefrance1() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Norem",
@@ -142,7 +142,7 @@ func ExampleClient_racefrance1() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Prickett",
@@ -169,7 +169,7 @@ func ExampleClient_racefrance1() {
 	// STEP_END
 
 	// STEP_START xread_block
-	res5, err := rdb.XRead(ctx, &redis.XReadArgs{
+	res5, err := rdb.XRead(ctx, &kv.XReadArgs{
 		Streams: []string{"race:france", "0"},
 		Count:   100,
 		Block:   300,
@@ -184,7 +184,7 @@ func ExampleClient_racefrance1() {
 	// STEP_END
 
 	// STEP_START xadd_2
-	res6, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res6, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Castilla",
@@ -224,7 +224,7 @@ func ExampleClient_racefrance1() {
 func ExampleClient_raceusa() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -237,7 +237,7 @@ func ExampleClient_raceusa() {
 	// REMOVE_END
 
 	// STEP_START xadd_id
-	res8, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res8, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:usa",
 		Values: map[string]interface{}{
 			"racer": "Castilla",
@@ -251,7 +251,7 @@ func ExampleClient_raceusa() {
 
 	fmt.Println(res8) // >>> 0-1
 
-	res9, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res9, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:usa",
 		Values: map[string]interface{}{
 			"racer": "Norem",
@@ -267,7 +267,7 @@ func ExampleClient_raceusa() {
 	// STEP_END
 
 	// STEP_START xadd_bad_id
-	res10, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res10, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Values: map[string]interface{}{
 			"racer": "Prickett",
 		},
@@ -281,7 +281,7 @@ func ExampleClient_raceusa() {
 	// STEP_END
 
 	// STEP_START xadd_7
-	res11, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	res11, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:usa",
 		Values: map[string]interface{}{
 			"racer": "Prickett",
@@ -309,7 +309,7 @@ func ExampleClient_raceusa() {
 func ExampleClient_racefrance2() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -321,7 +321,7 @@ func ExampleClient_racefrance2() {
 	rdb.Del(ctx, "race:france")
 	// REMOVE_END
 
-	_, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Castilla",
@@ -336,7 +336,7 @@ func ExampleClient_racefrance2() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Norem",
@@ -351,7 +351,7 @@ func ExampleClient_racefrance2() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Prickett",
@@ -366,7 +366,7 @@ func ExampleClient_racefrance2() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Castilla",
@@ -453,7 +453,7 @@ func ExampleClient_racefrance2() {
 	// STEP_END
 
 	// STEP_START xread
-	res18, err := rdb.XRead(ctx, &redis.XReadArgs{
+	res18, err := rdb.XRead(ctx, &kv.XReadArgs{
 		Streams: []string{"race:france", "0"},
 		Count:   2,
 	}).Result()
@@ -479,7 +479,7 @@ func ExampleClient_racefrance2() {
 func ExampleClient_xgroupcreate() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -491,7 +491,7 @@ func ExampleClient_xgroupcreate() {
 	rdb.Del(ctx, "race:france")
 	// REMOVE_END
 
-	_, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:france",
 		Values: map[string]interface{}{
 			"rider":       "Castilla",
@@ -523,7 +523,7 @@ func ExampleClient_xgroupcreate() {
 func ExampleClient_xgroupcreatemkstream() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -554,7 +554,7 @@ func ExampleClient_xgroupcreatemkstream() {
 func ExampleClient_xgroupread() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -575,7 +575,7 @@ func ExampleClient_xgroupread() {
 	}
 
 	// STEP_START xgroup_read
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Castilla"},
 	}).Result()
@@ -585,7 +585,7 @@ func ExampleClient_xgroupread() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Royce"},
 	}).Result()
@@ -595,7 +595,7 @@ func ExampleClient_xgroupread() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Sam-Bodden"},
 	}).Result()
@@ -605,7 +605,7 @@ func ExampleClient_xgroupread() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Prickett"},
 	}).Result()
@@ -615,7 +615,7 @@ func ExampleClient_xgroupread() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Norem"},
 	}).Result()
@@ -627,7 +627,7 @@ func ExampleClient_xgroupread() {
 
 	// fmt.Println(res25)
 
-	res21, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+	res21, err := rdb.XReadGroup(ctx, &kv.XReadGroupArgs{
 		Streams:  []string{"race:italy", ">"},
 		Group:    "italy_riders",
 		Consumer: "Alice",
@@ -661,7 +661,7 @@ func ExampleClient_xgroupread() {
 func ExampleClient_raceitaly() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -682,7 +682,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Castilla"},
 		ID:     "1692632639151-0",
@@ -692,7 +692,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Royce"},
 		ID:     "1692632647899-0",
@@ -702,7 +702,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Sam-Bodden"},
 		ID:     "1692632662819-0",
@@ -712,7 +712,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Prickett"},
 		ID:     "1692632670501-0",
@@ -722,7 +722,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		Values: map[string]interface{}{"rider": "Norem"},
 		ID:     "1692632678249-0",
@@ -732,7 +732,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+	_, err = rdb.XReadGroup(ctx, &kv.XReadGroupArgs{
 		Streams:  []string{"race:italy", ">"},
 		Group:    "italy_riders",
 		Consumer: "Alice",
@@ -743,7 +743,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 	// STEP_START xgroup_read_id
-	res22, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+	res22, err := rdb.XReadGroup(ctx, &kv.XReadGroupArgs{
 		Streams:  []string{"race:italy", "0"},
 		Group:    "italy_riders",
 		Consumer: "Alice",
@@ -768,7 +768,7 @@ func ExampleClient_raceitaly() {
 
 	fmt.Println(res23) // >>> 1
 
-	res24, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+	res24, err := rdb.XReadGroup(ctx, &kv.XReadGroupArgs{
 		Streams:  []string{"race:italy", "0"},
 		Group:    "italy_riders",
 		Consumer: "Alice",
@@ -783,7 +783,7 @@ func ExampleClient_raceitaly() {
 	// STEP_END
 
 	// STEP_START xgroup_read_bob
-	res25, err := rdb.XReadGroup(ctx, &redis.XReadGroupArgs{
+	res25, err := rdb.XReadGroup(ctx, &kv.XReadGroupArgs{
 		Streams:  []string{"race:italy", ">"},
 		Group:    "italy_riders",
 		Consumer: "Bob",
@@ -811,7 +811,7 @@ func ExampleClient_raceitaly() {
 	// STEP_END
 
 	// STEP_START xpending_plus_minus
-	res27, err := rdb.XPendingExt(ctx, &redis.XPendingExtArgs{
+	res27, err := rdb.XPendingExt(ctx, &kv.XPendingExtArgs{
 		Stream: "race:italy",
 		Group:  "italy_riders",
 		Start:  "-",
@@ -840,7 +840,7 @@ func ExampleClient_raceitaly() {
 	// STEP_END
 
 	// STEP_START xclaim
-	res29, err := rdb.XClaim(ctx, &redis.XClaimArgs{
+	res29, err := rdb.XClaim(ctx, &kv.XClaimArgs{
 		Stream:   "race:italy",
 		Group:    "italy_riders",
 		Consumer: "Alice",
@@ -856,7 +856,7 @@ func ExampleClient_raceitaly() {
 	// STEP_END
 
 	// STEP_START xautoclaim
-	res30, res30a, err := rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+	res30, res30a, err := rdb.XAutoClaim(ctx, &kv.XAutoClaimArgs{
 		Stream:   "race:italy",
 		Group:    "italy_riders",
 		Consumer: "Alice",
@@ -873,7 +873,7 @@ func ExampleClient_raceitaly() {
 	// STEP_END
 
 	// STEP_START xautoclaim_cursor
-	res31, res31a, err := rdb.XAutoClaim(ctx, &redis.XAutoClaimArgs{
+	res31, res31a, err := rdb.XAutoClaim(ctx, &kv.XAutoClaimArgs{
 		Stream:   "race:italy",
 		Group:    "italy_riders",
 		Consumer: "Lora",
@@ -923,7 +923,7 @@ func ExampleClient_raceitaly() {
 	// STEP_END
 
 	// STEP_START maxlen
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		MaxLen: 2,
 		Values: map[string]interface{}{"rider": "Jones"},
@@ -934,7 +934,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		MaxLen: 2,
 		Values: map[string]interface{}{"rider": "Wood"},
@@ -945,7 +945,7 @@ func ExampleClient_raceitaly() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		MaxLen: 2,
 		Values: map[string]interface{}{"rider": "Henshaw"},
@@ -1020,7 +1020,7 @@ func ExampleClient_raceitaly() {
 func ExampleClient_xdel() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -1032,7 +1032,7 @@ func ExampleClient_xdel() {
 	rdb.Del(ctx, "race:italy")
 	// REMOVE_END
 
-	_, err := rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err := rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		MaxLen: 2,
 		Values: map[string]interface{}{"rider": "Wood"},
@@ -1044,7 +1044,7 @@ func ExampleClient_xdel() {
 		panic(err)
 	}
 
-	_, err = rdb.XAdd(ctx, &redis.XAddArgs{
+	_, err = rdb.XAdd(ctx, &kv.XAddArgs{
 		Stream: "race:italy",
 		MaxLen: 2,
 		Values: map[string]interface{}{"rider": "Henshaw"},

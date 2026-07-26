@@ -6,8 +6,8 @@ import (
 	"strconv"
 )
 
-// ParseFloat parses a Redis RESP3 float reply into a Go float64,
-// handling "inf", "-inf", "nan" per Redis conventions.
+// ParseFloat parses a KV RESP3 float reply into a Go float64,
+// handling "inf", "-inf", "nan" per KV conventions.
 func ParseStringToFloat(s string) (float64, error) {
 	switch s {
 	case "inf":
@@ -24,7 +24,7 @@ func ParseStringToFloat(s string) (float64, error) {
 func MustParseFloat(s string) float64 {
 	f, err := ParseStringToFloat(s)
 	if err != nil {
-		panic(fmt.Sprintf("redis: failed to parse float %q: %v", s, err))
+		panic(fmt.Sprintf("kv: failed to parse float %q: %v", s, err))
 	}
 	return f
 }
@@ -32,10 +32,10 @@ func MustParseFloat(s string) float64 {
 // SafeIntToInt32 safely converts an int to int32, returning an error if overflow would occur.
 func SafeIntToInt32(value int, fieldName string) (int32, error) {
 	if value > math.MaxInt32 {
-		return 0, fmt.Errorf("redis: %s value %d exceeds maximum allowed value %d", fieldName, value, math.MaxInt32)
+		return 0, fmt.Errorf("kv: %s value %d exceeds maximum allowed value %d", fieldName, value, math.MaxInt32)
 	}
 	if value < math.MinInt32 {
-		return 0, fmt.Errorf("redis: %s value %d is below minimum allowed value %d", fieldName, value, math.MinInt32)
+		return 0, fmt.Errorf("kv: %s value %d is below minimum allowed value %d", fieldName, value, math.MinInt32)
 	}
 	return int32(value), nil
 }

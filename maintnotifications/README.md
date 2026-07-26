@@ -1,14 +1,14 @@
 # Maintenance Notifications
 
-Seamless Redis connection handoffs during cluster maintenance operations without dropping connections.
+Seamless KV connection handoffs during cluster maintenance operations without dropping connections.
 
 ## ⚠️ **Important Note**
-**Maintenance notifications are currently supported only in standalone Redis clients.** Cluster clients (ClusterClient, FailoverClient, etc.) do not yet support this functionality.
+**Maintenance notifications are currently supported only in standalone KV clients.** Cluster clients (ClusterClient, FailoverClient, etc.) do not yet support this functionality.
 
 ## Quick Start
 
 ```go
-client := redis.NewClient(&redis.Options{
+client := kv.NewClient(&kv.Options{
     Addr:     "localhost:6379",
     Protocol: 3, // RESP3 required
 	MaintNotificationsConfig: &maintnotifications.Config{
@@ -58,7 +58,7 @@ client := redis.NewClient(&redis.Options{
 
 ## How It Works
 
-1. Redis sends push notifications about cluster maintenance operations
+1. KV sends push notifications about cluster maintenance operations
 2. Client creates new connections to updated endpoints
 3. Active operations transfer to new connections
 4. Old connections close gracefully

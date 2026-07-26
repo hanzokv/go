@@ -1,6 +1,6 @@
-# Command examples for redis.io
+# Command examples for kv.io
 
-These examples appear on the [Redis documentation](https://redis.io) site as part of the tabbed examples interface.
+These examples appear on the [KV documentation](https://kv.io) site as part of the tabbed examples interface.
 
 ## How to add examples
 
@@ -11,11 +11,11 @@ These examples appear on the [Redis documentation](https://redis.io) site as par
 
 ### Special markup
 
-See https://github.com/redis-stack/redis-stack-website#readme for more details.
+See https://github.com/kv-stack/kv-stack-website#readme for more details.
 
 ## How to test the examples
 
-- Start a Redis server locally on port 6379
+- Start a KV server locally on port 6379
 - CD into the `doctests` directory
 - Run `go test` to test all examples in the directory.
 - Run `go test filename.go` to test a single file

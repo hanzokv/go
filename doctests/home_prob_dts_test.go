@@ -14,7 +14,7 @@ import (
 func ExampleClient_probabilistic_datatypes() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB

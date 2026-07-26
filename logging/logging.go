@@ -1,4 +1,4 @@
-// Package logging provides logging level constants and utilities for the go-redis library.
+// Package logging provides logging level constants and utilities for the go-kv library.
 // This package centralizes logging configuration to ensure consistency across all components.
 package logging
 
@@ -36,7 +36,7 @@ func Disable() {
 
 // Enable enables logging by setting the internal logger to the default logger.
 // This is the default behavior.
-// You can use redis.SetLogger to set a custom logger.
+// You can use kv.SetLogger to set a custom logger.
 //
 // NOTE: This function is not thread-safe.
 // It will override any custom logger that was set before and set the DefaultLogger.

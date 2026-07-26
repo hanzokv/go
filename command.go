@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"bufio"
@@ -19,8 +19,8 @@ import (
 	"github.com/hanzokv/go/v9/internal/util"
 )
 
-// keylessCommands contains Redis commands that have empty key specifications (9th slot empty)
-// Only includes core Redis commands, excludes FT.*, ts.*, timeseries.*, search.* and subcommands
+// keylessCommands contains KV commands that have empty key specifications (9th slot empty)
+// Only includes core KV commands, excludes FT.*, ts.*, timeseries.*, search.* and subcommands
 var keylessCommands = map[string]struct{}{
 	"acl":          {},
 	"asking":       {},
@@ -271,7 +271,7 @@ func cmdFirstKeyPos(cmd Cmder) int {
 	case "publish":
 		return 1
 	case "memory":
-		// https://github.com/redis/redis/issues/7493
+		// https://github.com/kv/kv/issues/7493
 		if cmd.stringArg(1) == "usage" {
 			return 2
 		}
@@ -468,7 +468,7 @@ func toString(val interface{}) (string, error) {
 	case string:
 		return val, nil
 	default:
-		err := fmt.Errorf("redis: unexpected type=%T for String", val)
+		err := fmt.Errorf("kv: unexpected type=%T for String", val)
 		return "", err
 	}
 }
@@ -483,7 +483,7 @@ func (cmd *Cmd) Int() (int, error) {
 	case string:
 		return strconv.Atoi(val)
 	default:
-		err := fmt.Errorf("redis: unexpected type=%T for Int", val)
+		err := fmt.Errorf("kv: unexpected type=%T for Int", val)
 		return 0, err
 	}
 }
@@ -502,7 +502,7 @@ func toInt64(val interface{}) (int64, error) {
 	case string:
 		return strconv.ParseInt(val, 10, 64)
 	default:
-		err := fmt.Errorf("redis: unexpected type=%T for Int64", val)
+		err := fmt.Errorf("kv: unexpected type=%T for Int64", val)
 		return 0, err
 	}
 }
@@ -521,7 +521,7 @@ func toUint64(val interface{}) (uint64, error) {
 	case string:
 		return strconv.ParseUint(val, 10, 64)
 	default:
-		err := fmt.Errorf("redis: unexpected type=%T for Uint64", val)
+		err := fmt.Errorf("kv: unexpected type=%T for Uint64", val)
 		return 0, err
 	}
 }
@@ -544,7 +544,7 @@ func toFloat32(val interface{}) (float32, error) {
 		}
 		return float32(f), nil
 	default:
-		err := fmt.Errorf("redis: unexpected type=%T for Float32", val)
+		err := fmt.Errorf("kv: unexpected type=%T for Float32", val)
 		return 0, err
 	}
 }
@@ -563,7 +563,7 @@ func toFloat64(val interface{}) (float64, error) {
 	case string:
 		return strconv.ParseFloat(val, 64)
 	default:
-		err := fmt.Errorf("redis: unexpected type=%T for Float64", val)
+		err := fmt.Errorf("kv: unexpected type=%T for Float64", val)
 		return 0, err
 	}
 }
@@ -584,7 +584,7 @@ func toBool(val interface{}) (bool, error) {
 	case string:
 		return strconv.ParseBool(val)
 	default:
-		err := fmt.Errorf("redis: unexpected type=%T for Bool", val)
+		err := fmt.Errorf("kv: unexpected type=%T for Bool", val)
 		return false, err
 	}
 }
@@ -597,7 +597,7 @@ func (cmd *Cmd) Slice() ([]interface{}, error) {
 	case []interface{}:
 		return val, nil
 	default:
-		return nil, fmt.Errorf("redis: unexpected type=%T for Slice", val)
+		return nil, fmt.Errorf("kv: unexpected type=%T for Slice", val)
 	}
 }
 
@@ -752,7 +752,7 @@ func (cmd *SliceCmd) String() string {
 }
 
 // Scan scans the results from the map into a destination struct. The map keys
-// are matched in the Redis struct fields by the `redis:"field"` tag.
+// are matched in the KV struct fields by the `kv:"field"` tag.
 func (cmd *SliceCmd) Scan(dst interface{}) error {
 	if cmd.err != nil {
 		return cmd.err
@@ -896,7 +896,7 @@ func (cmd *IntCmd) Clone() Cmder {
 
 // DigestCmd is a command that returns a uint64 xxh3 hash digest.
 //
-// This command is specifically designed for the Redis DIGEST command,
+// This command is specifically designed for the KV DIGEST command,
 // which returns the xxh3 hash of a key's value as a hex string.
 // The hex string is automatically parsed to a uint64 value.
 //
@@ -906,7 +906,7 @@ func (cmd *IntCmd) Clone() Cmder {
 // For examples of client-side digest generation and usage patterns, see:
 // example/digest-optimistic-locking/
 //
-// Redis 8.4+. See https://redis.io/commands/digest/
+// KV 8.4+. See https://kv.io/commands/digest/
 type DigestCmd struct {
 	baseCmd
 
@@ -948,7 +948,7 @@ func (cmd *DigestCmd) Clone() Cmder {
 }
 
 func (cmd *DigestCmd) readReply(rd *proto.Reader) (err error) {
-	// Redis DIGEST command returns a hex string (e.g., "a1b2c3d4e5f67890")
+	// KV DIGEST command returns a hex string (e.g., "a1b2c3d4e5f67890")
 	// We parse it as a uint64 xxh3 hash value
 	var hexStr string
 	hexStr, err = rd.ReadString()
@@ -1704,7 +1704,7 @@ func (cmd *MapStringStringCmd) String() string {
 }
 
 // Scan scans the results from the map into a destination struct. The map keys
-// are matched in the Redis struct fields by the `redis:"field"` tag.
+// are matched in the KV struct fields by the `kv:"field"` tag.
 func (cmd *MapStringStringCmd) Scan(dest interface{}) error {
 	if cmd.err != nil {
 		return cmd.err
@@ -2109,7 +2109,7 @@ func readXMessage(rd *proto.Reader) (XMessage, error) {
 	}
 
 	if n != 2 && n != 4 {
-		return XMessage{}, fmt.Errorf("redis: got %d elements in the XMessage array, expected 2 or 4", n)
+		return XMessage{}, fmt.Errorf("kv: got %d elements in the XMessage array, expected 2 or 4", n)
 	}
 
 	id, err := rd.ReadString()
@@ -2508,11 +2508,11 @@ func (cmd *XAutoClaimCmd) readReply(rd *proto.Reader) error {
 	}
 
 	switch n {
-	case 2, // Redis 6
-		3: // Redis 7:
+	case 2, // KV 6
+		3: // KV 7:
 		// ok
 	default:
-		return fmt.Errorf("redis: got %d elements in XAutoClaim reply, wanted 2/3", n)
+		return fmt.Errorf("kv: got %d elements in XAutoClaim reply, wanted 2/3", n)
 	}
 
 	cmd.start, err = rd.ReadString()
@@ -2602,11 +2602,11 @@ func (cmd *XAutoClaimJustIDCmd) readReply(rd *proto.Reader) error {
 	}
 
 	switch n {
-	case 2, // Redis 6
-		3: // Redis 7:
+	case 2, // KV 6
+		3: // KV 7:
 		// ok
 	default:
-		return fmt.Errorf("redis: got %d elements in XAutoClaimJustID reply, wanted 2/3", n)
+		return fmt.Errorf("kv: got %d elements in XAutoClaimJustID reply, wanted 2/3", n)
 	}
 
 	cmd.start, err = rd.ReadString()
@@ -2725,7 +2725,7 @@ func (cmd *XInfoConsumersCmd) readReply(rd *proto.Reader) error {
 				inactive, err = rd.ReadInt()
 				cmd.val[i].Inactive = time.Duration(inactive) * time.Millisecond
 			default:
-				return fmt.Errorf("redis: unexpected content %s in XINFO CONSUMERS reply", key)
+				return fmt.Errorf("kv: unexpected content %s in XINFO CONSUMERS reply", key)
 			}
 			if err != nil {
 				return err
@@ -2854,7 +2854,7 @@ func (cmd *XInfoGroupsCmd) readReply(rd *proto.Reader) error {
 					group.Lag = -1
 				}
 			default:
-				return fmt.Errorf("redis: unexpected key %q in XINFO GROUPS reply", key)
+				return fmt.Errorf("kv: unexpected key %q in XINFO GROUPS reply", key)
 			}
 		}
 	}
@@ -2986,7 +2986,7 @@ func (cmd *XInfoStreamCmd) readReply(rd *proto.Reader) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("redis: unexpected key %q in XINFO STREAM reply", key)
+			return fmt.Errorf("kv: unexpected key %q in XINFO STREAM reply", key)
 		}
 	}
 	return nil
@@ -3170,7 +3170,7 @@ func (cmd *XInfoStreamFullCmd) readReply(rd *proto.Reader) error {
 				return err
 			}
 		default:
-			return fmt.Errorf("redis: unexpected key %q in XINFO STREAM FULL reply", key)
+			return fmt.Errorf("kv: unexpected key %q in XINFO STREAM FULL reply", key)
 		}
 	}
 	return nil
@@ -3235,7 +3235,7 @@ func readStreamGroups(rd *proto.Reader) ([]XInfoStreamGroup, error) {
 					return nil, err
 				}
 			default:
-				return nil, fmt.Errorf("redis: unexpected key %q in XINFO STREAM FULL reply", key)
+				return nil, fmt.Errorf("kv: unexpected key %q in XINFO STREAM FULL reply", key)
 			}
 		}
 
@@ -3360,7 +3360,7 @@ func readXInfoStreamConsumers(rd *proto.Reader) ([]XInfoStreamConsumer, error) {
 					c.Pending = append(c.Pending, p)
 				}
 			default:
-				return nil, fmt.Errorf("redis: unexpected content %s "+
+				return nil, fmt.Errorf("kv: unexpected content %s "+
 					"in XINFO STREAM FULL reply", cKey)
 			}
 			if err != nil {
@@ -3723,7 +3723,7 @@ func (cmd *ClusterSlotsCmd) readReply(rd *proto.Reader) error {
 			return err
 		}
 		if n < 2 {
-			return fmt.Errorf("redis: got %d elements in cluster info, expected at least 2", n)
+			return fmt.Errorf("kv: got %d elements in cluster info, expected at least 2", n)
 		}
 
 		start, err := rd.ReadInt()
@@ -3911,7 +3911,7 @@ func geoLocationArgs(q *GeoRadiusQuery, args ...interface{}) []interface{} {
 		args = append(args, q.Store)
 	}
 	if q.StoreDist != "" {
-		args = append(args, "storedist")
+		args = append(args, "stokvt")
 		args = append(args, q.StoreDist)
 	}
 	return args
@@ -4370,9 +4370,9 @@ func (cmd *CommandsInfoCmd) String() string {
 }
 
 func (cmd *CommandsInfoCmd) readReply(rd *proto.Reader) error {
-	const numArgRedis5 = 6
-	const numArgRedis6 = 7
-	const numArgRedis7 = 10 // Also matches redis 8
+	const numArgKV5 = 6
+	const numArgKV6 = 7
+	const numArgKV7 = 10 // Also matches kv 8
 
 	n, err := rd.ReadArrayLen()
 	if err != nil {
@@ -4387,10 +4387,10 @@ func (cmd *CommandsInfoCmd) readReply(rd *proto.Reader) error {
 		}
 
 		switch nn {
-		case numArgRedis5, numArgRedis6, numArgRedis7:
+		case numArgKV5, numArgKV6, numArgKV7:
 			// ok
 		default:
-			return fmt.Errorf("redis: got %d elements in COMMAND reply, wanted 6/7/10", nn)
+			return fmt.Errorf("kv: got %d elements in COMMAND reply, wanted 6/7/10", nn)
 		}
 
 		cmdInfo := &CommandInfo{}
@@ -4441,7 +4441,7 @@ func (cmd *CommandsInfoCmd) readReply(rd *proto.Reader) error {
 		}
 		cmdInfo.StepCount = int8(stepCount)
 
-		if nn >= numArgRedis6 {
+		if nn >= numArgKV6 {
 			aclFlagLen, err := rd.ReadArrayLen()
 			if err != nil {
 				return err
@@ -4459,7 +4459,7 @@ func (cmd *CommandsInfoCmd) readReply(rd *proto.Reader) error {
 			}
 		}
 
-		if nn >= numArgRedis7 {
+		if nn >= numArgKV7 {
 			// The 8th argument is an array of tips.
 			tipsLen, err := rd.ReadArrayLen()
 			if err != nil {
@@ -4618,8 +4618,8 @@ type SlowLog struct {
 	Time     time.Time
 	Duration time.Duration
 	Args     []string
-	// These are also optional fields emitted only by Redis 4.0 or greater:
-	// https://redis.io/commands/slowlog#output-format
+	// These are also optional fields emitted only by KV 4.0 or greater:
+	// https://kv.io/commands/slowlog#output-format
 	ClientAddr string
 	ClientName string
 }
@@ -4671,7 +4671,7 @@ func (cmd *SlowLogCmd) readReply(rd *proto.Reader) error {
 			return err
 		}
 		if nn < 4 {
-			return fmt.Errorf("redis: got %d elements in slowlog get, expected at least 4", nn)
+			return fmt.Errorf("kv: got %d elements in slowlog get, expected at least 4", nn)
 		}
 
 		if cmd.val[i].ID, err = rd.ReadInt(); err != nil {
@@ -4695,7 +4695,7 @@ func (cmd *SlowLogCmd) readReply(rd *proto.Reader) error {
 			return err
 		}
 		if cmdLen < 1 {
-			return fmt.Errorf("redis: got %d elements commands reply in slowlog get, expected at least 1", cmdLen)
+			return fmt.Errorf("kv: got %d elements commands reply in slowlog get, expected at least 1", cmdLen)
 		}
 
 		cmd.val[i].Args = make([]string, cmdLen)
@@ -4799,7 +4799,7 @@ func (cmd *LatencyCmd) readReply(rd *proto.Reader) error {
 			return err
 		}
 		if nn < 3 {
-			return fmt.Errorf("redis: got %d elements in latency get, expected at least 3", nn)
+			return fmt.Errorf("kv: got %d elements in latency get, expected at least 3", nn)
 		}
 		if cmd.val[i].Name, err = rd.ReadString(); err != nil {
 			return err
@@ -4889,7 +4889,7 @@ func (cmd *MapStringInterfaceCmd) readReply(rd *proto.Reader) error {
 				cmd.val[k] = Nil
 				continue
 			}
-			if err, ok := err.(proto.RedisError); ok {
+			if err, ok := err.(proto.KVError); ok {
 				cmd.val[k] = err
 				continue
 			}
@@ -5045,7 +5045,7 @@ func (cmd *MapMapStringInterfaceCmd) readReply(rd *proto.Reader) (err error) {
 		for k, v := range midResponse {
 			stringKey, ok := k.(string)
 			if !ok {
-				return fmt.Errorf("redis: invalid map key %#v", k)
+				return fmt.Errorf("kv: invalid map key %#v", k)
 			}
 			resultMap[stringKey] = v
 		}
@@ -5054,23 +5054,23 @@ func (cmd *MapMapStringInterfaceCmd) readReply(rd *proto.Reader) (err error) {
 		for i := 0; i < n; i++ {
 			finalArr, ok := midResponse[i].([]interface{}) // final array that we need to transform to map
 			if !ok {
-				return fmt.Errorf("redis: unexpected response %#v", data)
+				return fmt.Errorf("kv: unexpected response %#v", data)
 			}
 			m := len(finalArr)
 			if m%2 != 0 { // since this should be map, keys should be even number
-				return fmt.Errorf("redis: unexpected response %#v", data)
+				return fmt.Errorf("kv: unexpected response %#v", data)
 			}
 
 			for j := 0; j < m; j += 2 {
 				stringKey, ok := finalArr[j].(string) // the first one
 				if !ok {
-					return fmt.Errorf("redis: invalid map key %#v", finalArr[i])
+					return fmt.Errorf("kv: invalid map key %#v", finalArr[i])
 				}
 				resultMap[stringKey] = finalArr[j+1] // second one is value
 			}
 		}
 	default:
-		return fmt.Errorf("redis: unexpected response %#v", data)
+		return fmt.Errorf("kv: unexpected response %#v", data)
 	}
 
 	cmd.val = resultMap
@@ -5436,7 +5436,7 @@ func (cmd *FunctionListCmd) readReply(rd *proto.Reader) (err error) {
 			case "library_code":
 				library.Code, err = rd.ReadString()
 			default:
-				return fmt.Errorf("redis: function list unexpected key %s", key)
+				return fmt.Errorf("kv: function list unexpected key %s", key)
 			}
 
 			if err != nil {
@@ -5493,7 +5493,7 @@ func (cmd *FunctionListCmd) readFunctions(rd *proto.Reader) ([]Function, error) 
 					}
 				}
 			default:
-				return nil, fmt.Errorf("redis: function list unexpected key %s", key)
+				return nil, fmt.Errorf("kv: function list unexpected key %s", key)
 			}
 		}
 
@@ -5538,11 +5538,11 @@ func (cmd *FunctionListCmd) Clone() Cmder {
 //     Statistics about the engine like number of functions and number of libraries
 //   - RunningScript:
 //     The script currently running on the shard we're connecting to.
-//     For Redis Enterprise and Redis Cloud, this represents the
+//     For KV Enterprise and KV Cloud, this represents the
 //     function with the longest running time, across all the running functions, on all shards
 //   - RunningScripts
-//     All scripts currently running in a Redis Enterprise clustered database.
-//     Only available on Redis Enterprise
+//     All scripts currently running in a KV Enterprise clustered database.
+//     Only available on KV Enterprise
 type FunctionStats struct {
 	Engines   []Engine
 	isRunning bool
@@ -5558,8 +5558,8 @@ func (fs *FunctionStats) RunningScript() (RunningScript, bool) {
 	return fs.rs, fs.isRunning
 }
 
-// AllRunningScripts returns all scripts currently running in a Redis Enterprise clustered database.
-// Only available on Redis Enterprise
+// AllRunningScripts returns all scripts currently running in a KV Enterprise clustered database.
+// Only available on KV Enterprise
 func (fs *FunctionStats) AllRunningScripts() []RunningScript {
 	return fs.allrs
 }
@@ -5628,10 +5628,10 @@ func (cmd *FunctionStatsCmd) readReply(rd *proto.Reader) (err error) {
 			result.rs, result.isRunning, err = cmd.readRunningScript(rd)
 		case "engines":
 			result.Engines, err = cmd.readEngines(rd)
-		case "all_running_scripts": // Redis Enterprise only
+		case "all_running_scripts": // KV Enterprise only
 			result.allrs, result.isRunning, err = cmd.readRunningScripts(rd)
 		default:
-			return fmt.Errorf("redis: function stats unexpected key %s", key)
+			return fmt.Errorf("kv: function stats unexpected key %s", key)
 		}
 
 		if err != nil {
@@ -5667,7 +5667,7 @@ func (cmd *FunctionStatsCmd) readRunningScript(rd *proto.Reader) (RunningScript,
 		case "command":
 			runningScript.Command, err = cmd.readCommand(rd)
 		default:
-			return RunningScript{}, false, fmt.Errorf("redis: function stats unexpected running_script key %s", key)
+			return RunningScript{}, false, fmt.Errorf("kv: function stats unexpected running_script key %s", key)
 		}
 
 		if err != nil {
@@ -5694,7 +5694,7 @@ func (cmd *FunctionStatsCmd) readEngines(rd *proto.Reader) ([]Engine, error) {
 
 		err = rd.ReadFixedMapLen(2)
 		if err != nil {
-			return nil, fmt.Errorf("redis: function stats unexpected %s engine map length", engine.Language)
+			return nil, fmt.Errorf("kv: function stats unexpected %s engine map length", engine.Language)
 		}
 
 		for i := 0; i < 2; i++ {
@@ -6160,7 +6160,7 @@ func (cmd *ClusterLinksCmd) readReply(rd *proto.Reader) error {
 			case "send-buffer-used":
 				cmd.val[i].SendBufferUsed, err = rd.ReadInt()
 			default:
-				return fmt.Errorf("redis: unexpected key %q in CLUSTER LINKS reply", key)
+				return fmt.Errorf("kv: unexpected key %q in CLUSTER LINKS reply", key)
 			}
 
 			if err != nil {
@@ -6318,7 +6318,7 @@ func (cmd *ClusterShardsCmd) readReply(rd *proto.Reader) error {
 						case "health":
 							cmd.val[i].Nodes[k].Health, err = rd.ReadString()
 						default:
-							return fmt.Errorf("redis: unexpected key %q in CLUSTER SHARDS node reply", nodeKey)
+							return fmt.Errorf("kv: unexpected key %q in CLUSTER SHARDS node reply", nodeKey)
 						}
 
 						if err != nil {
@@ -6327,7 +6327,7 @@ func (cmd *ClusterShardsCmd) readReply(rd *proto.Reader) error {
 					}
 				}
 			default:
-				return fmt.Errorf("redis: unexpected key %q in CLUSTER SHARDS reply", key)
+				return fmt.Errorf("kv: unexpected key %q in CLUSTER SHARDS reply", key)
 			}
 		}
 	}
@@ -6427,7 +6427,7 @@ func (cmd *RankWithScoreCmd) Clone() Cmder {
 
 // --------------------------------------------------------------------------------------------------
 
-// ClientFlags is redis-server client flags, copy from redis/src/server.h (redis 7.0)
+// ClientFlags is kv-server client flags, copy from kv/src/server.h (kv 7.0)
 type ClientFlags uint64
 
 const (
@@ -6484,9 +6484,9 @@ const (
 	ClientPushing             ClientFlags = 1 << 46 /* This client is pushing notifications. */
 )
 
-// ClientInfo is redis-server ClientInfo, not go-redis *Client
+// ClientInfo is kv-server ClientInfo, not go-kv *Client
 type ClientInfo struct {
-	ID                 int64         // redis version 2.8.12, a unique 64-bit client ID
+	ID                 int64         // kv version 2.8.12, a unique 64-bit client ID
 	Addr               string        // address/port of the client
 	LAddr              string        // address/port of local address client connected to (bind address)
 	FD                 int64         // file descriptor corresponding to the socket
@@ -6497,13 +6497,13 @@ type ClientInfo struct {
 	DB                 int           // current database ID
 	Sub                int           // number of channel subscriptions
 	PSub               int           // number of pattern matching subscriptions
-	SSub               int           // redis version 7.0.3, number of shard channel subscriptions
+	SSub               int           // kv version 7.0.3, number of shard channel subscriptions
 	Multi              int           // number of commands in a MULTI/EXEC context
-	Watch              int           // redis version 7.4 RC1, number of keys this client is currently watching.
+	Watch              int           // kv version 7.4 RC1, number of keys this client is currently watching.
 	QueryBuf           int           // qbuf, query buffer length (0 means no query pending)
 	QueryBufFree       int           // qbuf-free, free space of the query buffer (0 means the buffer is full)
 	ArgvMem            int           // incomplete arguments for the next command (already extracted from query buffer)
-	MultiMem           int           // redis version 7.0, memory is used up by buffered multi commands
+	MultiMem           int           // kv version 7.0, memory is used up by buffered multi commands
 	BufferSize         int           // rbs, usable size of buffer
 	BufferPeak         int           // rbp, peak used size of buffer in last 5 sec interval
 	OutputBufferLength int           // obl, output buffer length
@@ -6518,9 +6518,9 @@ type ClientInfo struct {
 	LastCmd            string        // cmd, last command played
 	User               string        // the authenticated username of the client
 	Redir              int64         // client id of current client tracking redirection
-	Resp               int           // redis version 7.0, client RESP protocol version
-	LibName            string        // redis version 7.2, client library name
-	LibVer             string        // redis version 7.2, client library version
+	Resp               int           // kv version 7.0, client RESP protocol version
+	LibName            string        // kv version 7.2, client library name
+	LibVer             string        // kv version 7.2, client library version
 }
 
 type ClientInfoCmd struct {
@@ -6577,7 +6577,7 @@ func parseClientInfo(txt string) (info *ClientInfo, err error) {
 	for _, s := range strings.Split(txt, " ") {
 		kv := strings.Split(s, "=")
 		if len(kv) != 2 {
-			return nil, fmt.Errorf("redis: unexpected client info data (%s)", s)
+			return nil, fmt.Errorf("kv: unexpected client info data (%s)", s)
 		}
 		key, val := kv[0], kv[1]
 
@@ -6644,7 +6644,7 @@ func parseClientInfo(txt string) (info *ClientInfo, err error) {
 				case 'T':
 					info.Flags |= ClientNoTouch
 				default:
-					return nil, fmt.Errorf("redis: unexpected client info flags(%s)", string(val[i]))
+					return nil, fmt.Errorf("kv: unexpected client info flags(%s)", string(val[i]))
 				}
 			}
 		case "db":
@@ -6702,7 +6702,7 @@ func parseClientInfo(txt string) (info *ClientInfo, err error) {
 		case "io-thread":
 			info.IoThread, err = strconv.Atoi(val)
 		default:
-			return nil, fmt.Errorf("redis: unexpected client info key(%s)", key)
+			return nil, fmt.Errorf("kv: unexpected client info key(%s)", key)
 		}
 
 		if err != nil {
@@ -6855,7 +6855,7 @@ func (cmd *ACLLogCmd) readReply(rd *proto.Reader) error {
 			case "timestamp-last-updated":
 				entry.TimestampLastUpdated, err = rd.ReadInt()
 			default:
-				return fmt.Errorf("redis: unexpected key %q in ACL LOG reply", key)
+				return fmt.Errorf("kv: unexpected key %q in ACL LOG reply", key)
 			}
 
 			if err != nil {

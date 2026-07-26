@@ -14,7 +14,7 @@ func main() {
 
 	// Example 0: Explicitly disable maintenance notifications
 	fmt.Println("=== Example 0: Explicitly Enabled ===")
-	rdb0 := redis.NewClient(&redis.Options{
+	rdb0 := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 
 		// Explicitly disable maintenance notifications
@@ -34,7 +34,7 @@ func main() {
 
 	// Example 1: Explicitly disable maintenance notifications
 	fmt.Println("=== Example 1: Explicitly Disabled ===")
-	rdb1 := redis.NewClient(&redis.Options{
+	rdb1 := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 
 		// Explicitly disable maintenance notifications
@@ -68,9 +68,9 @@ func main() {
 
 	// Example 2: Using nil config (defaults to ModeAuto)
 	fmt.Printf("\n=== Example 2: Default Behavior (ModeAuto) ===\n")
-	rdb2 := redis.NewClient(&redis.Options{
+	rdb2 := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
-		// MaintNotifications: nil means ModeAuto (enabled for Redis Cloud)
+		// MaintNotifications: nil means ModeAuto (enabled for KV Cloud)
 	})
 	defer rdb2.Close()
 
@@ -135,10 +135,10 @@ func main() {
 	fmt.Println("    Mode: maintnotifications.ModeDisabled,")
 	fmt.Println("  }")
 	fmt.Printf("\nThis is useful when:\n")
-	fmt.Println("  - Connecting to non-Redis Cloud instances")
+	fmt.Println("  - Connecting to non-KV Cloud instances")
 	fmt.Println("  - You want to handle failovers manually")
 	fmt.Println("  - You want to minimize client-side overhead")
-	fmt.Println("  - The Redis server doesn't support CLIENT MAINT_NOTIFICATIONS")
+	fmt.Println("  - The KV server doesn't support CLIENT MAINT_NOTIFICATIONS")
 	fmt.Printf("\nFor more information, see:\n")
 	fmt.Println("  https://github.com/hanzokv/go/tree/master/maintnotifications")
 }

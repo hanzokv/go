@@ -1,4 +1,4 @@
-package redisotel
+package kvotel
 
 import (
 	"context"
@@ -33,7 +33,7 @@ func TestNewWithTracerProvider(t *testing.T) {
 		return otel.GetTracerProvider()
 	})
 
-	_ = newTracingHook("redis-hook", WithTracerProvider(tp.TracerProvider("redis-test")))
+	_ = newTracingHook("kv-hook", WithTracerProvider(tp.TracerProvider("kv-test")))
 
 	if !invoked {
 		t.Fatalf("did not call custom TraceProvider")
@@ -47,11 +47,11 @@ func TestWithDBStatement(t *testing.T) {
 		WithTracerProvider(provider),
 		WithDBStatement(false),
 	)
-	ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-	cmd := redis.NewCmd(ctx, "ping")
+	ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+	cmd := kv.NewCmd(ctx, "ping")
 	defer span.End()
 
-	processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+	processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 		attrs := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan).Attributes()
 		for _, attr := range attrs {
 			if attr.Key == semconv.DBStatementKey {
@@ -73,11 +73,11 @@ func TestWithoutCaller(t *testing.T) {
 		WithTracerProvider(provider),
 		WithCallerEnabled(false),
 	)
-	ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-	cmd := redis.NewCmd(ctx, "ping")
+	ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+	cmd := kv.NewCmd(ctx, "ping")
 	defer span.End()
 
-	processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+	processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 		attrs := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan).Attributes()
 		for _, attr := range attrs {
 			switch attr.Key {
@@ -102,17 +102,17 @@ func TestWithCommandFilter(t *testing.T) {
 		hook := newTracingHook(
 			"",
 			WithTracerProvider(provider),
-			WithCommandFilter(func(cmd redis.Cmder) bool {
+			WithCommandFilter(func(cmd kv.Cmder) bool {
 				return cmd.Name() == "ping"
 			}),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-		cmd := redis.NewCmd(ctx, "ping")
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+		cmd := kv.NewCmd(ctx, "ping")
 		defer span.End()
 
-		processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+		processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
-			if innerSpan.Name() != "redis-test" || innerSpan.Name() == "ping" {
+			if innerSpan.Name() != "kv-test" || innerSpan.Name() == "ping" {
 				t.Fatalf("ping command should not be traced")
 			}
 
@@ -129,15 +129,15 @@ func TestWithCommandFilter(t *testing.T) {
 		hook := newTracingHook(
 			"",
 			WithTracerProvider(provider),
-			WithCommandFilter(func(cmd redis.Cmder) bool {
+			WithCommandFilter(func(cmd kv.Cmder) bool {
 				return false // never filter
 			}),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-		cmd := redis.NewCmd(ctx, "ping")
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+		cmd := kv.NewCmd(ctx, "ping")
 		defer span.End()
 
-		processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+		processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
 			if innerSpan.Name() != "ping" {
 				t.Fatalf("ping command should be traced")
@@ -158,13 +158,13 @@ func TestWithCommandFilter(t *testing.T) {
 			WithTracerProvider(provider),
 			WithCommandFilter(DefaultCommandFilter),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-		cmd := redis.NewCmd(ctx, "auth", "test-password")
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+		cmd := kv.NewCmd(ctx, "auth", "test-password")
 		defer span.End()
 
-		processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+		processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
-			if innerSpan.Name() != "redis-test" || innerSpan.Name() == "auth" {
+			if innerSpan.Name() != "kv-test" || innerSpan.Name() == "auth" {
 				t.Fatalf("auth command should not be traced by default")
 			}
 
@@ -183,13 +183,13 @@ func TestWithCommandFilter(t *testing.T) {
 			WithTracerProvider(provider),
 			WithCommandFilter(DefaultCommandFilter),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-		cmd := redis.NewCmd(ctx, "hello", 3, "AUTH", "test-user", "test-password")
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+		cmd := kv.NewCmd(ctx, "hello", 3, "AUTH", "test-user", "test-password")
 		defer span.End()
 
-		processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+		processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
-			if innerSpan.Name() != "redis-test" || innerSpan.Name() == "hello" {
+			if innerSpan.Name() != "kv-test" || innerSpan.Name() == "hello" {
 				t.Fatalf("auth command should not be traced by default")
 			}
 
@@ -208,11 +208,11 @@ func TestWithCommandFilter(t *testing.T) {
 			WithTracerProvider(provider),
 			WithCommandFilter(DefaultCommandFilter),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-		cmd := redis.NewCmd(ctx, "hello", 3)
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+		cmd := kv.NewCmd(ctx, "hello", 3)
 		defer span.End()
 
-		processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+		processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
 			if innerSpan.Name() != "hello" {
 				t.Fatalf("hello command should be traced")
@@ -233,7 +233,7 @@ func TestWithCommandsFilter(t *testing.T) {
 		hook := newTracingHook(
 			"",
 			WithTracerProvider(provider),
-			WithCommandsFilter(func(cmds []redis.Cmder) bool {
+			WithCommandsFilter(func(cmds []kv.Cmder) bool {
 				for _, cmd := range cmds {
 					if cmd.Name() == "ping" || cmd.Name() == "info" {
 						return true
@@ -243,16 +243,16 @@ func TestWithCommandsFilter(t *testing.T) {
 			}),
 		)
 
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-		cmds := []redis.Cmder{
-			redis.NewCmd(ctx, "ping"),
-			redis.NewCmd(ctx, "info"),
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+		cmds := []kv.Cmder{
+			kv.NewCmd(ctx, "ping"),
+			kv.NewCmd(ctx, "info"),
 		}
 		defer span.End()
 
-		processPipelineHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []redis.Cmder) error {
+		processPipelineHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []kv.Cmder) error {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
-			if innerSpan.Name() != "redis-test" || innerSpan.Name() == "redis.pipeline ping\ninfo" {
+			if innerSpan.Name() != "kv-test" || innerSpan.Name() == "kv.pipeline ping\ninfo" {
 				t.Fatalf("ping and info commands should not be traced")
 			}
 			return nil
@@ -268,19 +268,19 @@ func TestWithCommandsFilter(t *testing.T) {
 		hook := newTracingHook(
 			"",
 			WithTracerProvider(provider),
-			WithCommandsFilter(func(cmds []redis.Cmder) bool {
+			WithCommandsFilter(func(cmds []kv.Cmder) bool {
 				return false // never filter
 			}),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
-		cmds := []redis.Cmder{
-			redis.NewCmd(ctx, "ping"),
-			redis.NewCmd(ctx, "info"),
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
+		cmds := []kv.Cmder{
+			kv.NewCmd(ctx, "ping"),
+			kv.NewCmd(ctx, "info"),
 		}
 		defer span.End()
-		processPipelineHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []redis.Cmder) error {
+		processPipelineHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []kv.Cmder) error {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
-			if innerSpan.Name() != "redis.pipeline ping info" {
+			if innerSpan.Name() != "kv.pipeline ping info" {
 				t.Fatalf("ping and info commands should be traced")
 			}
 
@@ -302,11 +302,11 @@ func TestWithDialFilter(t *testing.T) {
 			WithTracerProvider(provider),
 			WithDialFilter(true),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
 		defer span.End()
 		dialHook := hook.DialHook(func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
-			if innerSpan.Name() == "redis.dial" {
+			if innerSpan.Name() == "kv.dial" {
 				t.Fatalf("dial should not be traced")
 			}
 			return nil, nil
@@ -325,11 +325,11 @@ func TestWithDialFilter(t *testing.T) {
 			WithTracerProvider(provider),
 			WithDialFilter(false),
 		)
-		ctx, span := provider.Tracer("redis-test").Start(context.TODO(), "redis-test")
+		ctx, span := provider.Tracer("kv-test").Start(context.TODO(), "kv-test")
 		defer span.End()
 		dialHook := hook.DialHook(func(ctx context.Context, network, addr string) (conn net.Conn, err error) {
 			innerSpan := trace.SpanFromContext(ctx).(sdktrace.ReadOnlySpan)
-			if innerSpan.Name() != "redis.dial" {
+			if innerSpan.Name() != "kv.dial" {
 				t.Fatalf("dial should be traced")
 			}
 			return nil, nil
@@ -345,7 +345,7 @@ func TestTracingHook_DialHook(t *testing.T) {
 	imsb := tracetest.NewInMemoryExporter()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(imsb))
 	hook := newTracingHook(
-		"redis://localhost:6379",
+		"kv://localhost:6379",
 		WithTracerProvider(provider),
 	)
 
@@ -372,10 +372,10 @@ func TestTracingHook_DialHook(t *testing.T) {
 
 			spanData := imsb.GetSpans()[0]
 			assertEqual(t, instrumName, spanData.InstrumentationLibrary.Name)
-			assertEqual(t, "redis.dial", spanData.Name)
+			assertEqual(t, "kv.dial", spanData.Name)
 			assertEqual(t, trace.SpanKindClient, spanData.SpanKind)
-			assertAttributeContains(t, spanData.Attributes, semconv.DBSystemRedis)
-			assertAttributeContains(t, spanData.Attributes, semconv.DBConnectionStringKey.String("redis://localhost:6379"))
+			assertAttributeContains(t, spanData.Attributes, semconv.DBSystemKV)
+			assertAttributeContains(t, spanData.Attributes, semconv.DBConnectionStringKey.String("kv://localhost:6379"))
 
 			if tt.errTest == nil {
 				assertEqual(t, 0, len(spanData.Events))
@@ -397,7 +397,7 @@ func TestTracingHook_ProcessHook(t *testing.T) {
 	imsb := tracetest.NewInMemoryExporter()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(imsb))
 	hook := newTracingHook(
-		"redis://localhost:6379",
+		"kv://localhost:6379",
 		WithTracerProvider(provider),
 	)
 
@@ -413,8 +413,8 @@ func TestTracingHook_ProcessHook(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			defer imsb.Reset()
 
-			cmd := redis.NewCmd(context.Background(), "ping")
-			processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+			cmd := kv.NewCmd(context.Background(), "ping")
+			processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 				return tt.errTest
 			})
 			assertEqual(t, tt.errTest, processHook(context.Background(), cmd))
@@ -424,8 +424,8 @@ func TestTracingHook_ProcessHook(t *testing.T) {
 			assertEqual(t, instrumName, spanData.InstrumentationLibrary.Name)
 			assertEqual(t, "ping", spanData.Name)
 			assertEqual(t, trace.SpanKindClient, spanData.SpanKind)
-			assertAttributeContains(t, spanData.Attributes, semconv.DBSystemRedis)
-			assertAttributeContains(t, spanData.Attributes, semconv.DBConnectionStringKey.String("redis://localhost:6379"))
+			assertAttributeContains(t, spanData.Attributes, semconv.DBSystemKV)
+			assertAttributeContains(t, spanData.Attributes, semconv.DBConnectionStringKey.String("kv://localhost:6379"))
 			assertAttributeContains(t, spanData.Attributes, semconv.DBStatementKey.String("ping"))
 
 			if tt.errTest == nil {
@@ -448,7 +448,7 @@ func TestTracingHook_ProcessPipelineHook(t *testing.T) {
 	imsb := tracetest.NewInMemoryExporter()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(imsb))
 	hook := newTracingHook(
-		"redis://localhost:6379",
+		"kv://localhost:6379",
 		WithTracerProvider(provider),
 	)
 
@@ -464,11 +464,11 @@ func TestTracingHook_ProcessPipelineHook(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			defer imsb.Reset()
 
-			cmds := []redis.Cmder{
-				redis.NewCmd(context.Background(), "ping"),
-				redis.NewCmd(context.Background(), "ping"),
+			cmds := []kv.Cmder{
+				kv.NewCmd(context.Background(), "ping"),
+				kv.NewCmd(context.Background(), "ping"),
 			}
-			processHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []redis.Cmder) error {
+			processHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []kv.Cmder) error {
 				return tt.errTest
 			})
 			assertEqual(t, tt.errTest, processHook(context.Background(), cmds))
@@ -476,10 +476,10 @@ func TestTracingHook_ProcessPipelineHook(t *testing.T) {
 
 			spanData := imsb.GetSpans()[0]
 			assertEqual(t, instrumName, spanData.InstrumentationLibrary.Name)
-			assertEqual(t, "redis.pipeline ping", spanData.Name)
+			assertEqual(t, "kv.pipeline ping", spanData.Name)
 			assertEqual(t, trace.SpanKindClient, spanData.SpanKind)
-			assertAttributeContains(t, spanData.Attributes, semconv.DBSystemRedis)
-			assertAttributeContains(t, spanData.Attributes, semconv.DBConnectionStringKey.String("redis://localhost:6379"))
+			assertAttributeContains(t, spanData.Attributes, semconv.DBSystemKV)
+			assertAttributeContains(t, spanData.Attributes, semconv.DBConnectionStringKey.String("kv://localhost:6379"))
 			assertAttributeContains(t, spanData.Attributes, semconv.DBStatementKey.String("ping\nping"))
 
 			if tt.errTest == nil {
@@ -502,44 +502,44 @@ func TestTracingHook_ProcessHook_LongCommand(t *testing.T) {
 	imsb := tracetest.NewInMemoryExporter()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(imsb))
 	hook := newTracingHook(
-		"redis://localhost:6379",
+		"kv://localhost:6379",
 		WithTracerProvider(provider),
 	)
 	longValue := strings.Repeat("a", 102400)
 
 	tests := []struct {
 		name     string
-		cmd      redis.Cmder
+		cmd      kv.Cmder
 		expected string
 	}{
 		{
 			name:     "short command",
-			cmd:      redis.NewCmd(context.Background(), "SET", "key", "value"),
+			cmd:      kv.NewCmd(context.Background(), "SET", "key", "value"),
 			expected: "SET key value",
 		},
 		{
 			name:     "set command with long key",
-			cmd:      redis.NewCmd(context.Background(), "SET", longValue, "value"),
+			cmd:      kv.NewCmd(context.Background(), "SET", longValue, "value"),
 			expected: "SET " + longValue + " value",
 		},
 		{
 			name:     "set command with long value",
-			cmd:      redis.NewCmd(context.Background(), "SET", "key", longValue),
+			cmd:      kv.NewCmd(context.Background(), "SET", "key", longValue),
 			expected: "SET key " + longValue,
 		},
 		{
 			name:     "set command with long key and value",
-			cmd:      redis.NewCmd(context.Background(), "SET", longValue, longValue),
+			cmd:      kv.NewCmd(context.Background(), "SET", longValue, longValue),
 			expected: "SET " + longValue + " " + longValue,
 		},
 		{
 			name:     "short command with many arguments",
-			cmd:      redis.NewCmd(context.Background(), "MSET", "key1", "value1", "key2", "value2", "key3", "value3", "key4", "value4", "key5", "value5"),
+			cmd:      kv.NewCmd(context.Background(), "MSET", "key1", "value1", "key2", "value2", "key3", "value3", "key4", "value4", "key5", "value5"),
 			expected: "MSET key1 value1 key2 value2 key3 value3 key4 value4 key5 value5",
 		},
 		{
 			name:     "long command",
-			cmd:      redis.NewCmd(context.Background(), longValue, "key", "value"),
+			cmd:      kv.NewCmd(context.Background(), longValue, "key", "value"),
 			expected: longValue + " key value",
 		},
 	}
@@ -548,7 +548,7 @@ func TestTracingHook_ProcessHook_LongCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			defer imsb.Reset()
 
-			processHook := hook.ProcessHook(func(ctx context.Context, cmd redis.Cmder) error {
+			processHook := hook.ProcessHook(func(ctx context.Context, cmd kv.Cmder) error {
 				return nil
 			})
 
@@ -579,52 +579,52 @@ func TestTracingHook_ProcessPipelineHook_LongCommands(t *testing.T) {
 	imsb := tracetest.NewInMemoryExporter()
 	provider := sdktrace.NewTracerProvider(sdktrace.WithSyncer(imsb))
 	hook := newTracingHook(
-		"redis://localhost:6379",
+		"kv://localhost:6379",
 		WithTracerProvider(provider),
 	)
 
 	tests := []struct {
 		name     string
-		cmds     []redis.Cmder
+		cmds     []kv.Cmder
 		expected string
 	}{
 		{
 			name: "multiple short commands",
-			cmds: []redis.Cmder{
-				redis.NewCmd(context.Background(), "SET", "key1", "value1"),
-				redis.NewCmd(context.Background(), "SET", "key2", "value2"),
+			cmds: []kv.Cmder{
+				kv.NewCmd(context.Background(), "SET", "key1", "value1"),
+				kv.NewCmd(context.Background(), "SET", "key2", "value2"),
 			},
 			expected: "SET key1 value1\nSET key2 value2",
 		},
 		{
 			name: "multiple short commands with long key",
-			cmds: []redis.Cmder{
-				redis.NewCmd(context.Background(), "SET", strings.Repeat("a", 102400), "value1"),
-				redis.NewCmd(context.Background(), "SET", strings.Repeat("b", 102400), "value2"),
+			cmds: []kv.Cmder{
+				kv.NewCmd(context.Background(), "SET", strings.Repeat("a", 102400), "value1"),
+				kv.NewCmd(context.Background(), "SET", strings.Repeat("b", 102400), "value2"),
 			},
 			expected: "SET " + strings.Repeat("a", 102400) + " value1\nSET " + strings.Repeat("b", 102400) + " value2",
 		},
 		{
 			name: "multiple short commands with long value",
-			cmds: []redis.Cmder{
-				redis.NewCmd(context.Background(), "SET", "key1", strings.Repeat("a", 102400)),
-				redis.NewCmd(context.Background(), "SET", "key2", strings.Repeat("b", 102400)),
+			cmds: []kv.Cmder{
+				kv.NewCmd(context.Background(), "SET", "key1", strings.Repeat("a", 102400)),
+				kv.NewCmd(context.Background(), "SET", "key2", strings.Repeat("b", 102400)),
 			},
 			expected: "SET key1 " + strings.Repeat("a", 102400) + "\nSET key2 " + strings.Repeat("b", 102400),
 		},
 		{
 			name: "multiple short commands with long key and value",
-			cmds: []redis.Cmder{
-				redis.NewCmd(context.Background(), "SET", strings.Repeat("a", 102400), strings.Repeat("b", 102400)),
-				redis.NewCmd(context.Background(), "SET", strings.Repeat("c", 102400), strings.Repeat("d", 102400)),
+			cmds: []kv.Cmder{
+				kv.NewCmd(context.Background(), "SET", strings.Repeat("a", 102400), strings.Repeat("b", 102400)),
+				kv.NewCmd(context.Background(), "SET", strings.Repeat("c", 102400), strings.Repeat("d", 102400)),
 			},
 			expected: "SET " + strings.Repeat("a", 102400) + " " + strings.Repeat("b", 102400) + "\nSET " + strings.Repeat("c", 102400) + " " + strings.Repeat("d", 102400),
 		},
 		{
 			name: "multiple long commands",
-			cmds: []redis.Cmder{
-				redis.NewCmd(context.Background(), strings.Repeat("a", 102400), "key1", "value1"),
-				redis.NewCmd(context.Background(), strings.Repeat("a", 102400), "key2", "value2"),
+			cmds: []kv.Cmder{
+				kv.NewCmd(context.Background(), strings.Repeat("a", 102400), "key1", "value1"),
+				kv.NewCmd(context.Background(), strings.Repeat("a", 102400), "key2", "value2"),
 			},
 			expected: strings.Repeat("a", 102400) + " key1 value1\n" + strings.Repeat("a", 102400) + " key2 value2",
 		},
@@ -634,7 +634,7 @@ func TestTracingHook_ProcessPipelineHook_LongCommands(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			defer imsb.Reset()
 
-			processHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []redis.Cmder) error {
+			processHook := hook.ProcessPipelineHook(func(ctx context.Context, cmds []kv.Cmder) error {
 				return nil
 			})
 

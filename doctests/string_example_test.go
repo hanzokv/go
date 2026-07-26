@@ -13,7 +13,7 @@ import (
 func ExampleClient_set_get() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -51,7 +51,7 @@ func ExampleClient_set_get() {
 func ExampleClient_setnx_xx() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -98,7 +98,7 @@ func ExampleClient_setnx_xx() {
 func ExampleClient_mset() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -136,7 +136,7 @@ func ExampleClient_mset() {
 func ExampleClient_incr() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB

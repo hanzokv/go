@@ -14,7 +14,7 @@ import (
 func ExampleClient_sadd_cmd() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -68,7 +68,7 @@ func ExampleClient_sadd_cmd() {
 func ExampleClient_smembers_cmd() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB

@@ -13,7 +13,7 @@ import (
 	"github.com/hanzokv/go/v9/maintnotifications"
 )
 
-// TestPushNotifications tests Redis Enterprise push notifications (MOVING, MIGRATING, MIGRATED)
+// TestPushNotifications tests KV Enterprise push notifications (MOVING, MIGRATING, MIGRATED)
 func TestPushNotifications(t *testing.T) {
 	if os.Getenv("E2E_SCENARIO_TESTS") != "true" {
 		t.Skip("Scenario tests require E2E_SCENARIO_TESTS=true")
@@ -71,7 +71,7 @@ func TestPushNotifications(t *testing.T) {
 	minIdleConns := 5
 	poolSize := 10
 	maxConnections := 15
-	// Create Redis client with push notifications enabled
+	// Create KV client with push notifications enabled
 	client, err := factory.Create("push-notification-client", &CreateClientOptions{
 		Protocol:       3, // RESP3 required for push notifications
 		PoolSize:       poolSize,
@@ -106,7 +106,7 @@ func TestPushNotifications(t *testing.T) {
 	// Verify initial connectivity
 	err = client.Ping(ctx).Err()
 	if err != nil {
-		ef("Failed to ping Redis: %v", err)
+		ef("Failed to ping KV: %v", err)
 	}
 
 	p("Client connected successfully, starting push notification test")

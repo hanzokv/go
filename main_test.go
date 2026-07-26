@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	redisSecondaryPort = "6381"
+	kvSecondaryPort = "6381"
 )
 
 const (
@@ -27,7 +27,7 @@ const (
 )
 
 const (
-	sentinelName       = "go-redis-test"
+	sentinelName       = "go-kv-test"
 	sentinelMasterPort = "9121"
 	sentinelSlave1Port = "9122"
 	sentinelSlave2Port = "9123"
@@ -37,80 +37,80 @@ const (
 )
 
 var (
-	redisPort = "6380"
-	redisAddr = ":" + redisPort
+	kvPort = "6380"
+	kvAddr = ":" + kvPort
 )
 
 var (
-	redisStackPort = "6379"
-	redisStackAddr = ":" + redisStackPort
+	kvStackPort = "6379"
+	kvStackAddr = ":" + kvStackPort
 )
 
 var (
 	sentinelAddrs = []string{":" + sentinelPort1, ":" + sentinelPort2, ":" + sentinelPort3}
 
-	ringShard1, ringShard2, ringShard3             *redis.Client
-	sentinelMaster, sentinelSlave1, sentinelSlave2 *redis.Client
-	sentinel1, sentinel2, sentinel3                *redis.Client
+	ringShard1, ringShard2, ringShard3             *kv.Client
+	sentinelMaster, sentinelSlave1, sentinelSlave2 *kv.Client
+	sentinel1, sentinel2, sentinel3                *kv.Client
 )
 
 var cluster = &clusterScenario{
 	ports:   []string{"16600", "16601", "16602", "16603", "16604", "16605"},
 	nodeIDs: make([]string, 6),
-	clients: make(map[string]*redis.Client, 6),
+	clients: make(map[string]*kv.Client, 6),
 }
 
-// Redis Software Cluster
+// KV Software Cluster
 var RECluster = false
 
-// Redis Community Edition Docker
+// KV Community Edition Docker
 var RCEDocker = false
 
-// Notes version of redis we are executing tests against.
+// Notes version of kv we are executing tests against.
 // This can be used before we change the bsm fork of ginkgo for one,
-// which have support for label sets, so we can filter tests per redis version.
-var RedisVersion float64 = 8.4
+// which have support for label sets, so we can filter tests per kv version.
+var KVVersion float64 = 8.4
 
-func SkipBeforeRedisVersion(version float64, msg string) {
-	if RedisVersion < version {
-		Skip(fmt.Sprintf("(redis version < %f) %s", version, msg))
+func SkipBeforeKVVersion(version float64, msg string) {
+	if KVVersion < version {
+		Skip(fmt.Sprintf("(kv version < %f) %s", version, msg))
 	}
 }
 
-func SkipAfterRedisVersion(version float64, msg string) {
-	if RedisVersion > version {
-		Skip(fmt.Sprintf("(redis version > %f) %s", version, msg))
+func SkipAfterKVVersion(version float64, msg string) {
+	if KVVersion > version {
+		Skip(fmt.Sprintf("(kv version > %f) %s", version, msg))
 	}
 }
 
 var _ = BeforeSuite(func() {
 	addr := os.Getenv("REDIS_PORT")
 	if addr != "" {
-		redisPort = addr
-		redisAddr = ":" + redisPort
+		kvPort = addr
+		kvAddr = ":" + kvPort
 	}
 	var err error
 	RECluster, _ = strconv.ParseBool(os.Getenv("RE_CLUSTER"))
 	RCEDocker, _ = strconv.ParseBool(os.Getenv("RCE_DOCKER"))
 
-	RedisVersion, _ = strconv.ParseFloat(strings.Trim(os.Getenv("REDIS_VERSION"), "\""), 64)
+	KVVersion, _ = strconv.ParseFloat(strings.Trim(os.Getenv("KV_VERSION"), "\""), 64)
 
-	if RedisVersion == 0 {
-		RedisVersion = 8.4
+	if KVVersion == 0 {
+		KVVersion = 8.4
 	}
 
 	fmt.Printf("RECluster: %v\n", RECluster)
 	fmt.Printf("RCEDocker: %v\n", RCEDocker)
-	fmt.Printf("REDIS_VERSION: %.1f\n", RedisVersion)
+	fmt.Printf("KV_VERSION: %.1f\n", KVVersion)
 	fmt.Printf("CLIENT_LIBS_TEST_IMAGE: %v\n", os.Getenv("CLIENT_LIBS_TEST_IMAGE"))
 	logging.Disable()
 
-	if RedisVersion < 7.0 || RedisVersion > 9 {
-		panic("incorrect or not supported redis version")
+	if KVVersion < 7.0 || KVVersion > 9 {
+		panic("incorrect or not supported kv version")
 	}
 
-	redisPort = redisStackPort
-	redisAddr = redisStackAddr
+	kvPort = kvStackPort
+	kvAddr = kvStackAddr
 	if !RECluster {
 		ringShard1, err = connectTo(ringShard1Port)
 		Expect(err).NotTo(HaveOccurred())
@@ -158,15 +158,15 @@ var _ = AfterSuite(func() {
 
 func TestGinkgoSuite(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "go-redis")
+	RunSpecs(t, "go-kv")
 }
 
 //------------------------------------------------------------------------------
 
-func redisOptions() *redis.Options {
+func kvOptions() *kv.Options {
 	if RECluster {
-		return &redis.Options{
-			Addr: redisAddr,
+		return &kv.Options{
+			Addr: kvAddr,
 			DB:   0,
 
 			DialTimeout:           10 * time.Second,
@@ -181,8 +181,8 @@ func redisOptions() *redis.Options {
 			ConnMaxIdleTime: time.Minute,
 		}
 	}
-	return &redis.Options{
-		Addr: redisAddr,
+	return &kv.Options{
+		Addr: kvAddr,
 		DB:   0,
 
 		DialTimeout:           10 * time.Second,
@@ -198,8 +198,8 @@ func redisOptions() *redis.Options {
 	}
 }
 
-func redisClusterOptions() *redis.ClusterOptions {
-	return &redis.ClusterOptions{
+func kvClusterOptions() *kv.ClusterOptions {
+	return &kv.ClusterOptions{
 		DialTimeout:  10 * time.Second,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 30 * time.Second,
@@ -212,8 +212,8 @@ func redisClusterOptions() *redis.ClusterOptions {
 	}
 }
 
-func redisRingOptions() *redis.RingOptions {
-	return &redis.RingOptions{
+func kvRingOptions() *kv.RingOptions {
+	return &kv.RingOptions{
 		Addrs: map[string]string{
 			"ringShardOne": ":" + ringShard1Port,
 			"ringShardTwo": ":" + ringShard2Port,
@@ -294,8 +294,8 @@ func eventually(fn func() error, timeout time.Duration) error {
 	}
 }
 
-func connectTo(port string) (*redis.Client, error) {
-	client := redis.NewClient(&redis.Options{
+func connectTo(port string) (*kv.Client, error) {
+	client := kv.NewClient(&kv.Options{
 		Addr:       ":" + port,
 		MaxRetries: -1,
 	})
@@ -310,14 +310,14 @@ func connectTo(port string) (*redis.Client, error) {
 	return client, nil
 }
 
-func startSentinel(port, masterName, masterPort string) (*redis.Client, error) {
+func startSentinel(port, masterName, masterPort string) (*kv.Client, error) {
 	client, err := connectTo(port)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, cmd := range []*redis.StatusCmd{
-		redis.NewStatusCmd(ctx, "SENTINEL", "MONITOR", masterName, "127.0.0.1", masterPort, "2"),
+	for _, cmd := range []*kv.StatusCmd{
+		kv.NewStatusCmd(ctx, "SENTINEL", "MONITOR", masterName, "127.0.0.1", masterPort, "2"),
 	} {
 		client.Process(ctx, cmd)
 		if err := cmd.Err(); err != nil && !strings.Contains(err.Error(), "ERR Duplicate master name.") {
@@ -376,26 +376,26 @@ func (cn *badConn) Write([]byte) (int, error) {
 //------------------------------------------------------------------------------
 
 type hook struct {
-	dialHook            func(hook redis.DialHook) redis.DialHook
-	processHook         func(hook redis.ProcessHook) redis.ProcessHook
-	processPipelineHook func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook
+	dialHook            func(hook kv.DialHook) kv.DialHook
+	processHook         func(hook kv.ProcessHook) kv.ProcessHook
+	processPipelineHook func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook
 }
 
-func (h *hook) DialHook(hook redis.DialHook) redis.DialHook {
+func (h *hook) DialHook(hook kv.DialHook) kv.DialHook {
 	if h.dialHook != nil {
 		return h.dialHook(hook)
 	}
 	return hook
 }
 
-func (h *hook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
+func (h *hook) ProcessHook(hook kv.ProcessHook) kv.ProcessHook {
 	if h.processHook != nil {
 		return h.processHook(hook)
 	}
 	return hook
 }
 
-func (h *hook) ProcessPipelineHook(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
+func (h *hook) ProcessPipelineHook(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
 	if h.processPipelineHook != nil {
 		return h.processPipelineHook(hook)
 	}

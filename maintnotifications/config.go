@@ -136,7 +136,7 @@ func (c *Config) IsEnabled() bool {
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
-		Mode:                       ModeAuto,         // Enable by default for Redis Cloud
+		Mode:                       ModeAuto,         // Enable by default for KV Cloud
 		EndpointType:               EndpointTypeAuto, // Auto-detect based on connection
 		RelaxedTimeout:             10 * time.Second,
 		HandoffTimeout:             15 * time.Second,
@@ -446,7 +446,7 @@ func isInternalHostname(hostname string) bool {
 		}
 	}
 
-	// Check for RFC 1918 style hostnames (e.g., redis-1, db-server, etc.)
+	// Check for RFC 1918 style hostnames (e.g., kv-1, db-server, etc.)
 	// If hostname doesn't contain dots, it's likely internal
 	if !strings.Contains(hostname, ".") {
 		return true

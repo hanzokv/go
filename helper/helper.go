@@ -14,16 +14,16 @@ func MustParseFloat(s string) float64 {
 }
 
 // DigestBytes computes the xxh3 hash of the given byte slice.
-// This produces the same hash as the Redis DIGEST command, allowing you to
-// calculate digests client-side without making a Redis call.
+// This produces the same hash as the KV DIGEST command, allowing you to
+// calculate digests client-side without making a KV call.
 // This is useful for optimistic locking with SetIFDEQ, SetIFDNE, and DelExArgs.
 func DigestBytes(data []byte) uint64 {
 	return xxh3.Hash(data)
 }
 
 // DigestString computes the xxh3 hash of the given string.
-// This produces the same hash as the Redis DIGEST command, allowing you to
-// calculate digests client-side without making a Redis call.
+// This produces the same hash as the KV DIGEST command, allowing you to
+// calculate digests client-side without making a KV call.
 // This is useful for optimistic locking with SetIFDEQ, SetIFDNE, and DelExArgs.
 func DigestString(s string) uint64 {
 	return xxh3.HashString(s)

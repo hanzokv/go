@@ -14,7 +14,7 @@ import (
 func ExampleClient_tdigstart() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -64,7 +64,7 @@ func ExampleClient_tdigstart() {
 func ExampleClient_tdigcdf() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -123,7 +123,7 @@ func ExampleClient_tdigcdf() {
 func ExampleClient_tdigquant() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -176,7 +176,7 @@ func ExampleClient_tdigquant() {
 func ExampleClient_tdigmin() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -229,7 +229,7 @@ func ExampleClient_tdigmin() {
 func ExampleClient_tdigreset() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB

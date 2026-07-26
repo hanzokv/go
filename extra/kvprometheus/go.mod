@@ -1,4 +1,4 @@
-module github.com/hanzokv/go/extra/redisprometheus/v9
+module github.com/hanzokv/go/extra/kvprometheus/v9
 
 go 1.26
 

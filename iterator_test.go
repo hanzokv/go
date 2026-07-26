@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 )
 
 var _ = Describe("ScanIterator", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	seed := func(n int) error {
 		pipe := client.Pipeline()
@@ -44,7 +44,7 @@ var _ = Describe("ScanIterator", func() {
 	}
 
 	BeforeEach(func() {
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -85,7 +85,7 @@ var _ = Describe("ScanIterator", func() {
 	})
 
 	It("should hscan across multiple pages", func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 		Expect(hashSeed(71)).NotTo(HaveOccurred())
 
 		var vals []string
@@ -100,8 +100,8 @@ var _ = Describe("ScanIterator", func() {
 		Expect(vals).To(ContainElement("x"))
 	})
 
-	It("should hscan without values across multiple pages", Label("NonRedisEnterprise"), func() {
-		SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+	It("should hscan without values across multiple pages", Label("NonKVEnterprise"), func() {
+		SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 		Expect(hashSeed(71)).NotTo(HaveOccurred())
 
 		var vals []string

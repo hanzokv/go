@@ -67,7 +67,7 @@ func TestStressPushNotifications(t *testing.T) {
 	maxConnections := 200
 	numClients := 4
 
-	var clients []redis.UniversalClient
+	var clients []kv.UniversalClient
 	var trackers []*TrackingNotificationsHook
 	var commandRunners []*CommandRunner
 
@@ -120,7 +120,7 @@ func TestStressPushNotifications(t *testing.T) {
 	for i, client := range clients {
 		err = client.Ping(ctx).Err()
 		if err != nil {
-			ef("Failed to ping Redis with stress client %d: %v", i, err)
+			ef("Failed to ping KV with stress client %d: %v", i, err)
 		}
 	}
 

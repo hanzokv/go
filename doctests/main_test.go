@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-var RedisVersion float64
+var KVVersion float64
 
 func init() {
-	// read REDIS_VERSION from env
-	RedisVersion, _ = strconv.ParseFloat(strings.Trim(os.Getenv("REDIS_VERSION"), "\""), 64)
-	fmt.Printf("REDIS_VERSION: %.1f\n", RedisVersion)
+	// read KV_VERSION from env
+	KVVersion, _ = strconv.ParseFloat(strings.Trim(os.Getenv("KV_VERSION"), "\""), 64)
+	fmt.Printf("KV_VERSION: %.1f\n", KVVersion)
 }

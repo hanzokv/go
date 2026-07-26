@@ -1,4 +1,4 @@
-module github.com/hanzokv/go/extra/rediscmd/v9
+module github.com/hanzokv/go/extra/kvcmd/v9
 
 go 1.26
 

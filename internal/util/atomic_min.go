@@ -4,7 +4,7 @@ package util
 © 2023–present Harald Rudell <harald.rudell@gmail.com> (https://haraldrudell.github.io/haraldrudell/)
 ISC License
 
-Modified by htemelski-redis
+Modified by htemelski-kv
 Adapted from the modified atomic_max, but with inverted logic
 */
 

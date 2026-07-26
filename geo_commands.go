@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func (c cmdable) GeoAdd(ctx context.Context, key string, geoLocation ...*GeoLoca
 // GeoRadius queries a geospatial index for members within a distance from a coordinate.
 // This is a read-only variant that does not support Store or StoreDist options.
 //
-// Deprecated: Use GeoSearch with BYRADIUS argument instead as of Redis 6.2.0.
+// Deprecated: Use GeoSearch with BYRADIUS argument instead as of KV 6.2.0.
 func (c cmdable) GeoRadius(
 	ctx context.Context, key string, longitude, latitude float64, query *GeoRadiusQuery,
 ) *GeoLocationCmd {
@@ -66,7 +66,7 @@ func (c cmdable) GeoRadiusStore(
 // GeoRadiusByMember queries a geospatial index for members within a distance from a member.
 // This is a read-only variant that does not support Store or StoreDist options.
 //
-// Deprecated: Use GeoSearch with BYRADIUS and FROMMEMBER arguments instead as of Redis 6.2.0.
+// Deprecated: Use GeoSearch with BYRADIUS and FROMMEMBER arguments instead as of KV 6.2.0.
 func (c cmdable) GeoRadiusByMember(
 	ctx context.Context, key, member string, query *GeoRadiusQuery,
 ) *GeoLocationCmd {
@@ -118,7 +118,7 @@ func (c cmdable) GeoSearchStore(ctx context.Context, key, store string, q *GeoSe
 	args = append(args, "geosearchstore", store, key)
 	args = geoSearchArgs(&q.GeoSearchQuery, args)
 	if q.StoreDist {
-		args = append(args, "storedist")
+		args = append(args, "stokvt")
 	}
 	cmd := NewIntCmd(ctx, args...)
 	_ = c(ctx, cmd)

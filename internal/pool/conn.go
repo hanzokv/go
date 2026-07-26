@@ -23,8 +23,8 @@ var (
 	errAlreadyMarkedForHandoff  = errors.New("connection is already marked for handoff")
 	errNotMarkedForHandoff      = errors.New("connection was not marked for handoff")
 	errHandoffStateChanged      = errors.New("handoff state changed during marking")
-	errConnectionNotAvailable   = errors.New("redis: connection not available")
-	errConnNotAvailableForWrite = errors.New("redis: connection not available for write operation")
+	errConnectionNotAvailable   = errors.New("kv: connection not available")
+	errConnNotAvailableForWrite = errors.New("kv: connection not available for write operation")
 )
 
 // getCachedTimeNs returns the current time in nanoseconds.
@@ -563,7 +563,7 @@ func (cn *Conn) ExecuteInitConn(ctx context.Context) error {
 	if cn.initConnFunc != nil {
 		return cn.initConnFunc(ctx, cn)
 	}
-	return fmt.Errorf("redis: no initConnFunc set for conn[%d]", cn.GetID())
+	return fmt.Errorf("kv: no initConnFunc set for conn[%d]", cn.GetID())
 }
 
 func (cn *Conn) SetNetConn(netConn net.Conn) {
@@ -781,7 +781,7 @@ func (cn *Conn) PeekReplyTypeSafe() (byte, error) {
 	defer cn.readerMu.RUnlock()
 
 	if cn.rd.Buffered() <= 0 {
-		return 0, fmt.Errorf("redis: can't peek reply type, no data available")
+		return 0, fmt.Errorf("kv: can't peek reply type, no data available")
 	}
 	return cn.rd.PeekReplyType()
 }

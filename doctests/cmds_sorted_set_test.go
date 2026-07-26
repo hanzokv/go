@@ -14,7 +14,7 @@ import (
 func ExampleClient_zadd_cmd() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -28,7 +28,7 @@ func ExampleClient_zadd_cmd() {
 
 	// STEP_START zadd
 	zAddResult1, err := rdb.ZAdd(ctx, "myzset",
-		redis.Z{Member: "one", Score: 1},
+		kv.Z{Member: "one", Score: 1},
 	).Result()
 
 	if err != nil {
@@ -38,7 +38,7 @@ func ExampleClient_zadd_cmd() {
 	fmt.Println(zAddResult1) // >>> 1
 
 	zAddResult2, err := rdb.ZAdd(ctx, "myzset",
-		redis.Z{Member: "uno", Score: 1},
+		kv.Z{Member: "uno", Score: 1},
 	).Result()
 
 	if err != nil {
@@ -48,8 +48,8 @@ func ExampleClient_zadd_cmd() {
 	fmt.Println(zAddResult2)
 
 	zAddResult3, err := rdb.ZAdd(ctx, "myzset",
-		redis.Z{Member: "two", Score: 2},
-		redis.Z{Member: "three", Score: 3},
+		kv.Z{Member: "two", Score: 2},
+		kv.Z{Member: "three", Score: 3},
 	).Result()
 
 	if err != nil {
@@ -77,7 +77,7 @@ func ExampleClient_zadd_cmd() {
 func ExampleClient_zrange1() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -91,9 +91,9 @@ func ExampleClient_zrange1() {
 
 	// STEP_START zrange1
 	zrangeResult1, err := rdb.ZAdd(ctx, "myzset",
-		redis.Z{Member: "one", Score: 1},
-		redis.Z{Member: "two", Score: 2},
-		redis.Z{Member: "three", Score: 3},
+		kv.Z{Member: "one", Score: 1},
+		kv.Z{Member: "two", Score: 2},
+		kv.Z{Member: "three", Score: 3},
 	).Result()
 
 	if err != nil {
@@ -137,7 +137,7 @@ func ExampleClient_zrange1() {
 func ExampleClient_zrange2() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -151,9 +151,9 @@ func ExampleClient_zrange2() {
 
 	// STEP_START zrange2
 	zRangeResult5, err := rdb.ZAdd(ctx, "myzset",
-		redis.Z{Member: "one", Score: 1},
-		redis.Z{Member: "two", Score: 2},
-		redis.Z{Member: "three", Score: 3},
+		kv.Z{Member: "one", Score: 1},
+		kv.Z{Member: "two", Score: 2},
+		kv.Z{Member: "three", Score: 3},
 	).Result()
 
 	if err != nil {
@@ -179,7 +179,7 @@ func ExampleClient_zrange2() {
 func ExampleClient_zrange3() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -193,9 +193,9 @@ func ExampleClient_zrange3() {
 
 	// STEP_START zrange3
 	zRangeResult7, err := rdb.ZAdd(ctx, "myzset",
-		redis.Z{Member: "one", Score: 1},
-		redis.Z{Member: "two", Score: 2},
-		redis.Z{Member: "three", Score: 3},
+		kv.Z{Member: "one", Score: 1},
+		kv.Z{Member: "two", Score: 2},
+		kv.Z{Member: "three", Score: 3},
 	).Result()
 
 	if err != nil {
@@ -205,7 +205,7 @@ func ExampleClient_zrange3() {
 	fmt.Println(zRangeResult7) // >>> 3
 
 	zRangeResult8, err := rdb.ZRangeArgs(ctx,
-		redis.ZRangeArgs{
+		kv.ZRangeArgs{
 			Key:     "myzset",
 			ByScore: true,
 			Start:   "(1",

@@ -18,7 +18,7 @@ func ExampleClient_search_json() {
 	// STEP_START connect
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -60,25 +60,25 @@ func ExampleClient_search_json() {
 		ctx,
 		"idx:users",
 		// Options:
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnJSON: true,
 			Prefix: []interface{}{"user:"},
 		},
 		// Index schema fields:
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.name",
 			As:        "name",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.city",
 			As:        "city",
-			FieldType: redis.SearchFieldTypeTag,
+			FieldType: kv.SearchFieldTypeTag,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.age",
 			As:        "age",
-			FieldType: redis.SearchFieldTypeNumeric,
+			FieldType: kv.SearchFieldTypeNumeric,
 		},
 	).Result()
 
@@ -127,8 +127,8 @@ func ExampleClient_search_json() {
 		ctx,
 		"idx:users",
 		"Paul",
-		&redis.FTSearchOptions{
-			Return: []redis.FTSearchReturn{
+		&kv.FTSearchOptions{
+			Return: []kv.FTSearchReturn{
 				{
 					FieldName: "$.city",
 					As:        "city",
@@ -157,8 +157,8 @@ func ExampleClient_search_json() {
 		ctx,
 		"idx:users",
 		"Paul",
-		&redis.FTSearchOptions{
-			Return: []redis.FTSearchReturn{
+		&kv.FTSearchOptions{
+			Return: []kv.FTSearchReturn{
 				{
 					FieldName: "$.city",
 					As:        "city",
@@ -179,13 +179,13 @@ func ExampleClient_search_json() {
 	// STEP_END
 
 	// STEP_START query3
-	aggOptions := redis.FTAggregateOptions{
-		GroupBy: []redis.FTAggregateGroupBy{
+	aggOptions := kv.FTAggregateOptions{
+		GroupBy: []kv.FTAggregateGroupBy{
 			{
 				Fields: []interface{}{"@city"},
-				Reduce: []redis.FTAggregateReducer{
+				Reduce: []kv.FTAggregateReducer{
 					{
-						Reducer: redis.SearchCount,
+						Reducer: kv.SearchCount,
 						As:      "count",
 					},
 				},
@@ -231,7 +231,7 @@ func ExampleClient_search_json() {
 func ExampleClient_search_hash() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -248,22 +248,22 @@ func ExampleClient_search_hash() {
 		ctx,
 		"hash-idx:users",
 		// Options:
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnHash: true,
 			Prefix: []interface{}{"huser:"},
 		},
 		// Index schema fields:
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "name",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "city",
-			FieldType: redis.SearchFieldTypeTag,
+			FieldType: kv.SearchFieldTypeTag,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "age",
-			FieldType: redis.SearchFieldTypeNumeric,
+			FieldType: kv.SearchFieldTypeNumeric,
 		},
 	).Result()
 

@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"github.com/hanzokv/go/v9/push"

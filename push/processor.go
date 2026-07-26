@@ -193,7 +193,7 @@ func willHandleNotificationInClient(notificationType string) bool {
 		"unsubscribe",  // Unsubscription confirmation
 		"psubscribe",   // Pattern subscription confirmation
 		"punsubscribe", // Pattern unsubscription confirmation
-		"smessage",     // Sharded pub/sub message (Redis 7.0+)
+		"smessage",     // Sharded pub/sub message (KV 7.0+)
 		"ssubscribe",   // Sharded subscription confirmation
 		"sunsubscribe": // Sharded unsubscription confirmation
 		return true

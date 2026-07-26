@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -23,45 +23,45 @@ func TestTypedErrorsWithHookWrapping(t *testing.T) {
 	}{
 		{
 			name:      "LOADING error wrapped in hook",
-			errorMsg:  "LOADING Redis is loading the dataset in memory",
-			checkFunc: redis.IsLoadingError,
+			errorMsg:  "LOADING KV is loading the dataset in memory",
+			checkFunc: kv.IsLoadingError,
 			testName:  "IsLoadingError",
 		},
 		{
 			name:      "READONLY error wrapped in hook",
 			errorMsg:  "READONLY You can't write against a read only replica",
-			checkFunc: redis.IsReadOnlyError,
+			checkFunc: kv.IsReadOnlyError,
 			testName:  "IsReadOnlyError",
 		},
 		{
 			name:      "CLUSTERDOWN error wrapped in hook",
 			errorMsg:  "CLUSTERDOWN The cluster is down",
-			checkFunc: redis.IsClusterDownError,
+			checkFunc: kv.IsClusterDownError,
 			testName:  "IsClusterDownError",
 		},
 		{
 			name:      "TRYAGAIN error wrapped in hook",
 			errorMsg:  "TRYAGAIN Multiple keys request during rehashing of slot",
-			checkFunc: redis.IsTryAgainError,
+			checkFunc: kv.IsTryAgainError,
 			testName:  "IsTryAgainError",
 		},
 		{
 			name:      "MASTERDOWN error wrapped in hook",
 			errorMsg:  "MASTERDOWN Link with MASTER is down",
-			checkFunc: redis.IsMasterDownError,
+			checkFunc: kv.IsMasterDownError,
 			testName:  "IsMasterDownError",
 		},
 		{
 			name:      "Max clients error wrapped in hook",
 			errorMsg:  "ERR max number of clients reached",
-			checkFunc: redis.IsMaxClientsError,
+			checkFunc: kv.IsMaxClientsError,
 			testName:  "IsMaxClientsError",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Simulate a Redis error being created
+			// Simulate a KV error being created
 			parsedErr := proto.ParseErrorReply([]byte("-" + tt.errorMsg))
 
 			// Simulate hook wrapping the error
@@ -84,10 +84,10 @@ func TestTypedErrorsWithHookWrapping(t *testing.T) {
 				t.Errorf("Error message changed: got %q, want %q", parsedErr.Error(), expectedMsg)
 			}
 
-			// Verify the generic RedisError interface still works
-			var redisError redis.Error
-			if !errors.As(doubleWrappedErr, &redisError) {
-				t.Errorf("Failed to extract redis.Error from wrapped error")
+			// Verify the generic KVError interface still works
+			var kvError kv.Error
+			if !errors.As(doubleWrappedErr, &kvError) {
+				t.Errorf("Failed to extract kv.Error from wrapped error")
 			}
 		})
 	}
@@ -126,7 +126,7 @@ func TestMovedAndAskErrorsWithHookWrapping(t *testing.T) {
 
 			// Test address extraction from wrapped error
 			if tt.isMoved {
-				addr, ok := redis.IsMovedError(doubleWrappedErr)
+				addr, ok := kv.IsMovedError(doubleWrappedErr)
 				if !ok {
 					t.Errorf("IsMovedError failed to detect wrapped MOVED error")
 				}
@@ -134,7 +134,7 @@ func TestMovedAndAskErrorsWithHookWrapping(t *testing.T) {
 					t.Errorf("Address mismatch: got %q, want %q", addr, tt.expectedAddr)
 				}
 			} else {
-				addr, ok := redis.IsAskError(doubleWrappedErr)
+				addr, ok := kv.IsAskError(doubleWrappedErr)
 				if !ok {
 					t.Errorf("IsAskError failed to detect wrapped ASK error")
 				}
@@ -156,7 +156,7 @@ func TestBackwardCompatibilityWithStringChecks(t *testing.T) {
 	}{
 		{
 			name:         "LOADING error",
-			errorMsg:     "LOADING Redis is loading the dataset in memory",
+			errorMsg:     "LOADING KV is loading the dataset in memory",
 			stringPrefix: "LOADING ",
 		},
 		{
@@ -209,7 +209,7 @@ func TestErrorWrappingInHookScenario(t *testing.T) {
 	}
 
 	// Create a LOADING error
-	loadingErr := proto.ParseErrorReply([]byte("-LOADING Redis is loading the dataset in memory"))
+	loadingErr := proto.ParseErrorReply([]byte("-LOADING KV is loading the dataset in memory"))
 
 	// Wrap it through multiple hooks
 	err := loadingErr
@@ -217,7 +217,7 @@ func TestErrorWrappingInHookScenario(t *testing.T) {
 	err = addContextToError(err, "GET mykey")
 
 	// The typed error check should still work
-	if !redis.IsLoadingError(err) {
+	if !kv.IsLoadingError(err) {
 		t.Errorf("IsLoadingError failed to detect error through multiple hook wrappers")
 	}
 
@@ -226,7 +226,7 @@ func TestErrorWrappingInHookScenario(t *testing.T) {
 	expectedSubstrings := []string{
 		"command GET mykey failed",
 		"logged error at",
-		"LOADING Redis is loading the dataset in memory",
+		"LOADING KV is loading the dataset in memory",
 	}
 
 	for _, substr := range expectedSubstrings {
@@ -246,7 +246,7 @@ func TestShouldRetryWithTypedErrors(t *testing.T) {
 	}{
 		{
 			name:         "LOADING error should retry",
-			errorMsg:     "LOADING Redis is loading the dataset in memory",
+			errorMsg:     "LOADING KV is loading the dataset in memory",
 			shouldRetry:  true,
 			retryTimeout: false,
 		},
@@ -296,7 +296,7 @@ func TestShouldRetryWithTypedErrors(t *testing.T) {
 			wrappedErr := fmt.Errorf("hook wrapper: %w", err)
 
 			// Test shouldRetry (using the exported ShouldRetry for testing)
-			result := redis.ShouldRetry(wrappedErr, tt.retryTimeout)
+			result := kv.ShouldRetry(wrappedErr, tt.retryTimeout)
 			if result != tt.shouldRetry {
 				t.Errorf("ShouldRetry returned %v, want %v for error: %v", result, tt.shouldRetry, wrappedErr)
 			}
@@ -310,25 +310,25 @@ func TestSetErrWithWrappedError(t *testing.T) {
 	testCtx := context.Background()
 
 	// Test with a simulated LOADING error
-	// We test the mechanism directly without needing a real Redis server
-	cmd := redis.NewStatusCmd(testCtx, "GET", "key")
-	loadingErr := proto.ParseErrorReply([]byte("-LOADING Redis is loading the dataset in memory"))
+	// We test the mechanism directly without needing a real KV server
+	cmd := kv.NewStatusCmd(testCtx, "GET", "key")
+	loadingErr := proto.ParseErrorReply([]byte("-LOADING KV is loading the dataset in memory"))
 	wrappedLoadingErr := fmt.Errorf("hook wrapper: %w", loadingErr)
 	cmd.SetErr(wrappedLoadingErr)
 
 	// Verify we can still detect the LOADING error through the wrapper
-	if !redis.IsLoadingError(cmd.Err()) {
+	if !kv.IsLoadingError(cmd.Err()) {
 		t.Errorf("IsLoadingError failed to detect wrapped error set via SetErr: %v", cmd.Err())
 	}
 
 	// Test with MOVED error
-	cmd2 := redis.NewStatusCmd(testCtx, "GET", "key")
+	cmd2 := kv.NewStatusCmd(testCtx, "GET", "key")
 	movedErr := proto.ParseErrorReply([]byte("-MOVED 3999 127.0.0.1:6381"))
 	wrappedMovedErr := fmt.Errorf("hook wrapper: %w", movedErr)
 	cmd2.SetErr(wrappedMovedErr)
 
 	// Verify we can still detect and extract address from MOVED error
-	addr, ok := redis.IsMovedError(cmd2.Err())
+	addr, ok := kv.IsMovedError(cmd2.Err())
 	if !ok {
 		t.Errorf("IsMovedError failed to detect wrapped error set via SetErr: %v", cmd2.Err())
 	}
@@ -337,13 +337,13 @@ func TestSetErrWithWrappedError(t *testing.T) {
 	}
 
 	// Test with READONLY error
-	cmd3 := redis.NewStatusCmd(testCtx, "SET", "key", "value")
+	cmd3 := kv.NewStatusCmd(testCtx, "SET", "key", "value")
 	readonlyErr := proto.ParseErrorReply([]byte("-READONLY You can't write against a read only replica"))
 	wrappedReadonlyErr := fmt.Errorf("custom error wrapper: %w", readonlyErr)
 	cmd3.SetErr(wrappedReadonlyErr)
 
 	// Verify we can still detect the READONLY error through the wrapper
-	if !redis.IsReadOnlyError(cmd3.Err()) {
+	if !kv.IsReadOnlyError(cmd3.Err()) {
 		t.Errorf("IsReadOnlyError failed to detect wrapped error set via SetErr: %v", cmd3.Err())
 	}
 
@@ -375,14 +375,14 @@ func (e *AppError) Unwrap() error {
 	return e.Err
 }
 
-// TestCustomErrorTypeWrapping tests that users can wrap Redis errors in their own custom error types
+// TestCustomErrorTypeWrapping tests that users can wrap KV errors in their own custom error types
 // and still have typed error detection work correctly
 func TestCustomErrorTypeWrapping(t *testing.T) {
 	testCtx := context.Background()
 
 	// Test 1: Wrap LOADING error in custom type
-	cmd1 := redis.NewStatusCmd(testCtx, "GET", "key")
-	loadingErr := proto.ParseErrorReply([]byte("-LOADING Redis is loading the dataset in memory"))
+	cmd1 := kv.NewStatusCmd(testCtx, "GET", "key")
+	loadingErr := proto.ParseErrorReply([]byte("-LOADING KV is loading the dataset in memory"))
 	customErr1 := &AppError{
 		Code:      "REDIS_ERROR",
 		Message:   "Database operation failed",
@@ -392,7 +392,7 @@ func TestCustomErrorTypeWrapping(t *testing.T) {
 	cmd1.SetErr(customErr1)
 
 	// Verify typed error detection works through custom error type
-	if !redis.IsLoadingError(cmd1.Err()) {
+	if !kv.IsLoadingError(cmd1.Err()) {
 		t.Errorf("IsLoadingError failed to detect error wrapped in custom type: %v", cmd1.Err())
 	}
 
@@ -403,7 +403,7 @@ func TestCustomErrorTypeWrapping(t *testing.T) {
 	}
 
 	// Test 2: Wrap MOVED error in custom type
-	cmd2 := redis.NewStatusCmd(testCtx, "GET", "key")
+	cmd2 := kv.NewStatusCmd(testCtx, "GET", "key")
 	movedErr := proto.ParseErrorReply([]byte("-MOVED 3999 127.0.0.1:6381"))
 	customErr2 := &AppError{
 		Code:      "CLUSTER_REDIRECT",
@@ -414,7 +414,7 @@ func TestCustomErrorTypeWrapping(t *testing.T) {
 	cmd2.SetErr(customErr2)
 
 	// Verify address extraction works through custom error type
-	addr, ok := redis.IsMovedError(cmd2.Err())
+	addr, ok := kv.IsMovedError(cmd2.Err())
 	if !ok {
 		t.Errorf("IsMovedError failed to detect error wrapped in custom type: %v", cmd2.Err())
 	}
@@ -423,7 +423,7 @@ func TestCustomErrorTypeWrapping(t *testing.T) {
 	}
 
 	// Test 3: Multiple levels of wrapping (custom type + fmt.Errorf)
-	cmd3 := redis.NewStatusCmd(testCtx, "SET", "key", "value")
+	cmd3 := kv.NewStatusCmd(testCtx, "SET", "key", "value")
 	readonlyErr := proto.ParseErrorReply([]byte("-READONLY You can't write against a read only replica"))
 	customErr3 := &AppError{
 		Code:      "WRITE_ERROR",
@@ -436,7 +436,7 @@ func TestCustomErrorTypeWrapping(t *testing.T) {
 	cmd3.SetErr(doubleWrapped)
 
 	// Verify typed error detection works through multiple levels of wrapping
-	if !redis.IsReadOnlyError(cmd3.Err()) {
+	if !kv.IsReadOnlyError(cmd3.Err()) {
 		t.Errorf("IsReadOnlyError failed to detect error wrapped in custom type + fmt.Errorf: %v", cmd3.Err())
 	}
 
@@ -460,12 +460,12 @@ func TestTimeoutErrorWrapping(t *testing.T) {
 		doubleWrappedErr := fmt.Errorf("another wrapper: %w", wrappedErr)
 
 		// Should NOT retry when retryTimeout=false
-		if redis.ShouldRetry(doubleWrappedErr, false) {
+		if kv.ShouldRetry(doubleWrappedErr, false) {
 			t.Errorf("Should not retry timeout error when retryTimeout=false")
 		}
 
 		// Should retry when retryTimeout=true
-		if !redis.ShouldRetry(doubleWrappedErr, true) {
+		if !kv.ShouldRetry(doubleWrappedErr, true) {
 			t.Errorf("Should retry timeout error when retryTimeout=true")
 		}
 	})
@@ -476,10 +476,10 @@ func TestTimeoutErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook wrapper: %w", timeoutErr)
 
 		// Should always retry when Timeout()=false
-		if !redis.ShouldRetry(wrappedErr, false) {
+		if !kv.ShouldRetry(wrappedErr, false) {
 			t.Errorf("Should retry non-timeout error even when retryTimeout=false")
 		}
-		if !redis.ShouldRetry(wrappedErr, true) {
+		if !kv.ShouldRetry(wrappedErr, true) {
 			t.Errorf("Should retry non-timeout error when retryTimeout=true")
 		}
 	})
@@ -490,10 +490,10 @@ func TestTimeoutErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook context: %w", netErr)
 
 		// Should respect retryTimeout parameter
-		if redis.ShouldRetry(wrappedErr, false) {
+		if kv.ShouldRetry(wrappedErr, false) {
 			t.Errorf("Should not retry network timeout when retryTimeout=false")
 		}
-		if !redis.ShouldRetry(wrappedErr, true) {
+		if !kv.ShouldRetry(wrappedErr, true) {
 			t.Errorf("Should retry network timeout when retryTimeout=true")
 		}
 	})
@@ -510,10 +510,10 @@ func TestTimeoutErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook wrapper: %w", customErr)
 
 		// Should still detect timeout through multiple wrappers
-		if redis.ShouldRetry(wrappedErr, false) {
+		if kv.ShouldRetry(wrappedErr, false) {
 			t.Errorf("Should not retry timeout through custom error when retryTimeout=false")
 		}
-		if !redis.ShouldRetry(wrappedErr, true) {
+		if !kv.ShouldRetry(wrappedErr, true) {
 			t.Errorf("Should retry timeout through custom error when retryTimeout=true")
 		}
 
@@ -565,10 +565,10 @@ func TestContextErrorWrapping(t *testing.T) {
 		doubleWrappedErr := fmt.Errorf("hook wrapper: %w", wrappedErr)
 
 		// Should NOT retry
-		if redis.ShouldRetry(doubleWrappedErr, false) {
+		if kv.ShouldRetry(doubleWrappedErr, false) {
 			t.Errorf("Should not retry wrapped context.Canceled")
 		}
-		if redis.ShouldRetry(doubleWrappedErr, true) {
+		if kv.ShouldRetry(doubleWrappedErr, true) {
 			t.Errorf("Should not retry wrapped context.Canceled even with retryTimeout=true")
 		}
 	})
@@ -578,10 +578,10 @@ func TestContextErrorWrapping(t *testing.T) {
 		doubleWrappedErr := fmt.Errorf("hook wrapper: %w", wrappedErr)
 
 		// Should NOT retry
-		if redis.ShouldRetry(doubleWrappedErr, false) {
+		if kv.ShouldRetry(doubleWrappedErr, false) {
 			t.Errorf("Should not retry wrapped context.DeadlineExceeded")
 		}
-		if redis.ShouldRetry(doubleWrappedErr, true) {
+		if kv.ShouldRetry(doubleWrappedErr, true) {
 			t.Errorf("Should not retry wrapped context.DeadlineExceeded even with retryTimeout=true")
 		}
 	})
@@ -594,7 +594,7 @@ func TestIOErrorWrapping(t *testing.T) {
 		doubleWrappedErr := fmt.Errorf("hook wrapper: %w", wrappedErr)
 
 		// Should retry
-		if !redis.ShouldRetry(doubleWrappedErr, false) {
+		if !kv.ShouldRetry(doubleWrappedErr, false) {
 			t.Errorf("Should retry wrapped io.EOF")
 		}
 	})
@@ -603,7 +603,7 @@ func TestIOErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("read failed: %w", io.ErrUnexpectedEOF)
 
 		// Should retry
-		if !redis.ShouldRetry(wrappedErr, false) {
+		if !kv.ShouldRetry(wrappedErr, false) {
 			t.Errorf("Should retry wrapped io.ErrUnexpectedEOF")
 		}
 	})
@@ -612,28 +612,28 @@ func TestIOErrorWrapping(t *testing.T) {
 // TestPoolErrorWrapping tests that pool errors work correctly when wrapped
 func TestPoolErrorWrapping(t *testing.T) {
 	t.Run("Wrapped pool.ErrPoolTimeout", func(t *testing.T) {
-		wrappedErr := fmt.Errorf("connection failed: %w", redis.ErrPoolTimeout)
+		wrappedErr := fmt.Errorf("connection failed: %w", kv.ErrPoolTimeout)
 		doubleWrappedErr := fmt.Errorf("hook wrapper: %w", wrappedErr)
 
 		// Should retry
-		if !redis.ShouldRetry(doubleWrappedErr, false) {
+		if !kv.ShouldRetry(doubleWrappedErr, false) {
 			t.Errorf("Should retry wrapped pool.ErrPoolTimeout")
 		}
 	})
 }
 
-// TestRedisErrorWrapping tests that RedisError detection works with wrapped errors
-func TestRedisErrorWrapping(t *testing.T) {
-	t.Run("Wrapped proto.RedisError", func(t *testing.T) {
-		redisErr := proto.RedisError("ERR something went wrong")
-		wrappedErr := fmt.Errorf("command failed: %w", redisErr)
+// TestKVErrorWrapping tests that KVError detection works with wrapped errors
+func TestKVErrorWrapping(t *testing.T) {
+	t.Run("Wrapped proto.KVError", func(t *testing.T) {
+		kvErr := proto.KVError("ERR something went wrong")
+		wrappedErr := fmt.Errorf("command failed: %w", kvErr)
 		doubleWrappedErr := fmt.Errorf("hook wrapper: %w", wrappedErr)
 
 		// Create a command and set the wrapped error
-		cmd := redis.NewStatusCmd(context.Background(), "GET", "key")
+		cmd := kv.NewStatusCmd(context.Background(), "GET", "key")
 		cmd.SetErr(doubleWrappedErr)
 
-		// The error should still be recognized as a Redis error
+		// The error should still be recognized as a KV error
 		// This is tested indirectly through the typed error system
 		if !strings.Contains(cmd.Err().Error(), "ERR something went wrong") {
 			t.Errorf("Error message not preserved through wrapping")
@@ -655,7 +655,7 @@ func TestAuthErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook: %w", authErr)
 
 		// Should still be detected
-		if !redis.IsAuthError(wrappedErr) {
+		if !kv.IsAuthError(wrappedErr) {
 			t.Errorf("IsAuthError should detect wrapped NOAUTH error")
 		}
 	})
@@ -669,7 +669,7 @@ func TestAuthErrorWrapping(t *testing.T) {
 		doubleWrappedErr := fmt.Errorf("client error: %w", wrappedErr)
 
 		// Should still be detected
-		if !redis.IsAuthError(doubleWrappedErr) {
+		if !kv.IsAuthError(doubleWrappedErr) {
 			t.Errorf("IsAuthError should detect double-wrapped WRONGPASS error")
 		}
 	})
@@ -682,7 +682,7 @@ func TestAuthErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook: %w", authErr)
 
 		// Should still be detected
-		if !redis.IsAuthError(wrappedErr) {
+		if !kv.IsAuthError(wrappedErr) {
 			t.Errorf("IsAuthError should detect wrapped unauthenticated error")
 		}
 	})
@@ -697,7 +697,7 @@ func TestPermissionErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook: %w", permErr)
 
 		// Should still be detected
-		if !redis.IsPermissionError(wrappedErr) {
+		if !kv.IsPermissionError(wrappedErr) {
 			t.Errorf("IsPermissionError should detect wrapped NOPERM error")
 		}
 	})
@@ -712,7 +712,7 @@ func TestExecAbortErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook: %w", execAbortErr)
 
 		// Should still be detected
-		if !redis.IsExecAbortError(wrappedErr) {
+		if !kv.IsExecAbortError(wrappedErr) {
 			t.Errorf("IsExecAbortError should detect wrapped EXECABORT error")
 		}
 	})
@@ -727,7 +727,7 @@ func TestOOMErrorWrapping(t *testing.T) {
 		wrappedErr := fmt.Errorf("hook: %w", oomErr)
 
 		// Should still be detected
-		if !redis.IsOOMError(wrappedErr) {
+		if !kv.IsOOMError(wrappedErr) {
 			t.Errorf("IsOOMError should detect wrapped OOM error")
 		}
 	})

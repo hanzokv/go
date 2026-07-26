@@ -14,7 +14,7 @@ import (
 func ExampleClient_geoindex() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -32,14 +32,14 @@ func ExampleClient_geoindex() {
 	// STEP_START create_geo_idx
 	geoCreateResult, err := rdb.FTCreate(ctx,
 		"productidx",
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnJSON: true,
 			Prefix: []interface{}{"product:"},
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.location",
 			As:        "location",
-			FieldType: redis.SearchFieldTypeGeo,
+			FieldType: kv.SearchFieldTypeGeo,
 		},
 	).Result()
 
@@ -97,19 +97,19 @@ func ExampleClient_geoindex() {
 
 	// STEP_START create_gshape_idx
 	geomCreateResult, err := rdb.FTCreate(ctx, "geomidx",
-		&redis.FTCreateOptions{
+		&kv.FTCreateOptions{
 			OnJSON: true,
 			Prefix: []interface{}{"shape:"},
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName: "$.name",
 			As:        "name",
-			FieldType: redis.SearchFieldTypeText,
+			FieldType: kv.SearchFieldTypeText,
 		},
-		&redis.FieldSchema{
+		&kv.FieldSchema{
 			FieldName:         "$.geom",
 			As:                "geom",
-			FieldType:         redis.SearchFieldTypeGeoShape,
+			FieldType:         kv.SearchFieldTypeGeoShape,
 			GeoShapeFieldType: "FLAT",
 		},
 	).Result()
@@ -178,7 +178,7 @@ func ExampleClient_geoindex() {
 	// STEP_START gshape_query
 	geomQueryResult, err := rdb.FTSearchWithArgs(ctx, "geomidx",
 		"(-@name:(Green Square) @geom:[WITHIN $qshape])",
-		&redis.FTSearchOptions{
+		&kv.FTSearchOptions{
 			Params: map[string]interface{}{
 				"qshape": "POLYGON ((1 1, 1 3, 3 3, 3 1, 1 1))",
 			},

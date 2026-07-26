@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import "context"
 
@@ -44,7 +44,7 @@ func (c cmdable) ClusterMyID(ctx context.Context) *StringCmd {
 
 // ClusterSlots returns the mapping of cluster slots to nodes.
 //
-// Deprecated: Use ClusterShards instead as of Redis 7.0.0.
+// Deprecated: Use ClusterShards instead as of KV 7.0.0.
 func (c cmdable) ClusterSlots(ctx context.Context) *ClusterSlotsCmd {
 	cmd := NewClusterSlotsCmd(ctx, "cluster", "slots")
 	_ = c(ctx, cmd)
@@ -158,7 +158,7 @@ func (c cmdable) ClusterSaveConfig(ctx context.Context) *StatusCmd {
 
 // ClusterSlaves lists the replica nodes of a master node.
 //
-// Deprecated: Use ClusterReplicas instead as of Redis 5.0.0.
+// Deprecated: Use ClusterReplicas instead as of KV 5.0.0.
 func (c cmdable) ClusterSlaves(ctx context.Context, nodeID string) *StringSliceCmd {
 	cmd := NewStringSliceCmd(ctx, "cluster", "slaves", nodeID)
 	_ = c(ctx, cmd)

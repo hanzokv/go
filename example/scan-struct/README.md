@@ -7,5 +7,5 @@ go run .
 ```
 
 See
-[Redis: Scanning hash fields into a struct](https://redis.uptrace.dev/guide/scanning-hash-fields.html)
+[KV: Scanning hash fields into a struct](https://kv.uptrace.dev/guide/scanning-hash-fields.html)
 for details.

@@ -11,7 +11,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 	})
 	_ = rdb.FlushDB(ctx).Err()
@@ -29,7 +29,7 @@ func main() {
 	topK(ctx, rdb)
 }
 
-func bloomFilter(ctx context.Context, rdb *redis.Client) {
+func bloomFilter(ctx context.Context, rdb *kv.Client) {
 	inserted, err := rdb.Do(ctx, "BF.ADD", "bf_key", "item0").Bool()
 	if err != nil {
 		panic(err)
@@ -59,7 +59,7 @@ func bloomFilter(ctx context.Context, rdb *redis.Client) {
 	fmt.Println("adding multiple items:", bools)
 }
 
-func cuckooFilter(ctx context.Context, rdb *redis.Client) {
+func cuckooFilter(ctx context.Context, rdb *kv.Client) {
 	inserted, err := rdb.Do(ctx, "CF.ADDNX", "cf_key", "item0").Bool()
 	if err != nil {
 		panic(err)
@@ -91,7 +91,7 @@ func cuckooFilter(ctx context.Context, rdb *redis.Client) {
 	}
 }
 
-func countMinSketch(ctx context.Context, rdb *redis.Client) {
+func countMinSketch(ctx context.Context, rdb *kv.Client) {
 	if err := rdb.Do(ctx, "CMS.INITBYPROB", "count_min", 0.001, 0.01).Err(); err != nil {
 		panic(err)
 	}
@@ -118,7 +118,7 @@ func countMinSketch(ctx context.Context, rdb *redis.Client) {
 	}
 }
 
-func topK(ctx context.Context, rdb *redis.Client) {
+func topK(ctx context.Context, rdb *kv.Client) {
 	if err := rdb.Do(ctx, "TOPK.RESERVE", "top_items", 3).Err(); err != nil {
 		panic(err)
 	}

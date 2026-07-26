@@ -15,7 +15,7 @@ import (
 func ExampleClient_vectorset() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -28,7 +28,7 @@ func ExampleClient_vectorset() {
 
 	// STEP_START vadd
 	res1, err := rdb.VAdd(ctx, "points", "pt:A",
-		&redis.VectorValues{Val: []float64{1.0, 1.0}},
+		&kv.VectorValues{Val: []float64{1.0, 1.0}},
 	).Result()
 
 	if err != nil {
@@ -38,7 +38,7 @@ func ExampleClient_vectorset() {
 	fmt.Println(res1) // >>> true
 
 	res2, err := rdb.VAdd(ctx, "points", "pt:B",
-		&redis.VectorValues{Val: []float64{-1.0, -1.0}},
+		&kv.VectorValues{Val: []float64{-1.0, -1.0}},
 	).Result()
 
 	if err != nil {
@@ -48,7 +48,7 @@ func ExampleClient_vectorset() {
 	fmt.Println(res2) // >>> true
 
 	res3, err := rdb.VAdd(ctx, "points", "pt:C",
-		&redis.VectorValues{Val: []float64{-1.0, 1.0}},
+		&kv.VectorValues{Val: []float64{-1.0, 1.0}},
 	).Result()
 
 	if err != nil {
@@ -58,7 +58,7 @@ func ExampleClient_vectorset() {
 	fmt.Println(res3) // >>> true
 
 	res4, err := rdb.VAdd(ctx, "points", "pt:D",
-		&redis.VectorValues{Val: []float64{1.0, -1.0}},
+		&kv.VectorValues{Val: []float64{1.0, -1.0}},
 	).Result()
 
 	if err != nil {
@@ -68,7 +68,7 @@ func ExampleClient_vectorset() {
 	fmt.Println(res4) // >>> true
 
 	res5, err := rdb.VAdd(ctx, "points", "pt:E",
-		&redis.VectorValues{Val: []float64{1.0, 0.0}},
+		&kv.VectorValues{Val: []float64{1.0, 0.0}},
 	).Result()
 
 	if err != nil {
@@ -187,7 +187,7 @@ func ExampleClient_vectorset() {
 
 	// STEP_START vrem
 	res18, err := rdb.VAdd(ctx, "points", "pt:F",
-		&redis.VectorValues{Val: []float64{0.0, 0.0}},
+		&kv.VectorValues{Val: []float64{0.0, 0.0}},
 	).Result()
 
 	if err != nil {
@@ -223,7 +223,7 @@ func ExampleClient_vectorset() {
 
 	// STEP_START vsim_basic
 	res22, err := rdb.VSim(ctx, "points",
-		&redis.VectorValues{Val: []float64{0.9, 0.1}},
+		&kv.VectorValues{Val: []float64{0.9, 0.1}},
 	).Result()
 
 	if err != nil {
@@ -237,8 +237,8 @@ func ExampleClient_vectorset() {
 	res23, err := rdb.VSimWithArgsWithScores(
 		ctx,
 		"points",
-		&redis.VectorRef{Name: "pt:A"},
-		&redis.VSimArgs{Count: 4},
+		&kv.VectorRef{Name: "pt:A"},
+		&kv.VSimArgs{Count: 4},
 	).Result()
 
 	if err != nil {
@@ -323,8 +323,8 @@ func ExampleClient_vectorset() {
 	// Return elements in order of distance from point A whose
 	// `size` attribute is `large`.
 	res29, err := rdb.VSimWithArgs(ctx, "points",
-		&redis.VectorRef{Name: "pt:A"},
-		&redis.VSimArgs{Filter: `.size == "large"`},
+		&kv.VectorRef{Name: "pt:A"},
+		&kv.VSimArgs{Filter: `.size == "large"`},
 	).Result()
 
 	if err != nil {
@@ -336,8 +336,8 @@ func ExampleClient_vectorset() {
 	// Return elements in order of distance from point A whose size is
 	// `large` and whose price is greater than 20.00.
 	res30, err := rdb.VSimWithArgs(ctx, "points",
-		&redis.VectorRef{Name: "pt:A"},
-		&redis.VSimArgs{Filter: `.size == "large" && .price > 20.00`},
+		&kv.VectorRef{Name: "pt:A"},
+		&kv.VSimArgs{Filter: `.size == "large" && .price > 20.00`},
 	).Result()
 
 	if err != nil {
@@ -364,7 +364,7 @@ func ExampleClient_vectorset() {
 	// true
 	// {"description":"First point added","name":"Point A"}
 	// true
-	// redis: nil
+	// kv: nil
 	// true
 	// 6
 	// true
@@ -383,7 +383,7 @@ func ExampleClient_vectorset() {
 func ExampleClient_vectorset_quantization() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -396,10 +396,10 @@ func ExampleClient_vectorset_quantization() {
 
 	// STEP_START add_quant
 	// Add with Q8 quantization
-	vecQ := &redis.VectorValues{Val: []float64{1.262185, 1.958231}}
+	vecQ := &kv.VectorValues{Val: []float64{1.262185, 1.958231}}
 
 	res1, err := rdb.VAddWithArgs(ctx, "quantSetQ8", "quantElement", vecQ,
-		&redis.VAddArgs{
+		&kv.VAddArgs{
 			Q8: true,
 		},
 	).Result()
@@ -421,7 +421,7 @@ func ExampleClient_vectorset_quantization() {
 
 	// Add with NOQUANT option
 	res2, err := rdb.VAddWithArgs(ctx, "quantSetNoQ", "quantElement", vecQ,
-		&redis.VAddArgs{
+		&kv.VAddArgs{
 			NoQuant: true,
 		},
 	).Result()
@@ -443,7 +443,7 @@ func ExampleClient_vectorset_quantization() {
 
 	// Add with BIN quantization
 	res3, err := rdb.VAddWithArgs(ctx, "quantSetBin", "quantElement", vecQ,
-		&redis.VAddArgs{
+		&kv.VAddArgs{
 			Bin: true,
 		},
 	).Result()
@@ -476,7 +476,7 @@ func ExampleClient_vectorset_quantization() {
 func ExampleClient_vectorset_dimension_reduction() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password set
 		DB:       0,  // use default DB
@@ -495,7 +495,7 @@ func ExampleClient_vectorset_dimension_reduction() {
 		values[i] = float64(i) / 299
 	}
 
-	vecLarge := &redis.VectorValues{Val: values}
+	vecLarge := &kv.VectorValues{Val: values}
 
 	// Add without reduction
 	res1, err := rdb.VAdd(ctx, "setNotReduced", "element", vecLarge).Result()
@@ -517,7 +517,7 @@ func ExampleClient_vectorset_dimension_reduction() {
 
 	// Add with reduction to 100 dimensions
 	res2, err := rdb.VAddWithArgs(ctx, "setReduced", "element", vecLarge,
-		&redis.VAddArgs{
+		&kv.VAddArgs{
 			Reduce: 100,
 		},
 	).Result()

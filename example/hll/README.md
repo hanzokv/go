@@ -1,4 +1,4 @@
-# Redis HyperLogLog example
+# KV HyperLogLog example
 
 To run this example:
 
@@ -6,5 +6,5 @@ To run this example:
 go run .
 ```
 
-See [Using HyperLogLog command with go-redis](https://redis.uptrace.dev/guide/go-redis-hll.html) for
+See [Using HyperLogLog command with go-kv](https://kv.uptrace.dev/guide/go-kv-hll.html) for
 details.

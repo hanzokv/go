@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -20,17 +20,17 @@ type TimeValue struct {
 	time.Time
 }
 
-func (t *TimeValue) ScanRedis(s string) (err error) {
+func (t *TimeValue) ScanKV(s string) (err error) {
 	t.Time, err = time.Parse(time.RFC3339Nano, s)
 	return
 }
 
 var _ = Describe("Commands", func() {
 	ctx := context.TODO()
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -40,7 +40,7 @@ var _ = Describe("Commands", func() {
 
 	Describe("server", func() {
 		It("should Auth", func() {
-			cmds, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			cmds, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Auth(ctx, "password")
 				pipe.Auth(ctx, "")
 				return nil
@@ -59,12 +59,12 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should hello", func() {
-			cmds, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			cmds, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Hello(ctx, 3, "", "", "")
 				return nil
 			})
 			Expect(err).NotTo(HaveOccurred())
-			m, err := cmds[0].(*redis.MapStringInterfaceCmd).Result()
+			m, err := cmds[0].(*kv.MapStringInterfaceCmd).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(m["proto"]).To(Equal(int64(3)))
 		})
@@ -94,7 +94,7 @@ var _ = Describe("Commands", func() {
 		It("should Wait", func() {
 			const wait = 3 * time.Second
 
-			// assume testing on single redis instance
+			// assume testing on single kv instance
 			start := time.Now()
 			val, err := client.Wait(ctx, 1, wait).Result()
 			Expect(err).NotTo(HaveOccurred())
@@ -106,7 +106,7 @@ var _ = Describe("Commands", func() {
 			const waitAOF = 3 * time.Second
 			Skip("flaky test")
 
-			// assuming that the redis instance doesn't have AOF enabled
+			// assuming that the kv instance doesn't have AOF enabled
 			start := time.Now()
 			val, err := client.WaitAOF(ctx, 1, 1, waitAOF).Result()
 			Expect(err).NotTo(HaveOccurred())
@@ -114,7 +114,7 @@ var _ = Describe("Commands", func() {
 			Expect(time.Now()).To(BeTemporally("~", start.Add(waitAOF), 3*time.Second))
 		})
 
-		It("should Select", Label("NonRedisEnterprise"), func() {
+		It("should Select", Label("NonKVEnterprise"), func() {
 			pipe := client.Pipeline()
 			sel := pipe.Select(ctx, 1)
 			_, err := pipe.Exec(ctx)
@@ -124,7 +124,7 @@ var _ = Describe("Commands", func() {
 			Expect(sel.Val()).To(Equal("OK"))
 		})
 
-		It("should SwapDB", Label("NonRedisEnterprise"), func() {
+		It("should SwapDB", Label("NonKVEnterprise"), func() {
 			pipe := client.Pipeline()
 			sel := pipe.SwapDB(ctx, 1, 2)
 			_, err := pipe.Exec(ctx)
@@ -172,7 +172,7 @@ var _ = Describe("Commands", func() {
 		It("should CommandGetKeysAndFlags", func() {
 			keysAndFlags, err := client.CommandGetKeysAndFlags(ctx, "LMOVE", "mylist1", "mylist2", "left", "left").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(keysAndFlags).To(Equal([]redis.KeyFlags{
+			Expect(keysAndFlags).To(Equal([]kv.KeyFlags{
 				{
 					Key:   "mylist1",
 					Flags: []string{"RW", "access", "delete"},
@@ -201,9 +201,9 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ClientKillByFilter with kill myself", func() {
-			opt := redisOptions()
+			opt := kvOptions()
 			opt.ClientName = "killmyid"
-			db := redis.NewClient(opt)
+			db := kv.NewClient(opt)
 			Expect(db.Ping(ctx).Err()).NotTo(HaveOccurred())
 
 			defer func() {
@@ -223,8 +223,8 @@ var _ = Describe("Commands", func() {
 			Expect(val).ShouldNot(ContainSubstring("name=killmyid"))
 		})
 
-		It("should ClientKillByFilter with MAXAGE", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should ClientKillByFilter with MAXAGE", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			var s []string
 			started := make(chan bool)
 			done := make(chan bool)
@@ -284,7 +284,7 @@ var _ = Describe("Commands", func() {
 			Expect(info).NotTo(BeNil())
 		})
 
-		It("should ClientPause", Label("NonRedisEnterprise"), func() {
+		It("should ClientPause", Label("NonKVEnterprise"), func() {
 			err := client.ClientPause(ctx, time.Second).Err()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -312,8 +312,8 @@ var _ = Describe("Commands", func() {
 			pipe := client.Pipeline()
 
 			// Test setting the libName
-			libName := "go-redis"
-			libInfo := redis.WithLibraryName(libName)
+			libName := "go-kv"
+			libInfo := kv.WithLibraryName(libName)
 			setInfo := pipe.ClientSetInfo(ctx, libInfo)
 			_, err := pipe.Exec(ctx)
 
@@ -323,7 +323,7 @@ var _ = Describe("Commands", func() {
 
 			// Test setting the libVer
 			libVer := "vX.x"
-			libInfo = redis.WithLibraryVersion(libVer)
+			libInfo = kv.WithLibraryVersion(libVer)
 			setInfo = pipe.ClientSetInfo(ctx, libInfo)
 			_, err = pipe.Exec(ctx)
 
@@ -332,7 +332,7 @@ var _ = Describe("Commands", func() {
 			Expect(setInfo.Val()).To(Equal("OK"))
 
 			// Test setting both fields, expect a panic
-			libInfo = redis.LibraryInfo{LibName: &libName, LibVer: &libVer}
+			libInfo = kv.LibraryInfo{LibName: &libName, LibVer: &libVer}
 
 			Expect(func() {
 				defer func() {
@@ -345,7 +345,7 @@ var _ = Describe("Commands", func() {
 			}).To(Panic())
 
 			// Test setting neither field, expect a panic
-			libInfo = redis.LibraryInfo{}
+			libInfo = kv.LibraryInfo{}
 
 			Expect(func() {
 				defer func() {
@@ -358,14 +358,14 @@ var _ = Describe("Commands", func() {
 			}).To(Panic())
 			// Test setting the default options for libName, libName suffix and libVer
 			clientInfo := client.ClientInfo(ctx).Val()
-			Expect(clientInfo.LibName).To(ContainSubstring("go-redis(go-redis,"))
+			Expect(clientInfo.LibName).To(ContainSubstring("go-kv(go-kv,"))
 			// Test setting the libName suffix in options
-			opt := redisOptions()
+			opt := kvOptions()
 			opt.IdentitySuffix = "suffix"
-			client2 := redis.NewClient(opt)
+			client2 := kv.NewClient(opt)
 			defer client2.Close()
 			clientInfo = client2.ClientInfo(ctx).Val()
-			Expect(clientInfo.LibName).To(ContainSubstring("go-redis(suffix,"))
+			Expect(clientInfo.LibName).To(ContainSubstring("go-kv(suffix,"))
 
 		})
 
@@ -376,7 +376,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ConfigGet Modules", func() {
-			SkipBeforeRedisVersion(8, "Config doesn't include modules before Redis 8")
+			SkipBeforeKVVersion(8, "Config doesn't include modules before KV 8")
 			expected := map[string]string{
 				"search-*": "search-timeout",
 				"ts-*":     "ts-retention-policy",
@@ -392,13 +392,13 @@ var _ = Describe("Commands", func() {
 			}
 		})
 
-		It("should ConfigResetStat", Label("NonRedisEnterprise"), func() {
+		It("should ConfigResetStat", Label("NonKVEnterprise"), func() {
 			r := client.ConfigResetStat(ctx)
 			Expect(r.Err()).NotTo(HaveOccurred())
 			Expect(r.Val()).To(Equal("OK"))
 		})
 
-		It("should ConfigSet", Label("NonRedisEnterprise"), func() {
+		It("should ConfigSet", Label("NonKVEnterprise"), func() {
 			configGet := client.ConfigGet(ctx, "maxmemory")
 			Expect(configGet.Err()).NotTo(HaveOccurred())
 			Expect(configGet.Val()).To(HaveLen(1))
@@ -410,8 +410,8 @@ var _ = Describe("Commands", func() {
 			Expect(configSet.Val()).To(Equal("OK"))
 		})
 
-		It("should ConfigGet with Modules", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(8, "config get won't return modules configs before redis 8")
+		It("should ConfigGet with Modules", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(8, "config get won't return modules configs before kv 8")
 			configGet := client.ConfigGet(ctx, "*")
 			Expect(configGet.Err()).NotTo(HaveOccurred())
 			Expect(configGet.Val()).To(HaveKey("maxmemory"))
@@ -422,7 +422,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ConfigSet FT DIALECT", func() {
-			SkipBeforeRedisVersion(8, "config doesn't include modules before Redis 8")
+			SkipBeforeKVVersion(8, "config doesn't include modules before KV 8")
 			defaultState, err := client.ConfigGet(ctx, "search-default-dialect").Result()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -468,13 +468,13 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ConfigSet fail for ReadOnly", func() {
-			SkipBeforeRedisVersion(8, "Config doesn't include modules before Redis 8")
+			SkipBeforeKVVersion(8, "Config doesn't include modules before KV 8")
 			_, err := client.ConfigSet(ctx, "search-max-doctablesize", "100000").Result()
 			Expect(err).To(HaveOccurred())
 		})
 
 		It("should ConfigSet Modules", func() {
-			SkipBeforeRedisVersion(8, "Config doesn't include modules before Redis 8")
+			SkipBeforeKVVersion(8, "Config doesn't include modules before KV 8")
 			defaults := map[string]string{}
 			expected := map[string]string{
 				"search-timeout":      "100",
@@ -515,7 +515,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should Fail ConfigSet Modules", func() {
-			SkipBeforeRedisVersion(8, "Config doesn't include modules before Redis 8")
+			SkipBeforeKVVersion(8, "Config doesn't include modules before KV 8")
 			expected := map[string]string{
 				"search-timeout":      "-100",
 				"ts-retention-policy": "-10",
@@ -531,7 +531,7 @@ var _ = Describe("Commands", func() {
 			}
 		})
 
-		It("should ConfigRewrite", Label("NonRedisEnterprise"), func() {
+		It("should ConfigRewrite", Label("NonKVEnterprise"), func() {
 			configRewrite := client.ConfigRewrite(ctx)
 			Expect(configRewrite.Err()).NotTo(HaveOccurred())
 			Expect(configRewrite.Val()).To(Equal("OK"))
@@ -549,7 +549,7 @@ var _ = Describe("Commands", func() {
 			Expect(info.Val()).NotTo(Equal(""))
 		})
 
-		It("should InfoMap", Label("redis.info"), func() {
+		It("should InfoMap", Label("kv.info"), func() {
 			info := client.InfoMap(ctx)
 			Expect(info.Err()).NotTo(HaveOccurred())
 			Expect(info.Val()).NotTo(BeNil())
@@ -563,8 +563,8 @@ var _ = Describe("Commands", func() {
 			Expect(info.Val()).To(HaveLen(1))
 		})
 
-		It("should Info Modules", Label("redis.info"), func() {
-			SkipBeforeRedisVersion(8, "modules are included in info for Redis Version >= 8")
+		It("should Info Modules", Label("kv.info"), func() {
+			SkipBeforeKVVersion(8, "modules are included in info for KV Version >= 8")
 			info := client.Info(ctx)
 			Expect(info.Err()).NotTo(HaveOccurred())
 			Expect(info.Val()).NotTo(BeNil())
@@ -588,8 +588,8 @@ var _ = Describe("Commands", func() {
 			Expect(info.Val()).To(ContainSubstring("bf"))
 		})
 
-		It("should InfoMap Modules", Label("redis.info"), func() {
-			SkipBeforeRedisVersion(8, "modules are included in info for Redis Version >= 8")
+		It("should InfoMap Modules", Label("kv.info"), func() {
+			SkipBeforeKVVersion(8, "modules are included in info for KV Version >= 8")
 			info := client.InfoMap(ctx)
 			Expect(info.Err()).NotTo(HaveOccurred())
 			Expect(info.Val()).NotTo(BeNil())
@@ -631,20 +631,20 @@ var _ = Describe("Commands", func() {
 			Expect(info.Val()).To(ContainSubstring(`memory`))
 		})
 
-		It("should LastSave", Label("NonRedisEnterprise"), func() {
+		It("should LastSave", Label("NonKVEnterprise"), func() {
 			lastSave := client.LastSave(ctx)
 			Expect(lastSave.Err()).NotTo(HaveOccurred())
 			Expect(lastSave.Val()).NotTo(Equal(0))
 		})
 
-		It("should Save", Label("NonRedisEnterprise"), func() {
+		It("should Save", Label("NonKVEnterprise"), func() {
 			// workaround for "ERR Background save already in progress"
 			Eventually(func() string {
 				return client.Save(ctx).Val()
 			}, "10s").Should(Equal("OK"))
 		})
 
-		It("should SlaveOf", Label("NonRedisEnterprise"), func() {
+		It("should SlaveOf", Label("NonKVEnterprise"), func() {
 			slaveOf := client.SlaveOf(ctx, "localhost", "8888")
 			Expect(slaveOf.Err()).NotTo(HaveOccurred())
 			Expect(slaveOf.Val()).To(Equal("OK"))
@@ -660,7 +660,7 @@ var _ = Describe("Commands", func() {
 			Expect(tm).To(BeTemporally("~", time.Now(), 3*time.Second))
 		})
 
-		It("should Command", Label("NonRedisEnterprise"), func() {
+		It("should Command", Label("NonKVEnterprise"), func() {
 			cmds, err := client.Command(ctx).Result()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -681,8 +681,8 @@ var _ = Describe("Commands", func() {
 			Expect(cmd.StepCount).To(Equal(int8(0)))
 		})
 
-		It("should Command Tips", Label("NonRedisEnterprise"), func() {
-			SkipAfterRedisVersion(7.9, "Redis 8 changed the COMMAND reply format")
+		It("should Command Tips", Label("NonKVEnterprise"), func() {
+			SkipAfterKVVersion(7.9, "KV 8 changed the COMMAND reply format")
 			cmds, err := client.Command(ctx).Result()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -711,7 +711,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should filter commands by module", func() {
-			filter := &redis.FilterBy{
+			filter := &kv.FilterBy{
 				Module: "JSON",
 			}
 			cmdList := client.CommandList(ctx, filter)
@@ -720,7 +720,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should filter commands by ACL category", func() {
-			filter := &redis.FilterBy{
+			filter := &kv.FilterBy{
 				ACLCat: "admin",
 			}
 
@@ -733,7 +733,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should filter commands by pattern", func() {
-			filter := &redis.FilterBy{
+			filter := &kv.FilterBy{
 				Pattern: "*GET*",
 			}
 			cmdList := client.CommandList(ctx, filter)
@@ -748,7 +748,7 @@ var _ = Describe("Commands", func() {
 		})
 	})
 
-	Describe("debugging", Label("NonRedisEnterprise"), func() {
+	Describe("debugging", Label("NonKVEnterprise"), func() {
 		It("should DebugObject", func() {
 			err := client.DebugObject(ctx, "foo").Err()
 			Expect(err).To(MatchError("ERR no such key"))
@@ -763,7 +763,7 @@ var _ = Describe("Commands", func() {
 
 		It("should MemoryUsage", func() {
 			err := client.MemoryUsage(ctx, "foo").Err()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 
 			err = client.Set(ctx, "foo", "bar", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
@@ -909,8 +909,8 @@ var _ = Describe("Commands", func() {
 			Expect(keys.Val()).To(ConsistOf([]string{"four", "one", "three", "two"}))
 		})
 
-		It("should Migrate", Label("NonRedisEnterprise"), func() {
-			migrate := client.Migrate(ctx, "localhost", redisSecondaryPort, "key", 0, 0)
+		It("should Migrate", Label("NonKVEnterprise"), func() {
+			migrate := client.Migrate(ctx, "localhost", kvSecondaryPort, "key", 0, 0)
 			Expect(migrate.Err()).NotTo(HaveOccurred())
 			Expect(migrate.Val()).To(Equal("NOKEY"))
 
@@ -918,12 +918,12 @@ var _ = Describe("Commands", func() {
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
 
-			migrate = client.Migrate(ctx, "localhost", redisSecondaryPort, "key", 0, 0)
+			migrate = client.Migrate(ctx, "localhost", kvSecondaryPort, "key", 0, 0)
 			Expect(migrate.Err()).To(MatchError("IOERR error or timeout writing to target instance"))
 			Expect(migrate.Val()).To(Equal(""))
 		})
 
-		It("should Move", Label("NonRedisEnterprise"), func() {
+		It("should Move", Label("NonKVEnterprise"), func() {
 			move := client.Move(ctx, "key", 2)
 			Expect(move.Err()).NotTo(HaveOccurred())
 			Expect(move.Val()).To(Equal(false))
@@ -937,7 +937,7 @@ var _ = Describe("Commands", func() {
 			Expect(move.Val()).To(Equal(true))
 
 			get := client.Get(ctx, "key")
-			Expect(get.Err()).To(Equal(redis.Nil))
+			Expect(get.Err()).To(Equal(kv.Nil))
 			Expect(get.Val()).To(Equal(""))
 
 			pipe := client.Pipeline()
@@ -950,7 +950,7 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("hello"))
 		})
 
-		It("should Object", Label("NonRedisEnterprise"), func() {
+		It("should Object", Label("NonKVEnterprise"), func() {
 			start := time.Now()
 			set := client.Set(ctx, "key", "hello", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
@@ -971,11 +971,11 @@ var _ = Describe("Commands", func() {
 			idleTime := client.ObjectIdleTime(ctx, "key")
 			Expect(idleTime.Err()).NotTo(HaveOccurred())
 
-			// Redis returned milliseconds/1000, which may cause ObjectIdleTime to be at a critical value,
+			// KV returned milliseconds/1000, which may cause ObjectIdleTime to be at a critical value,
 			// should be +1s to deal with the critical value problem.
 			// if too much time (>1s) is used during command execution, it may also cause the test to fail.
 			// so the ObjectIdleTime result should be <=now-start+1s
-			// link: https://github.com/redis/redis/blob/5b48d900498c85bbf4772c1d466c214439888115/src/object.c#L1265-L1272
+			// link: https://github.com/kv/kv/blob/5b48d900498c85bbf4772c1d466c214439888115/src/object.c#L1265-L1272
 			Expect(idleTime.Val()).To(BeNumerically("<=", time.Since(start)+time.Second))
 		})
 
@@ -1077,7 +1077,7 @@ var _ = Describe("Commands", func() {
 
 		It("should RandomKey", func() {
 			randomKey := client.RandomKey(ctx)
-			Expect(randomKey.Err()).To(Equal(redis.Nil))
+			Expect(randomKey.Err()).To(Equal(kv.Nil))
 			Expect(randomKey.Val()).To(Equal(""))
 
 			set := client.Set(ctx, "key", "hello", 0)
@@ -1089,7 +1089,7 @@ var _ = Describe("Commands", func() {
 			Expect(randomKey.Val()).To(Equal("key"))
 		})
 
-		It("should Rename", Label("NonRedisEnterprise"), func() {
+		It("should Rename", Label("NonKVEnterprise"), func() {
 			set := client.Set(ctx, "key", "hello", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1103,7 +1103,7 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("hello"))
 		})
 
-		It("should RenameNX", Label("NonRedisEnterprise"), func() {
+		It("should RenameNX", Label("NonKVEnterprise"), func() {
 			set := client.Set(ctx, "key", "hello", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1173,7 +1173,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(size).To(Equal(int64(3)))
 
-			els, err := client.SortRO(ctx, "list", &redis.Sort{
+			els, err := client.SortRO(ctx, "list", &kv.Sort{
 				Offset: 0,
 				Count:  2,
 				Order:  "ASC",
@@ -1195,7 +1195,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(size).To(Equal(int64(3)))
 
-			els, err := client.Sort(ctx, "list", &redis.Sort{
+			els, err := client.Sort(ctx, "list", &kv.Sort{
 				Offset: 0,
 				Count:  2,
 				Order:  "ASC",
@@ -1204,7 +1204,7 @@ var _ = Describe("Commands", func() {
 			Expect(els).To(Equal([]string{"1", "2"}))
 		})
 
-		It("should Sort and Get", Label("NonRedisEnterprise"), func() {
+		It("should Sort and Get", Label("NonKVEnterprise"), func() {
 			size, err := client.LPush(ctx, "list", "1").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(size).To(Equal(int64(1)))
@@ -1221,7 +1221,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			{
-				els, err := client.Sort(ctx, "list", &redis.Sort{
+				els, err := client.Sort(ctx, "list", &kv.Sort{
 					Get: []string{"object_*"},
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
@@ -1229,7 +1229,7 @@ var _ = Describe("Commands", func() {
 			}
 
 			{
-				els, err := client.SortInterfaces(ctx, "list", &redis.Sort{
+				els, err := client.SortInterfaces(ctx, "list", &kv.Sort{
 					Get: []string{"object_*"},
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
@@ -1237,7 +1237,7 @@ var _ = Describe("Commands", func() {
 			}
 		})
 
-		It("should Sort and Store", Label("NonRedisEnterprise"), func() {
+		It("should Sort and Store", Label("NonKVEnterprise"), func() {
 			size, err := client.LPush(ctx, "list", "1").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(size).To(Equal(int64(1)))
@@ -1250,7 +1250,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(size).To(Equal(int64(3)))
 
-			n, err := client.SortStore(ctx, "list", "list2", &redis.Sort{
+			n, err := client.SortStore(ctx, "list", "list2", &kv.Sort{
 				Offset: 0,
 				Count:  2,
 				Order:  "ASC",
@@ -1381,8 +1381,8 @@ var _ = Describe("Commands", func() {
 			Expect(keys[1]).To(Equal("hello"))
 		})
 
-		It("should HScan without values", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HScan without values", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			for i := 0; i < 1000; i++ {
 				sadd := client.HSet(ctx, "myhash", fmt.Sprintf("key%d", i), "hello")
 				Expect(sadd.Err()).NotTo(HaveOccurred())
@@ -1401,7 +1401,7 @@ var _ = Describe("Commands", func() {
 
 		It("should ZScan", func() {
 			for i := 0; i < 1000; i++ {
-				err := client.ZAdd(ctx, "myset", redis.Z{
+				err := client.ZAdd(ctx, "myset", kv.Z{
 					Score:  float64(i),
 					Member: fmt.Sprintf("member%d", i),
 				}).Err()
@@ -1443,14 +1443,14 @@ var _ = Describe("Commands", func() {
 			Expect(bitCount.Err()).NotTo(HaveOccurred())
 			Expect(bitCount.Val()).To(Equal(int64(26)))
 
-			bitCount = client.BitCount(ctx, "key", &redis.BitCount{
+			bitCount = client.BitCount(ctx, "key", &kv.BitCount{
 				Start: 0,
 				End:   0,
 			})
 			Expect(bitCount.Err()).NotTo(HaveOccurred())
 			Expect(bitCount.Val()).To(Equal(int64(4)))
 
-			bitCount = client.BitCount(ctx, "key", &redis.BitCount{
+			bitCount = client.BitCount(ctx, "key", &kv.BitCount{
 				Start: 1,
 				End:   1,
 			})
@@ -1458,7 +1458,7 @@ var _ = Describe("Commands", func() {
 			Expect(bitCount.Val()).To(Equal(int64(6)))
 		})
 
-		It("should BitOpAnd", Label("NonRedisEnterprise"), func() {
+		It("should BitOpAnd", Label("NonKVEnterprise"), func() {
 			set := client.Set(ctx, "key1", "1", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1476,7 +1476,7 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("0"))
 		})
 
-		It("should BitOpOr", Label("NonRedisEnterprise"), func() {
+		It("should BitOpOr", Label("NonKVEnterprise"), func() {
 			set := client.Set(ctx, "key1", "1", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1494,7 +1494,7 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("1"))
 		})
 
-		It("should BitOpXor", Label("NonRedisEnterprise"), func() {
+		It("should BitOpXor", Label("NonKVEnterprise"), func() {
 			set := client.Set(ctx, "key1", "\xff", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1512,8 +1512,8 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("\xf0"))
 		})
 
-		It("should BitOpDiff", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(8.2, "BITOP DIFF is available since Redis 8.2")
+		It("should BitOpDiff", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(8.2, "BITOP DIFF is available since KV 8.2")
 			set := client.Set(ctx, "key1", "\xff", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1531,8 +1531,8 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("\xf0"))
 		})
 
-		It("should BitOpDiff1", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(8.2, "BITOP DIFF is available since Redis 8.2")
+		It("should BitOpDiff1", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(8.2, "BITOP DIFF is available since KV 8.2")
 			set := client.Set(ctx, "key1", "\xff", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1550,8 +1550,8 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("\x00"))
 		})
 
-		It("should BitOpAndOr", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(8.2, "BITOP ANDOR is available since Redis 8.2")
+		It("should BitOpAndOr", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(8.2, "BITOP ANDOR is available since KV 8.2")
 			set := client.Set(ctx, "key1", "\xff", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1569,8 +1569,8 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("\x0f"))
 		})
 
-		It("should BitOpOne", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(8.2, "BITOP ONE is available since Redis 8.2")
+		It("should BitOpOne", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(8.2, "BITOP ONE is available since KV 8.2")
 			set := client.Set(ctx, "key1", "\xff", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1588,7 +1588,7 @@ var _ = Describe("Commands", func() {
 			Expect(get.Val()).To(Equal("\xf0"))
 		})
 
-		It("should BitOpNot", Label("NonRedisEnterprise"), func() {
+		It("should BitOpNot", Label("NonKVEnterprise"), func() {
 			set := client.Set(ctx, "key1", "\x00", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
@@ -1716,7 +1716,7 @@ var _ = Describe("Commands", func() {
 
 		It("should Get", func() {
 			get := client.Get(ctx, "_")
-			Expect(get.Err()).To(Equal(redis.Nil))
+			Expect(get.Err()).To(Equal(kv.Nil))
 			Expect(get.Val()).To(Equal(""))
 
 			set := client.Set(ctx, "key", "hello", 0)
@@ -1810,18 +1810,18 @@ var _ = Describe("Commands", func() {
 			Expect(getDel.Val()).To(Equal("value"))
 
 			get := client.Get(ctx, "key")
-			Expect(get.Err()).To(Equal(redis.Nil))
+			Expect(get.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should DelExArgs when value matches", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "lock", "token-123", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Delete only if value matches
-			deleted := client.DelExArgs(ctx, "lock", redis.DelExArgs{
+			deleted := client.DelExArgs(ctx, "lock", kv.DelExArgs{
 				Mode:       "IFEQ",
 				MatchValue: "token-123",
 			})
@@ -1830,18 +1830,18 @@ var _ = Describe("Commands", func() {
 
 			// Verify key was deleted
 			get := client.Get(ctx, "lock")
-			Expect(get.Err()).To(Equal(redis.Nil))
+			Expect(get.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should DelExArgs fail when value does not match", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "lock", "token-123", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Try to delete with wrong value
-			deleted := client.DelExArgs(ctx, "lock", redis.DelExArgs{
+			deleted := client.DelExArgs(ctx, "lock", kv.DelExArgs{
 				Mode:       "IFEQ",
 				MatchValue: "wrong-token",
 			})
@@ -1855,10 +1855,10 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should DelExArgs on non-existent key", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Try to delete non-existent key
-			deleted := client.DelExArgs(ctx, "nonexistent", redis.DelExArgs{
+			deleted := client.DelExArgs(ctx, "nonexistent", kv.DelExArgs{
 				Mode:       "IFEQ",
 				MatchValue: "any-value",
 			})
@@ -1867,14 +1867,14 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should DelExArgs with IFEQ", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "temp-key", "temp-value", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Delete with IFEQ
-			args := redis.DelExArgs{
+			args := kv.DelExArgs{
 				Mode:       "IFEQ",
 				MatchValue: "temp-value",
 			}
@@ -1884,18 +1884,18 @@ var _ = Describe("Commands", func() {
 
 			// Verify key was deleted
 			get := client.Get(ctx, "temp-key")
-			Expect(get.Err()).To(Equal(redis.Nil))
+			Expect(get.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should DelExArgs with IFNE", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "temporary", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Delete only if value is NOT "permanent"
-			args := redis.DelExArgs{
+			args := kv.DelExArgs{
 				Mode:       "IFNE",
 				MatchValue: "permanent",
 			}
@@ -1905,18 +1905,18 @@ var _ = Describe("Commands", func() {
 
 			// Verify key was deleted
 			get := client.Get(ctx, "key")
-			Expect(get.Err()).To(Equal(redis.Nil))
+			Expect(get.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should DelExArgs with IFNE fail when value matches", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "permanent", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Try to delete but value matches (should fail)
-			args := redis.DelExArgs{
+			args := kv.DelExArgs{
 				Mode:       "IFNE",
 				MatchValue: "permanent",
 			}
@@ -1931,7 +1931,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should Digest", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set a value
 			err := client.Set(ctx, "my-key", "my-value", 0).Err()
@@ -1949,15 +1949,15 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should Digest on non-existent key", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Get digest of non-existent key
 			digest := client.Digest(ctx, "nonexistent")
-			Expect(digest.Err()).To(Equal(redis.Nil))
+			Expect(digest.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should use Digest with SetArgs IFDEQ", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "value1", 0).Err()
@@ -1968,7 +1968,7 @@ var _ = Describe("Commands", func() {
 			Expect(digest.Err()).NotTo(HaveOccurred())
 
 			// Update using digest
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode:        "IFDEQ",
 				MatchDigest: digest.Val(),
 			}
@@ -1983,7 +1983,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should use Digest with DelExArgs IFDEQ", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "value", 0).Err()
@@ -1994,7 +1994,7 @@ var _ = Describe("Commands", func() {
 			Expect(digest.Err()).NotTo(HaveOccurred())
 
 			// Delete using digest
-			args := redis.DelExArgs{
+			args := kv.DelExArgs{
 				Mode:        "IFDEQ",
 				MatchDigest: digest.Val(),
 			}
@@ -2004,7 +2004,7 @@ var _ = Describe("Commands", func() {
 
 			// Verify key was deleted
 			get := client.Get(ctx, "key")
-			Expect(get.Err()).To(Equal(redis.Nil))
+			Expect(get.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should Incr", func() {
@@ -2066,11 +2066,11 @@ var _ = Describe("Commands", func() {
 
 			// MSet struct
 			type set struct {
-				Set1 string                 `redis:"set1"`
-				Set2 int16                  `redis:"set2"`
-				Set3 time.Duration          `redis:"set3"`
-				Set4 interface{}            `redis:"set4"`
-				Set5 map[string]interface{} `redis:"-"`
+				Set1 string                 `kv:"set1"`
+				Set2 int16                  `kv:"set2"`
+				Set3 time.Duration          `kv:"set3"`
+				Set4 interface{}            `kv:"set4"`
+				Set5 map[string]interface{} `kv:"-"`
 			}
 			mSet = client.MSet(ctx, &set{
 				Set1: "val1",
@@ -2102,9 +2102,9 @@ var _ = Describe("Commands", func() {
 			Expect(res.Err()).NotTo(HaveOccurred())
 
 			type data struct {
-				Key1 string    `redis:"key1"`
-				Key2 int       `redis:"key2"`
-				Time TimeValue `redis:"time"`
+				Key1 string    `kv:"key1"`
+				Key2 int       `kv:"key2"`
+				Time TimeValue `kv:"time"`
 			}
 			var d data
 			Expect(res.Scan(&d)).NotTo(HaveOccurred())
@@ -2117,7 +2117,7 @@ var _ = Describe("Commands", func() {
 			}))
 		})
 
-		It("should MSetNX", Label("NonRedisEnterprise"), func() {
+		It("should MSetNX", Label("NonKVEnterprise"), func() {
 			mSetNX := client.MSetNX(ctx, "key1", "hello1", "key2", "hello2")
 			Expect(mSetNX.Err()).NotTo(HaveOccurred())
 			Expect(mSetNX.Val()).To(Equal(true))
@@ -2129,11 +2129,11 @@ var _ = Describe("Commands", func() {
 			// set struct
 			// MSet struct
 			type set struct {
-				Set1 string                 `redis:"set1"`
-				Set2 int16                  `redis:"set2"`
-				Set3 time.Duration          `redis:"set3"`
-				Set4 interface{}            `redis:"set4"`
-				Set5 map[string]interface{} `redis:"-"`
+				Set1 string                 `kv:"set1"`
+				Set2 int16                  `kv:"set2"`
+				Set3 time.Duration          `kv:"set3"`
+				Set4 interface{}            `kv:"set4"`
+				Set5 map[string]interface{} `kv:"-"`
 			}
 			mSetNX = client.MSetNX(ctx, &set{
 				Set1: "val1",
@@ -2147,10 +2147,10 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should MSetEX", func() {
-			SkipBeforeRedisVersion(8.3, "MSetEX is available since redis 8.4")
-			args := redis.MSetEXArgs{
-				Expiration: &redis.ExpirationOption{
-					Mode:  redis.EX,
+			SkipBeforeKVVersion(8.3, "MSetEX is available since kv 8.4")
+			args := kv.MSetEXArgs{
+				Expiration: &kv.ExpirationOption{
+					Mode:  kv.EX,
 					Value: 1,
 				},
 			}
@@ -2180,15 +2180,15 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should MSetEX with NX mode", func() {
-			SkipBeforeRedisVersion(8.3, "MSetEX is available since redis 8.4")
+			SkipBeforeKVVersion(8.3, "MSetEX is available since kv 8.4")
 
 			client.Set(ctx, "key1", "existing", 0)
 
 			// Try to set with NX mode - should fail because key1 exists
-			args := redis.MSetEXArgs{
-				Condition: redis.NX,
-				Expiration: &redis.ExpirationOption{
-					Mode:  redis.EX,
+			args := kv.MSetEXArgs{
+				Condition: kv.NX,
+				Expiration: &kv.ExpirationOption{
+					Mode:  kv.EX,
 					Value: 1,
 				},
 			}
@@ -2201,7 +2201,7 @@ var _ = Describe("Commands", func() {
 			Expect(val1.Val()).To(Equal("existing"))
 
 			val2 := client.Get(ctx, "key2")
-			Expect(val2.Err()).To(Equal(redis.Nil))
+			Expect(val2.Err()).To(Equal(kv.Nil))
 
 			client.Del(ctx, "key1")
 
@@ -2220,12 +2220,12 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should MSetEX with XX mode", func() {
-			SkipBeforeRedisVersion(8.3, "MSetEX is available since redis 8.4")
+			SkipBeforeKVVersion(8.3, "MSetEX is available since kv 8.4")
 
-			args := redis.MSetEXArgs{
-				Condition: redis.XX,
-				Expiration: &redis.ExpirationOption{
-					Mode:  redis.EX,
+			args := kv.MSetEXArgs{
+				Condition: kv.XX,
+				Expiration: &kv.ExpirationOption{
+					Mode:  kv.EX,
 					Value: 1,
 				},
 			}
@@ -2254,10 +2254,10 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should MSetEX with map", func() {
-			SkipBeforeRedisVersion(8.3, "MSetEX is available since redis 8.4")
-			args := redis.MSetEXArgs{
-				Expiration: &redis.ExpirationOption{
-					Mode:  redis.EX,
+			SkipBeforeKVVersion(8.3, "MSetEX is available since kv 8.4")
+			args := kv.MSetEXArgs{
+				Expiration: &kv.ExpirationOption{
+					Mode:  kv.EX,
 					Value: 1,
 				},
 			}
@@ -2278,7 +2278,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetWithArgs with TTL", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				TTL: 500 * time.Millisecond,
 			}
 			err := client.SetArgs(ctx, "key", "hello", args).Err()
@@ -2290,12 +2290,12 @@ var _ = Describe("Commands", func() {
 
 			Eventually(func() error {
 				return client.Get(ctx, "key").Err()
-			}, "2s", "100ms").Should(Equal(redis.Nil))
+			}, "2s", "100ms").Should(Equal(kv.Nil))
 		})
 
 		It("should SetWithArgs with expiration date", func() {
 			expireAt := time.Now().AddDate(1, 1, 1)
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				ExpireAt: expireAt,
 			}
 			err := client.SetArgs(ctx, "key", "hello", args).Err()
@@ -2313,22 +2313,22 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetWithArgs with negative expiration date", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				ExpireAt: time.Now().AddDate(-3, 1, 1),
 			}
-			// redis accepts a timestamp less than the current date
+			// kv accepts a timestamp less than the current date
 			// but returns nil when trying to get the key
 			err := client.SetArgs(ctx, "key", "hello", args).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			val, err := client.Get(ctx, "key").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
 		It("should SetWithArgs with keepttl", func() {
 			// Set with ttl
-			argsWithTTL := redis.SetArgs{
+			argsWithTTL := kv.SetArgs{
 				TTL: 5 * time.Second,
 			}
 			set := client.SetArgs(ctx, "key", "hello", argsWithTTL)
@@ -2336,7 +2336,7 @@ var _ = Describe("Commands", func() {
 			Expect(set.Result()).To(Equal("OK"))
 
 			// Set with keepttl
-			argsWithKeepTTL := redis.SetArgs{
+			argsWithKeepTTL := kv.SetArgs{
 				KeepTTL: true,
 			}
 			set = client.SetArgs(ctx, "key", "hello", argsWithKeepTTL)
@@ -2353,16 +2353,16 @@ var _ = Describe("Commands", func() {
 			err := client.Set(ctx, "key", "hello", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode: "nx",
 			}
 			val, err := client.SetArgs(ctx, "key", "hello", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
 		It("should SetWithArgs with NX mode and key does not exist", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode: "nx",
 			}
 			val, err := client.SetArgs(ctx, "key", "hello", args).Result()
@@ -2371,17 +2371,17 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetWithArgs with NX mode and GET option", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode: "nx",
 				Get:  true,
 			}
 			val, err := client.SetArgs(ctx, "key", "hello", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
 		It("should SetWithArgs with expiration, NX mode, and key does not exist", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				TTL:  500 * time.Millisecond,
 				Mode: "nx",
 			}
@@ -2391,39 +2391,39 @@ var _ = Describe("Commands", func() {
 
 			Eventually(func() error {
 				return client.Get(ctx, "key").Err()
-			}, "1s", "100ms").Should(Equal(redis.Nil))
+			}, "1s", "100ms").Should(Equal(kv.Nil))
 		})
 
 		It("should SetWithArgs with expiration, NX mode, and key exists", func() {
 			e := client.Set(ctx, "key", "hello", 0)
 			Expect(e.Err()).NotTo(HaveOccurred())
 
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				TTL:  500 * time.Millisecond,
 				Mode: "nx",
 			}
 			val, err := client.SetArgs(ctx, "key", "world", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
 		It("should SetWithArgs with expiration, NX mode, and GET option", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				TTL:  500 * time.Millisecond,
 				Mode: "nx",
 				Get:  true,
 			}
 			val, err := client.SetArgs(ctx, "key", "hello", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
 		It("should SetWithArgs with XX mode and key does not exist", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode: "xx",
 			}
 			val, err := client.SetArgs(ctx, "key", "world", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
@@ -2431,7 +2431,7 @@ var _ = Describe("Commands", func() {
 			e := client.Set(ctx, "key", "hello", 0).Err()
 			Expect(e).NotTo(HaveOccurred())
 
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode: "xx",
 			}
 			val, err := client.SetArgs(ctx, "key", "world", args).Result()
@@ -2443,7 +2443,7 @@ var _ = Describe("Commands", func() {
 			e := client.Set(ctx, "key", "hello", 0).Err()
 			Expect(e).NotTo(HaveOccurred())
 
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode: "xx",
 				Get:  true,
 			}
@@ -2453,25 +2453,25 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetWithArgs with XX mode and GET option, and key does not exist", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode: "xx",
 				Get:  true,
 			}
 
 			val, err := client.SetArgs(ctx, "key", "world", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
 		It("should SetWithArgs with expiration, XX mode, GET option, and key does not exist", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				TTL:  500 * time.Millisecond,
 				Mode: "xx",
 				Get:  true,
 			}
 
 			val, err := client.SetArgs(ctx, "key", "world", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
@@ -2479,7 +2479,7 @@ var _ = Describe("Commands", func() {
 			e := client.Set(ctx, "key", "hello", 0)
 			Expect(e.Err()).NotTo(HaveOccurred())
 
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				TTL:  500 * time.Millisecond,
 				Mode: "xx",
 				Get:  true,
@@ -2491,16 +2491,16 @@ var _ = Describe("Commands", func() {
 
 			Eventually(func() error {
 				return client.Get(ctx, "key").Err()
-			}, "1s", "100ms").Should(Equal(redis.Nil))
+			}, "1s", "100ms").Should(Equal(kv.Nil))
 		})
 
 		It("should SetWithArgs with Get and key does not exist yet", func() {
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Get: true,
 			}
 
 			val, err := client.SetArgs(ctx, "key", "hello", args).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(Equal(""))
 		})
 
@@ -2508,7 +2508,7 @@ var _ = Describe("Commands", func() {
 			e := client.Set(ctx, "key", "hello", 0)
 			Expect(e.Err()).NotTo(HaveOccurred())
 
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Get: true,
 			}
 
@@ -2521,7 +2521,7 @@ var _ = Describe("Commands", func() {
 			e := client.Set(ctx, "key", "hello", 0)
 			Expect(e.Err()).NotTo(HaveOccurred())
 
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Get: true,
 			}
 
@@ -2544,7 +2544,7 @@ var _ = Describe("Commands", func() {
 
 			Eventually(func() error {
 				return client.Get(ctx, "key").Err()
-			}, "1s", "100ms").Should(Equal(redis.Nil))
+			}, "1s", "100ms").Should(Equal(kv.Nil))
 		})
 
 		It("should Set with keepttl", func() {
@@ -2554,7 +2554,7 @@ var _ = Describe("Commands", func() {
 			Expect(set.Val()).To(Equal("OK"))
 
 			// set with keepttl
-			set = client.Set(ctx, "key", "hello1", redis.KeepTTL)
+			set = client.Set(ctx, "key", "hello1", kv.KeepTTL)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
 
@@ -2584,7 +2584,7 @@ var _ = Describe("Commands", func() {
 
 			Eventually(func() error {
 				return client.Get(ctx, "foo").Err()
-			}, "2s", "100ms").Should(Equal(redis.Nil))
+			}, "2s", "100ms").Should(Equal(kv.Nil))
 		})
 
 		It("should SetNX", func() {
@@ -2616,7 +2616,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetNX with keepttl", func() {
-			isSet, err := client.SetNX(ctx, "key", "hello1", redis.KeepTTL).Result()
+			isSet, err := client.SetNX(ctx, "key", "hello1", kv.KeepTTL).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(isSet).To(Equal(true))
 
@@ -2671,7 +2671,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(isSet).To(Equal(true))
 
-			isSet, err = client.SetXX(ctx, "key", "hello3", redis.KeepTTL).Result()
+			isSet, err = client.SetXX(ctx, "key", "hello3", kv.KeepTTL).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(isSet).To(Equal(true))
 
@@ -2686,8 +2686,8 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFEQ when value matches", func() {
-			if RedisVersion < 8.4 {
-				Skip("CAS/CAD commands require Redis >= 8.4")
+			if KVVersion < 8.4 {
+				Skip("CAS/CAD commands require KV >= 8.4")
 			}
 
 			// Set initial value
@@ -2706,8 +2706,8 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFEQ fail when value does not match", func() {
-			if RedisVersion < 8.4 {
-				Skip("CAS/CAD commands require Redis >= 8.4")
+			if KVVersion < 8.4 {
+				Skip("CAS/CAD commands require KV >= 8.4")
 			}
 
 			// Set initial value
@@ -2716,7 +2716,7 @@ var _ = Describe("Commands", func() {
 
 			// Try to update with wrong match value
 			result := client.SetIFEQ(ctx, "key", "new-value", "wrong-value", 0)
-			Expect(result.Err()).To(Equal(redis.Nil))
+			Expect(result.Err()).To(Equal(kv.Nil))
 
 			// Verify value was NOT updated
 			val, err := client.Get(ctx, "key").Result()
@@ -2725,7 +2725,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFEQ with expiration", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "token-123", 0).Err()
@@ -2744,11 +2744,11 @@ var _ = Describe("Commands", func() {
 			// Wait for expiration
 			Eventually(func() error {
 				return client.Get(ctx, "key").Err()
-			}, "1s", "100ms").Should(Equal(redis.Nil))
+			}, "1s", "100ms").Should(Equal(kv.Nil))
 		})
 
 		It("should SetIFNE when value does not match", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "pending", 0).Err()
@@ -2766,7 +2766,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFNE fail when value matches", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "completed", 0).Err()
@@ -2774,7 +2774,7 @@ var _ = Describe("Commands", func() {
 
 			// Try to update but value matches (should fail)
 			result := client.SetIFNE(ctx, "key", "processing", "completed", 0)
-			Expect(result.Err()).To(Equal(redis.Nil))
+			Expect(result.Err()).To(Equal(kv.Nil))
 
 			// Verify value was NOT updated
 			val, err := client.Get(ctx, "key").Result()
@@ -2783,14 +2783,14 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetArgs with IFEQ", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "counter", "100", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Update with IFEQ
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode:       "IFEQ",
 				MatchValue: "100",
 				TTL:        1 * time.Hour,
@@ -2806,14 +2806,14 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetArgs with IFEQ and GET", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "old", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Update with IFEQ and GET old value
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode:       "IFEQ",
 				MatchValue: "old",
 				Get:        true,
@@ -2829,14 +2829,14 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetArgs with IFNE", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "status", "pending", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Update with IFNE
-			args := redis.SetArgs{
+			args := kv.SetArgs{
 				Mode:       "IFNE",
 				MatchValue: "completed",
 				TTL:        30 * time.Minute,
@@ -2852,7 +2852,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFEQGet return previous value", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "old-value", 0).Err()
@@ -2870,7 +2870,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFNEGet return previous value", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "pending", 0).Err()
@@ -2888,7 +2888,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFDEQ when digest matches", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "value1", 0).Err()
@@ -2910,7 +2910,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFDEQ fail when digest does not match", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "value1", 0).Err()
@@ -2924,7 +2924,7 @@ var _ = Describe("Commands", func() {
 
 			// Try to update with wrong digest
 			result := client.SetIFDEQ(ctx, "key", "value2", wrongDigest.Val(), 0)
-			Expect(result.Err()).To(Equal(redis.Nil))
+			Expect(result.Err()).To(Equal(kv.Nil))
 
 			// Verify value was NOT updated
 			val, err := client.Get(ctx, "key").Result()
@@ -2933,7 +2933,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFDEQGet return previous value", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "value1", 0).Err()
@@ -2955,7 +2955,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFDNE when digest does not match", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "value1", 0).Err()
@@ -2979,7 +2979,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should SetIFDNE fail when digest matches", func() {
-			SkipBeforeRedisVersion(8.4, "CAS/CAD commands require Redis >= 8.4")
+			SkipBeforeKVVersion(8.4, "CAS/CAD commands require KV >= 8.4")
 
 			// Set initial value
 			err := client.Set(ctx, "key", "value1", 0).Err()
@@ -2991,7 +2991,7 @@ var _ = Describe("Commands", func() {
 
 			// Try to update but digest matches (should fail)
 			result := client.SetIFDNE(ctx, "key", "value2", digest.Val(), 0)
-			Expect(result.Err()).To(Equal(redis.Nil))
+			Expect(result.Err()).To(Equal(kv.Nil))
 
 			// Verify value was NOT updated
 			val, err := client.Get(ctx, "key").Result()
@@ -3004,13 +3004,13 @@ var _ = Describe("Commands", func() {
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
 
-			range_ := client.SetRange(ctx, "key", 6, "Redis")
+			range_ := client.SetRange(ctx, "key", 6, "KV")
 			Expect(range_.Err()).NotTo(HaveOccurred())
 			Expect(range_.Val()).To(Equal(int64(11)))
 
 			get := client.Get(ctx, "key")
 			Expect(get.Err()).NotTo(HaveOccurred())
-			Expect(get.Val()).To(Equal("Hello Redis"))
+			Expect(get.Val()).To(Equal("Hello KV"))
 		})
 
 		It("should StrLen", func() {
@@ -3027,12 +3027,12 @@ var _ = Describe("Commands", func() {
 			Expect(strLen.Val()).To(Equal(int64(0)))
 		})
 
-		It("should Copy", Label("NonRedisEnterprise"), func() {
+		It("should Copy", Label("NonKVEnterprise"), func() {
 			set := client.Set(ctx, "key", "hello", 0)
 			Expect(set.Err()).NotTo(HaveOccurred())
 			Expect(set.Val()).To(Equal("OK"))
 
-			copy := client.Copy(ctx, "key", "newKey", redisOptions().DB, false)
+			copy := client.Copy(ctx, "key", "newKey", kvOptions().DB, false)
 			Expect(copy.Err()).NotTo(HaveOccurred())
 			Expect(copy.Val()).To(Equal(int64(1)))
 
@@ -3045,16 +3045,16 @@ var _ = Describe("Commands", func() {
 			Expect(getNew.Val()).To(Equal("hello"))
 
 			// Overwriting an existing key should not succeed
-			overwrite := client.Copy(ctx, "newKey", "key", redisOptions().DB, false)
+			overwrite := client.Copy(ctx, "newKey", "key", kvOptions().DB, false)
 			Expect(overwrite.Val()).To(Equal(int64(0)))
 
 			// Overwrite is allowed when replace=rue
-			replace := client.Copy(ctx, "newKey", "key", redisOptions().DB, true)
+			replace := client.Copy(ctx, "newKey", "key", kvOptions().DB, true)
 			Expect(replace.Val()).To(Equal(int64(1)))
 		})
 
-		It("should fail module loadex", Label("NonRedisEnterprise"), func() {
-			dryRun := client.ModuleLoadex(ctx, &redis.ModuleLoadexConfig{
+		It("should fail module loadex", Label("NonKVEnterprise"), func() {
+			dryRun := client.ModuleLoadex(ctx, &kv.ModuleLoadexConfig{
 				Path: "/path/to/non-existent-library.so",
 				Conf: map[string]interface{}{
 					"param1": "value1",
@@ -3068,7 +3068,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("converts the module loadex configuration to a slice of arguments correctly", func() {
-			conf := &redis.ModuleLoadexConfig{
+			conf := &kv.ModuleLoadexConfig{
 				Path: "/path/to/your/module.so",
 				Conf: map[string]interface{}{
 					"param1": "value1",
@@ -3209,7 +3209,7 @@ var _ = Describe("Commands", func() {
 			Expect(hGet.Val()).To(Equal("hello"))
 
 			hGet = client.HGet(ctx, "hash", "key1")
-			Expect(hGet.Err()).To(Equal(redis.Nil))
+			Expect(hGet.Err()).To(Equal(kv.Nil))
 			Expect(hGet.Val()).To(Equal(""))
 		})
 
@@ -3234,9 +3234,9 @@ var _ = Describe("Commands", func() {
 			Expect(res.Err()).NotTo(HaveOccurred())
 
 			type data struct {
-				Key1 string    `redis:"key1"`
-				Key2 int       `redis:"key2"`
-				Time TimeValue `redis:"time"`
+				Key1 string    `kv:"key1"`
+				Key2 int       `kv:"key2"`
+				Time TimeValue `kv:"time"`
 			}
 			var d data
 			Expect(res.Scan(&d)).NotTo(HaveOccurred())
@@ -3249,9 +3249,9 @@ var _ = Describe("Commands", func() {
 			}))
 
 			type data2 struct {
-				Key1 string    `redis:"key1"`
-				Key2 int       `redis:"key2"`
-				Time time.Time `redis:"time"`
+				Key1 string    `kv:"key1"`
+				Key2 int       `kv:"key2"`
+				Time time.Time `kv:"time"`
 			}
 			err = client.HSet(ctx, "hash", &data2{
 				Key1: "hello2",
@@ -3371,12 +3371,12 @@ var _ = Describe("Commands", func() {
 			// set struct
 			// MSet struct
 			type set struct {
-				Set1 string                 `redis:"set1"`
-				Set2 int16                  `redis:"set2"`
-				Set3 time.Duration          `redis:"set3"`
-				Set4 interface{}            `redis:"set4"`
-				Set5 map[string]interface{} `redis:"-"`
-				Set6 string                 `redis:"set6,omitempty"`
+				Set1 string                 `kv:"set1"`
+				Set2 int16                  `kv:"set2"`
+				Set3 time.Duration          `kv:"set3"`
+				Set4 interface{}            `kv:"set4"`
+				Set5 map[string]interface{} `kv:"-"`
+				Set6 string                 `kv:"set6,omitempty"`
 			}
 
 			hSet = client.HSet(ctx, "hash", &set{
@@ -3415,13 +3415,13 @@ var _ = Describe("Commands", func() {
 			}))
 
 			type setOmitEmpty struct {
-				Set1 string        `redis:"set1"`
-				Set2 int           `redis:"set2,omitempty"`
-				Set3 time.Duration `redis:"set3,omitempty"`
-				Set4 string        `redis:"set4,omitempty"`
-				Set5 time.Time     `redis:"set5,omitempty"`
-				Set6 *numberStruct `redis:"set6,omitempty"`
-				Set7 numberStruct  `redis:"set7,omitempty"`
+				Set1 string        `kv:"set1"`
+				Set2 int           `kv:"set2,omitempty"`
+				Set3 time.Duration `kv:"set3,omitempty"`
+				Set4 string        `kv:"set4,omitempty"`
+				Set5 time.Time     `kv:"set5,omitempty"`
+				Set6 *numberStruct `kv:"set6,omitempty"`
+				Set7 numberStruct  `kv:"set7,omitempty"`
 			}
 
 			hSet = client.HSet(ctx, "hash3", &setOmitEmpty{
@@ -3519,8 +3519,8 @@ var _ = Describe("Commands", func() {
 			kv, err := client.HRandFieldWithValues(ctx, "hash", 1).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(kv).To(Or(
-				Equal([]redis.KeyValue{{Key: "key1", Value: "hello1"}}),
-				Equal([]redis.KeyValue{{Key: "key2", Value: "hello2"}}),
+				Equal([]kv.KeyValue{{Key: "key1", Value: "hello1"}}),
+				Equal([]kv.KeyValue{{Key: "key2", Value: "hello2"}}),
 			))
 		})
 
@@ -3541,8 +3541,8 @@ var _ = Describe("Commands", func() {
 			Expect(hDel.Val()).To(Equal(int64(1)))
 		})
 
-		It("should HExpire", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HExpire", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			res, err := client.HExpire(ctx, "no_such_key", 10*time.Second, "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(res).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3557,8 +3557,8 @@ var _ = Describe("Commands", func() {
 			Expect(res).To(Equal([]int64{1, 1, -2}))
 		})
 
-		It("should HPExpire", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HPExpire", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			res, err := client.HPExpire(ctx, "no_such_key", 10*time.Second, "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(res).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3573,8 +3573,8 @@ var _ = Describe("Commands", func() {
 			Expect(res).To(Equal([]int64{1, 1, -2}))
 		})
 
-		It("should HExpireAt", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HExpireAt", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			resEmpty, err := client.HExpireAt(ctx, "no_such_key", time.Now().Add(10*time.Second), "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(resEmpty).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3589,8 +3589,8 @@ var _ = Describe("Commands", func() {
 			Expect(res).To(Equal([]int64{1, 1, -2}))
 		})
 
-		It("should HPExpireAt", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HPExpireAt", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			resEmpty, err := client.HPExpireAt(ctx, "no_such_key", time.Now().Add(10*time.Second), "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(resEmpty).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3605,8 +3605,8 @@ var _ = Describe("Commands", func() {
 			Expect(res).To(Equal([]int64{1, 1, -2}))
 		})
 
-		It("should HPersist", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HPersist", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			resEmpty, err := client.HPersist(ctx, "no_such_key", "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(resEmpty).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3629,8 +3629,8 @@ var _ = Describe("Commands", func() {
 			Expect(res).To(Equal([]int64{1, -1, -2}))
 		})
 
-		It("should HExpireTime", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HExpireTime", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			resEmpty, err := client.HExpireTime(ctx, "no_such_key", "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(resEmpty).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3649,8 +3649,8 @@ var _ = Describe("Commands", func() {
 			Expect(res[0]).To(BeNumerically("~", time.Now().Add(10*time.Second).Unix(), 1))
 		})
 
-		It("should HPExpireTime", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HPExpireTime", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			resEmpty, err := client.HPExpireTime(ctx, "no_such_key", "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(resEmpty).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3670,8 +3670,8 @@ var _ = Describe("Commands", func() {
 			Expect(res).To(BeEquivalentTo([]int64{expireAt.UnixMilli(), -1, -2}))
 		})
 
-		It("should HTTL", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HTTL", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			resEmpty, err := client.HTTL(ctx, "no_such_key", "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(resEmpty).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3690,8 +3690,8 @@ var _ = Describe("Commands", func() {
 			Expect(res).To(Equal([]int64{10, -1, -2}))
 		})
 
-		It("should HPTTL", Label("hash-expiration", "NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should HPTTL", Label("hash-expiration", "NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			resEmpty, err := client.HPTTL(ctx, "no_such_key", "field1", "field2", "field3").Result()
 			Expect(err).To(BeNil())
 			Expect(resEmpty).To(BeEquivalentTo([]int64{-2, -2, -2}))
@@ -3712,7 +3712,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should HGETDEL", Label("hash", "HGETDEL"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 
 			err := client.HSet(ctx, "myhash", "f1", "val1", "f2", "val2", "f3", "val3").Err()
 			Expect(err).NotTo(HaveOccurred())
@@ -3732,7 +3732,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should return nil responses for HGETDEL on non-existent key", Label("hash", "HGETDEL"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 			// HGETDEL on a key that does not exist.
 			res, err := client.HGetDel(ctx, "nonexistent", "f1", "f2").Result()
 			Expect(err).To(BeNil())
@@ -3743,14 +3743,14 @@ var _ = Describe("Commands", func() {
 		// HGETEX with various TTL options
 		// -----------------------------
 		It("should HGETEX with EX option", Label("hash", "HGETEX"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 
 			err := client.HSet(ctx, "myhash", "f1", "val1", "f2", "val2").Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Call HGETEX with EX option and 60 seconds TTL.
-			opt := redis.HGetEXOptions{
-				ExpirationType: redis.HGetEXExpirationEX,
+			opt := kv.HGetEXOptions{
+				ExpirationType: kv.HGetEXExpirationEX,
 				ExpirationVal:  60,
 			}
 			res, err := client.HGetEXWithArgs(ctx, "myhash", &opt, "f1", "f2").Result()
@@ -3759,28 +3759,28 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should HGETEX with PERSIST option", Label("hash", "HGETEX"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 
 			err := client.HSet(ctx, "myhash", "f1", "val1", "f2", "val2").Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Call HGETEX with PERSIST (no TTL value needed).
-			opt := redis.HGetEXOptions{ExpirationType: redis.HGetEXExpirationPERSIST}
+			opt := kv.HGetEXOptions{ExpirationType: kv.HGetEXExpirationPERSIST}
 			res, err := client.HGetEXWithArgs(ctx, "myhash", &opt, "f1", "f2").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(Equal([]string{"val1", "val2"}))
 		})
 
 		It("should HGETEX with EXAT option", Label("hash", "HGETEX"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 
 			err := client.HSet(ctx, "myhash", "f1", "val1", "f2", "val2").Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Set expiration at a specific Unix timestamp (60 seconds from now).
 			expireAt := time.Now().Add(60 * time.Second).Unix()
-			opt := redis.HGetEXOptions{
-				ExpirationType: redis.HGetEXExpirationEXAT,
+			opt := kv.HGetEXOptions{
+				ExpirationType: kv.HGetEXExpirationEXAT,
 				ExpirationVal:  expireAt,
 			}
 			res, err := client.HGetEXWithArgs(ctx, "myhash", &opt, "f1", "f2").Result()
@@ -3792,20 +3792,20 @@ var _ = Describe("Commands", func() {
 		// HSETEX with FNX/FXX options
 		// -----------------------------
 		It("should HSETEX with FNX condition", Label("hash", "HSETEX"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 
-			opt := redis.HSetEXOptions{
-				Condition:      redis.HSetEXFNX,
-				ExpirationType: redis.HSetEXExpirationEX,
+			opt := kv.HSetEXOptions{
+				Condition:      kv.HSetEXFNX,
+				ExpirationType: kv.HSetEXExpirationEX,
 				ExpirationVal:  60,
 			}
 			res, err := client.HSetEXWithArgs(ctx, "myhash", &opt, "f1", "val1").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(Equal(int64(1)))
 
-			opt = redis.HSetEXOptions{
-				Condition:      redis.HSetEXFNX,
-				ExpirationType: redis.HSetEXExpirationEX,
+			opt = kv.HSetEXOptions{
+				Condition:      kv.HSetEXFNX,
+				ExpirationType: kv.HSetEXExpirationEX,
 				ExpirationVal:  60,
 			}
 			res, err = client.HSetEXWithArgs(ctx, "myhash", &opt, "f1", "val2").Result()
@@ -3814,22 +3814,22 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should HSETEX with FXX condition", Label("hash", "HSETEX"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 
 			err := client.HSet(ctx, "myhash", "f2", "val1").Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			opt := redis.HSetEXOptions{
-				Condition:      redis.HSetEXFXX,
-				ExpirationType: redis.HSetEXExpirationEX,
+			opt := kv.HSetEXOptions{
+				Condition:      kv.HSetEXFXX,
+				ExpirationType: kv.HSetEXExpirationEX,
 				ExpirationVal:  60,
 			}
 			res, err := client.HSetEXWithArgs(ctx, "myhash", &opt, "f2", "val2").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(Equal(int64(1)))
-			opt = redis.HSetEXOptions{
-				Condition:      redis.HSetEXFXX,
-				ExpirationType: redis.HSetEXExpirationEX,
+			opt = kv.HSetEXOptions{
+				Condition:      kv.HSetEXFXX,
+				ExpirationType: kv.HSetEXExpirationEX,
 				ExpirationVal:  60,
 			}
 			res, err = client.HSetEXWithArgs(ctx, "myhash", &opt, "f3", "val3").Result()
@@ -3838,10 +3838,10 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should HSETEX with multiple field operations", Label("hash", "HSETEX"), func() {
-			SkipBeforeRedisVersion(7.9, "requires Redis 8.x")
+			SkipBeforeKVVersion(7.9, "requires KV 8.x")
 
-			opt := redis.HSetEXOptions{
-				ExpirationType: redis.HSetEXExpirationEX,
+			opt := kv.HSetEXOptions{
+				ExpirationType: kv.HSetEXExpirationEX,
 				ExpirationVal:  60,
 			}
 			res, err := client.HSetEXWithArgs(ctx, "myhash", &opt, "f1", "val1", "f2", "val2").Result()
@@ -3855,7 +3855,7 @@ var _ = Describe("Commands", func() {
 	})
 
 	Describe("hyperloglog", func() {
-		It("should PFMerge", Label("NonRedisEnterprise"), func() {
+		It("should PFMerge", Label("NonKVEnterprise"), func() {
 			pfAdd := client.PFAdd(ctx, "hll1", "1", "2", "3", "4", "5")
 			Expect(pfAdd.Err()).NotTo(HaveOccurred())
 
@@ -3880,7 +3880,7 @@ var _ = Describe("Commands", func() {
 	})
 
 	Describe("lists", func() {
-		It("should BLPop", Label("NonRedisEnterprise"), func() {
+		It("should BLPop", Label("NonKVEnterprise"), func() {
 			rPush := client.RPush(ctx, "list1", "a", "b", "c")
 			Expect(rPush.Err()).NotTo(HaveOccurred())
 
@@ -3923,7 +3923,7 @@ var _ = Describe("Commands", func() {
 
 		It("should BLPop timeout", func() {
 			val, err := client.BLPop(ctx, time.Second, "list1").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(BeNil())
 
 			Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
@@ -3934,7 +3934,7 @@ var _ = Describe("Commands", func() {
 			Expect(stats.Timeouts).To(Equal(uint32(0)))
 		})
 
-		It("should BRPop", Label("NonRedisEnterprise"), func() {
+		It("should BRPop", Label("NonKVEnterprise"), func() {
 			rPush := client.RPush(ctx, "list1", "a", "b", "c")
 			Expect(rPush.Err()).NotTo(HaveOccurred())
 
@@ -3976,9 +3976,9 @@ var _ = Describe("Commands", func() {
 			}
 		})
 
-		It("should BRPopLPush", Label("NonRedisEnterprise"), func() {
+		It("should BRPopLPush", Label("NonKVEnterprise"), func() {
 			_, err := client.BRPopLPush(ctx, "list1", "list2", time.Second).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 
 			err = client.RPush(ctx, "list1", "a", "b", "c").Err()
 			Expect(err).NotTo(HaveOccurred())
@@ -3988,11 +3988,11 @@ var _ = Describe("Commands", func() {
 			Expect(v).To(Equal("c"))
 		})
 
-		It("should LCS", Label("NonRedisEnterprise"), func() {
+		It("should LCS", Label("NonKVEnterprise"), func() {
 			err := client.MSet(ctx, "key1", "ohmytext", "key2", "mynewtext").Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			lcs, err := client.LCS(ctx, &redis.LCSQuery{
+			lcs, err := client.LCS(ctx, &kv.LCSQuery{
 				Key1: "key1",
 				Key2: "key2",
 			}).Result()
@@ -4000,7 +4000,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(lcs.MatchString).To(Equal("mytext"))
 
-			lcs, err = client.LCS(ctx, &redis.LCSQuery{
+			lcs, err = client.LCS(ctx, &kv.LCSQuery{
 				Key1: "nonexistent_key1",
 				Key2: "key2",
 			}).Result()
@@ -4008,7 +4008,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(lcs.MatchString).To(Equal(""))
 
-			lcs, err = client.LCS(ctx, &redis.LCSQuery{
+			lcs, err = client.LCS(ctx, &kv.LCSQuery{
 				Key1: "key1",
 				Key2: "key2",
 				Len:  true,
@@ -4017,7 +4017,7 @@ var _ = Describe("Commands", func() {
 			Expect(lcs.MatchString).To(Equal(""))
 			Expect(lcs.Len).To(Equal(int64(6)))
 
-			lcs, err = client.LCS(ctx, &redis.LCSQuery{
+			lcs, err = client.LCS(ctx, &kv.LCSQuery{
 				Key1: "key1",
 				Key2: "key2",
 				Idx:  true,
@@ -4025,20 +4025,20 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(lcs.MatchString).To(Equal(""))
 			Expect(lcs.Len).To(Equal(int64(6)))
-			Expect(lcs.Matches).To(Equal([]redis.LCSMatchedPosition{
+			Expect(lcs.Matches).To(Equal([]kv.LCSMatchedPosition{
 				{
-					Key1:     redis.LCSPosition{Start: 4, End: 7},
-					Key2:     redis.LCSPosition{Start: 5, End: 8},
+					Key1:     kv.LCSPosition{Start: 4, End: 7},
+					Key2:     kv.LCSPosition{Start: 5, End: 8},
 					MatchLen: 0,
 				},
 				{
-					Key1:     redis.LCSPosition{Start: 2, End: 3},
-					Key2:     redis.LCSPosition{Start: 0, End: 1},
+					Key1:     kv.LCSPosition{Start: 2, End: 3},
+					Key2:     kv.LCSPosition{Start: 0, End: 1},
 					MatchLen: 0,
 				},
 			}))
 
-			lcs, err = client.LCS(ctx, &redis.LCSQuery{
+			lcs, err = client.LCS(ctx, &kv.LCSQuery{
 				Key1:         "key1",
 				Key2:         "key2",
 				Idx:          true,
@@ -4048,10 +4048,10 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(lcs.MatchString).To(Equal(""))
 			Expect(lcs.Len).To(Equal(int64(6)))
-			Expect(lcs.Matches).To(Equal([]redis.LCSMatchedPosition{
+			Expect(lcs.Matches).To(Equal([]kv.LCSMatchedPosition{
 				{
-					Key1:     redis.LCSPosition{Start: 4, End: 7},
-					Key2:     redis.LCSPosition{Start: 5, End: 8},
+					Key1:     kv.LCSPosition{Start: 4, End: 7},
+					Key2:     kv.LCSPosition{Start: 5, End: 8},
 					MatchLen: 4,
 				},
 			}))
@@ -4060,7 +4060,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			_, err = client.LPush(ctx, "keywithnonstringvalue", "somevalue").Result()
 			Expect(err).NotTo(HaveOccurred())
-			_, err = client.LCS(ctx, &redis.LCSQuery{
+			_, err = client.LCS(ctx, &kv.LCSQuery{
 				Key1: "keywithstringvalue",
 				Key2: "keywithnonstringvalue",
 			}).Result()
@@ -4083,7 +4083,7 @@ var _ = Describe("Commands", func() {
 			Expect(lIndex.Val()).To(Equal("World"))
 
 			lIndex = client.LIndex(ctx, "list", 3)
-			Expect(lIndex.Err()).To(Equal(redis.Nil))
+			Expect(lIndex.Err()).To(Equal(kv.Nil))
 			Expect(lIndex.Val()).To(Equal(""))
 		})
 
@@ -4102,7 +4102,7 @@ var _ = Describe("Commands", func() {
 			Expect(lRange.Val()).To(Equal([]string{"Hello", "There", "World"}))
 		})
 
-		It("should LMPop", Label("NonRedisEnterprise"), func() {
+		It("should LMPop", Label("NonKVEnterprise"), func() {
 			err := client.LPush(ctx, "list1", "one", "two", "three", "four", "five").Err()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -4130,7 +4130,7 @@ var _ = Describe("Commands", func() {
 			Expect(val).To(Equal([]string{"a", "b", "c", "d"}))
 
 			err = client.LMPop(ctx, "left", 10, "list1", "list2").Err()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 
 			err = client.Set(ctx, "list3", 1024, 0).Err()
 			Expect(err).NotTo(HaveOccurred())
@@ -4142,7 +4142,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should BLMPop", Label("NonRedisEnterprise"), func() {
+		It("should BLMPop", Label("NonKVEnterprise"), func() {
 			err := client.LPush(ctx, "list1", "one", "two", "three", "four", "five").Err()
 			Expect(err).NotTo(HaveOccurred())
 
@@ -4205,7 +4205,7 @@ var _ = Describe("Commands", func() {
 
 		It("should BLMPop timeout", func() {
 			_, val, err := client.BLMPop(ctx, time.Second, "left", 1, "list1").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(BeNil())
 
 			Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
@@ -4273,23 +4273,23 @@ var _ = Describe("Commands", func() {
 			rPush = client.RPush(ctx, "list", "b")
 			Expect(rPush.Err()).NotTo(HaveOccurred())
 
-			lPos := client.LPos(ctx, "list", "b", redis.LPosArgs{})
+			lPos := client.LPos(ctx, "list", "b", kv.LPosArgs{})
 			Expect(lPos.Err()).NotTo(HaveOccurred())
 			Expect(lPos.Val()).To(Equal(int64(1)))
 
-			lPos = client.LPos(ctx, "list", "b", redis.LPosArgs{Rank: 2})
+			lPos = client.LPos(ctx, "list", "b", kv.LPosArgs{Rank: 2})
 			Expect(lPos.Err()).NotTo(HaveOccurred())
 			Expect(lPos.Val()).To(Equal(int64(3)))
 
-			lPos = client.LPos(ctx, "list", "b", redis.LPosArgs{Rank: -2})
+			lPos = client.LPos(ctx, "list", "b", kv.LPosArgs{Rank: -2})
 			Expect(lPos.Err()).NotTo(HaveOccurred())
 			Expect(lPos.Val()).To(Equal(int64(1)))
 
-			lPos = client.LPos(ctx, "list", "b", redis.LPosArgs{Rank: 2, MaxLen: 1})
-			Expect(lPos.Err()).To(Equal(redis.Nil))
+			lPos = client.LPos(ctx, "list", "b", kv.LPosArgs{Rank: 2, MaxLen: 1})
+			Expect(lPos.Err()).To(Equal(kv.Nil))
 
-			lPos = client.LPos(ctx, "list", "z", redis.LPosArgs{})
-			Expect(lPos.Err()).To(Equal(redis.Nil))
+			lPos = client.LPos(ctx, "list", "z", kv.LPosArgs{})
+			Expect(lPos.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should LPosCount", func() {
@@ -4302,19 +4302,19 @@ var _ = Describe("Commands", func() {
 			rPush = client.RPush(ctx, "list", "b")
 			Expect(rPush.Err()).NotTo(HaveOccurred())
 
-			lPos := client.LPosCount(ctx, "list", "b", 2, redis.LPosArgs{})
+			lPos := client.LPosCount(ctx, "list", "b", 2, kv.LPosArgs{})
 			Expect(lPos.Err()).NotTo(HaveOccurred())
 			Expect(lPos.Val()).To(Equal([]int64{1, 3}))
 
-			lPos = client.LPosCount(ctx, "list", "b", 2, redis.LPosArgs{Rank: 2})
+			lPos = client.LPosCount(ctx, "list", "b", 2, kv.LPosArgs{Rank: 2})
 			Expect(lPos.Err()).NotTo(HaveOccurred())
 			Expect(lPos.Val()).To(Equal([]int64{3}))
 
-			lPos = client.LPosCount(ctx, "list", "b", 1, redis.LPosArgs{Rank: 1, MaxLen: 1})
+			lPos = client.LPosCount(ctx, "list", "b", 1, kv.LPosArgs{Rank: 1, MaxLen: 1})
 			Expect(lPos.Err()).NotTo(HaveOccurred())
 			Expect(lPos.Val()).To(Equal([]int64{}))
 
-			lPos = client.LPosCount(ctx, "list", "b", 1, redis.LPosArgs{Rank: 1, MaxLen: 0})
+			lPos = client.LPosCount(ctx, "list", "b", 1, kv.LPosArgs{Rank: 1, MaxLen: 0})
 			Expect(lPos.Err()).NotTo(HaveOccurred())
 			Expect(lPos.Val()).To(Equal([]int64{1}))
 		})
@@ -4476,7 +4476,7 @@ var _ = Describe("Commands", func() {
 			Expect(lRange.Val()).To(Equal([]string{"one", "two"}))
 		})
 
-		It("should RPopLPush", Label("NonRedisEnterprise"), func() {
+		It("should RPopLPush", Label("NonKVEnterprise"), func() {
 			rPush := client.RPush(ctx, "list", "one")
 			Expect(rPush.Err()).NotTo(HaveOccurred())
 			rPush = client.RPush(ctx, "list", "two")
@@ -4545,7 +4545,7 @@ var _ = Describe("Commands", func() {
 			Expect(lRange.Val()).To(Equal([]string{}))
 		})
 
-		It("should LMove", Label("NonRedisEnterprise"), func() {
+		It("should LMove", Label("NonKVEnterprise"), func() {
 			rPush := client.RPush(ctx, "lmove1", "ichi")
 			Expect(rPush.Err()).NotTo(HaveOccurred())
 			Expect(rPush.Val()).To(Equal(int64(1)))
@@ -4567,7 +4567,7 @@ var _ = Describe("Commands", func() {
 			Expect(lRange.Val()).To(Equal([]string{"san"}))
 		})
 
-		It("should BLMove", Label("NonRedisEnterprise"), func() {
+		It("should BLMove", Label("NonKVEnterprise"), func() {
 			rPush := client.RPush(ctx, "blmove1", "ichi")
 			Expect(rPush.Err()).NotTo(HaveOccurred())
 			Expect(rPush.Val()).To(Equal(int64(1)))
@@ -4634,7 +4634,7 @@ var _ = Describe("Commands", func() {
 			Expect(sCard.Val()).To(Equal(int64(2)))
 		})
 
-		It("should SDiff", Label("NonRedisEnterprise"), func() {
+		It("should SDiff", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "a")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "b")
@@ -4654,7 +4654,7 @@ var _ = Describe("Commands", func() {
 			Expect(sDiff.Val()).To(ConsistOf([]string{"a", "b"}))
 		})
 
-		It("should SDiffStore", Label("NonRedisEnterprise"), func() {
+		It("should SDiffStore", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "a")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "b")
@@ -4678,7 +4678,7 @@ var _ = Describe("Commands", func() {
 			Expect(sMembers.Val()).To(ConsistOf([]string{"a", "b"}))
 		})
 
-		It("should SInter", Label("NonRedisEnterprise"), func() {
+		It("should SInter", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "a")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "b")
@@ -4698,7 +4698,7 @@ var _ = Describe("Commands", func() {
 			Expect(sInter.Val()).To(Equal([]string{"c"}))
 		})
 
-		It("should SInterCard", Label("NonRedisEnterprise"), func() {
+		It("should SInterCard", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "a")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "b")
@@ -4714,7 +4714,7 @@ var _ = Describe("Commands", func() {
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set2", "e")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
-			// limit 0 means no limit,see https://redis.io/commands/sintercard/ for more details
+			// limit 0 means no limit,see https://kv.io/commands/sintercard/ for more details
 			sInterCard := client.SInterCard(ctx, 0, "set1", "set2")
 			Expect(sInterCard.Err()).NotTo(HaveOccurred())
 			Expect(sInterCard.Val()).To(Equal(int64(2)))
@@ -4728,7 +4728,7 @@ var _ = Describe("Commands", func() {
 			Expect(sInterCard.Val()).To(Equal(int64(2)))
 		})
 
-		It("should SInterStore", Label("NonRedisEnterprise"), func() {
+		It("should SInterStore", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "a")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "b")
@@ -4796,7 +4796,7 @@ var _ = Describe("Commands", func() {
 			Expect(sMembersMap.Val()).To(Equal(map[string]struct{}{"Hello": {}, "World": {}}))
 		})
 
-		It("should SMove", Label("NonRedisEnterprise"), func() {
+		It("should SMove", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "one")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "two")
@@ -4904,7 +4904,7 @@ var _ = Describe("Commands", func() {
 			Expect(sMembers.Val()).To(ConsistOf([]string{"three", "two"}))
 		})
 
-		It("should SUnion", Label("NonRedisEnterprise"), func() {
+		It("should SUnion", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "a")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "b")
@@ -4924,7 +4924,7 @@ var _ = Describe("Commands", func() {
 			Expect(sUnion.Val()).To(HaveLen(5))
 		})
 
-		It("should SUnionStore", Label("NonRedisEnterprise"), func() {
+		It("should SUnionStore", Label("NonKVEnterprise"), func() {
 			sAdd := client.SAdd(ctx, "set1", "a")
 			Expect(sAdd.Err()).NotTo(HaveOccurred())
 			sAdd = client.SAdd(ctx, "set1", "b")
@@ -4950,18 +4950,18 @@ var _ = Describe("Commands", func() {
 	})
 
 	Describe("sorted sets", func() {
-		It("should BZPopMax", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{
+		It("should BZPopMax", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{
+			err = client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{
+			err = client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  3,
 				Member: "three",
 			}).Err()
@@ -4969,8 +4969,8 @@ var _ = Describe("Commands", func() {
 
 			member, err := client.BZPopMax(ctx, 0, "zset1", "zset2").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(member).To(Equal(&redis.ZWithKey{
-				Z: redis.Z{
+			Expect(member).To(Equal(&kv.ZWithKey{
+				Z: kv.Z{
 					Score:  3,
 					Member: "three",
 				},
@@ -4987,8 +4987,8 @@ var _ = Describe("Commands", func() {
 				started <- true
 				bZPopMax := client.BZPopMax(ctx, 0, "zset")
 				Expect(bZPopMax.Err()).NotTo(HaveOccurred())
-				Expect(bZPopMax.Val()).To(Equal(&redis.ZWithKey{
-					Z: redis.Z{
+				Expect(bZPopMax.Val()).To(Equal(&kv.ZWithKey{
+					Z: kv.Z{
 						Member: "a",
 						Score:  1,
 					},
@@ -5005,7 +5005,7 @@ var _ = Describe("Commands", func() {
 				// ok
 			}
 
-			zAdd := client.ZAdd(ctx, "zset", redis.Z{
+			zAdd := client.ZAdd(ctx, "zset", kv.Z{
 				Member: "a",
 				Score:  1,
 			})
@@ -5021,7 +5021,7 @@ var _ = Describe("Commands", func() {
 
 		It("should BZPopMax timeout", func() {
 			val, err := client.BZPopMax(ctx, time.Second, "zset1").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(BeNil())
 
 			Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
@@ -5032,18 +5032,18 @@ var _ = Describe("Commands", func() {
 			Expect(stats.Timeouts).To(Equal(uint32(0)))
 		})
 
-		It("should BZPopMin", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{
+		It("should BZPopMin", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{
+			err = client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{
+			err = client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  3,
 				Member: "three",
 			}).Err()
@@ -5051,8 +5051,8 @@ var _ = Describe("Commands", func() {
 
 			member, err := client.BZPopMin(ctx, 0, "zset1", "zset2").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(member).To(Equal(&redis.ZWithKey{
-				Z: redis.Z{
+			Expect(member).To(Equal(&kv.ZWithKey{
+				Z: kv.Z{
 					Score:  1,
 					Member: "one",
 				},
@@ -5069,8 +5069,8 @@ var _ = Describe("Commands", func() {
 				started <- true
 				bZPopMin := client.BZPopMin(ctx, 0, "zset")
 				Expect(bZPopMin.Err()).NotTo(HaveOccurred())
-				Expect(bZPopMin.Val()).To(Equal(&redis.ZWithKey{
-					Z: redis.Z{
+				Expect(bZPopMin.Val()).To(Equal(&kv.ZWithKey{
+					Z: kv.Z{
 						Member: "a",
 						Score:  1,
 					},
@@ -5087,7 +5087,7 @@ var _ = Describe("Commands", func() {
 				// ok
 			}
 
-			zAdd := client.ZAdd(ctx, "zset", redis.Z{
+			zAdd := client.ZAdd(ctx, "zset", kv.Z{
 				Member: "a",
 				Score:  1,
 			})
@@ -5103,7 +5103,7 @@ var _ = Describe("Commands", func() {
 
 		It("should BZPopMin timeout", func() {
 			val, err := client.BZPopMin(ctx, time.Second, "zset1").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(BeNil())
 
 			Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
@@ -5115,28 +5115,28 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZAdd", func() {
-			added, err := client.ZAdd(ctx, "zset", redis.Z{
+			added, err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			added, err = client.ZAdd(ctx, "zset", redis.Z{
+			added, err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "uno",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			added, err = client.ZAdd(ctx, "zset", redis.Z{
+			added, err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			added, err = client.ZAdd(ctx, "zset", redis.Z{
+			added, err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "two",
 			}).Result()
@@ -5145,7 +5145,7 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -5158,28 +5158,28 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZAdd bytes", func() {
-			added, err := client.ZAdd(ctx, "zset", redis.Z{
+			added, err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: []byte("one"),
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			added, err = client.ZAdd(ctx, "zset", redis.Z{
+			added, err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: []byte("uno"),
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			added, err = client.ZAdd(ctx, "zset", redis.Z{
+			added, err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: []byte("two"),
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			added, err = client.ZAdd(ctx, "zset", redis.Z{
+			added, err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: []byte("two"),
 			}).Result()
@@ -5188,7 +5188,7 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -5202,42 +5202,42 @@ var _ = Describe("Commands", func() {
 
 		It("should ZAddArgsGTAndLT", func() {
 			// Test only the GT+LT options.
-			added, err := client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			added, err := client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				GT:      true,
-				Members: []redis.Z{{Score: 1, Member: "one"}},
+				Members: []kv.Z{{Score: 1, Member: "one"}},
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 
-			added, err = client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			added, err = client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				GT:      true,
-				Members: []redis.Z{{Score: 2, Member: "one"}},
+				Members: []kv.Z{{Score: 2, Member: "one"}},
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(0)))
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 
-			added, err = client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			added, err = client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				LT:      true,
-				Members: []redis.Z{{Score: 1, Member: "one"}},
+				Members: []kv.Z{{Score: 1, Member: "one"}},
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(0)))
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 		})
 
 		It("should ZAddArgsLT", func() {
-			added, err := client.ZAddLT(ctx, "zset", redis.Z{
+			added, err := client.ZAddLT(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "one",
 			}).Result()
@@ -5246,9 +5246,9 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 
-			added, err = client.ZAddLT(ctx, "zset", redis.Z{
+			added, err = client.ZAddLT(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "one",
 			}).Result()
@@ -5257,9 +5257,9 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 
-			added, err = client.ZAddLT(ctx, "zset", redis.Z{
+			added, err = client.ZAddLT(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
@@ -5268,11 +5268,11 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 		})
 
 		It("should ZAddArgsGT", func() {
-			added, err := client.ZAddGT(ctx, "zset", redis.Z{
+			added, err := client.ZAddGT(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "one",
 			}).Result()
@@ -5281,9 +5281,9 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 
-			added, err = client.ZAddGT(ctx, "zset", redis.Z{
+			added, err = client.ZAddGT(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "one",
 			}).Result()
@@ -5292,9 +5292,9 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 3, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 3, Member: "one"}}))
 
-			added, err = client.ZAddGT(ctx, "zset", redis.Z{
+			added, err = client.ZAddGT(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
@@ -5303,11 +5303,11 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 3, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 3, Member: "one"}}))
 		})
 
 		It("should ZAddArgsNX", func() {
-			added, err := client.ZAddNX(ctx, "zset", redis.Z{
+			added, err := client.ZAddNX(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
@@ -5316,9 +5316,9 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 
-			added, err = client.ZAddNX(ctx, "zset", redis.Z{
+			added, err = client.ZAddNX(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "one",
 			}).Result()
@@ -5327,11 +5327,11 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 		})
 
 		It("should ZAddArgsXX", func() {
-			added, err := client.ZAddXX(ctx, "zset", redis.Z{
+			added, err := client.ZAddXX(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
@@ -5342,14 +5342,14 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(BeEmpty())
 
-			added, err = client.ZAdd(ctx, "zset", redis.Z{
+			added, err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			added, err = client.ZAddXX(ctx, "zset", redis.Z{
+			added, err = client.ZAddXX(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "one",
 			}).Result()
@@ -5358,22 +5358,22 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 		})
 
 		It("should ZAddArgsCh", func() {
-			changed, err := client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			changed, err := client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				Ch: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(changed).To(Equal(int64(1)))
 
-			changed, err = client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			changed, err = client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				Ch: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
@@ -5382,10 +5382,10 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZAddArgsNXCh", func() {
-			changed, err := client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			changed, err := client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				NX: true,
 				Ch: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
@@ -5394,12 +5394,12 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 
-			changed, err = client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			changed, err = client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				NX: true,
 				Ch: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 2, Member: "one"},
 				},
 			}).Result()
@@ -5408,17 +5408,17 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}}))
 		})
 
 		It("should ZAddArgsXXCh", func() {
-			changed, err := client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			changed, err := client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				XX: true,
 				Ch: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
@@ -5429,17 +5429,17 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(BeEmpty())
 
-			added, err := client.ZAdd(ctx, "zset", redis.Z{
+			added, err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			changed, err = client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
+			changed, err = client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
 				XX: true,
 				Ch: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 2, Member: "one"},
 				},
 			}).Result()
@@ -5448,12 +5448,12 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 		})
 
 		It("should ZAddArgsIncr", func() {
-			score, err := client.ZAddArgsIncr(ctx, "zset", redis.ZAddArgs{
-				Members: []redis.Z{
+			score, err := client.ZAddArgsIncr(ctx, "zset", kv.ZAddArgs{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
@@ -5462,10 +5462,10 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 
-			score, err = client.ZAddArgsIncr(ctx, "zset", redis.ZAddArgs{
-				Members: []redis.Z{
+			score, err = client.ZAddArgsIncr(ctx, "zset", kv.ZAddArgs{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
@@ -5474,13 +5474,13 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 		})
 
 		It("should ZAddArgsIncrNX", func() {
-			score, err := client.ZAddArgsIncr(ctx, "zset", redis.ZAddArgs{
+			score, err := client.ZAddArgsIncr(ctx, "zset", kv.ZAddArgs{
 				NX: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
@@ -5489,46 +5489,46 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 
-			score, err = client.ZAddArgsIncr(ctx, "zset", redis.ZAddArgs{
+			score, err = client.ZAddArgsIncr(ctx, "zset", kv.ZAddArgs{
 				NX: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(score).To(Equal(float64(0)))
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 		})
 
 		It("should ZAddArgsIncrXX", func() {
-			score, err := client.ZAddArgsIncr(ctx, "zset", redis.ZAddArgs{
+			score, err := client.ZAddArgsIncr(ctx, "zset", kv.ZAddArgs{
 				XX: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(score).To(Equal(float64(0)))
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(BeEmpty())
 
-			added, err := client.ZAdd(ctx, "zset", redis.Z{
+			added, err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(1)))
 
-			score, err = client.ZAddArgsIncr(ctx, "zset", redis.ZAddArgs{
+			score, err = client.ZAddArgsIncr(ctx, "zset", kv.ZAddArgs{
 				XX: true,
-				Members: []redis.Z{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 				},
 			}).Result()
@@ -5537,16 +5537,16 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "one"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "one"}}))
 		})
 
 		It("should ZCard", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{
+			err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
@@ -5558,17 +5558,17 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZCount", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{
+			err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "three",
 			}).Err()
@@ -5588,12 +5588,12 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZIncrBy", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{
+			err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
@@ -5605,7 +5605,7 @@ var _ = Describe("Commands", func() {
 
 			val, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(val).To(Equal([]redis.Z{{
+			Expect(val).To(Equal([]kv.Z{{
 				Score:  2,
 				Member: "two",
 			}, {
@@ -5614,26 +5614,26 @@ var _ = Describe("Commands", func() {
 			}}))
 		})
 
-		It("should ZInterStore", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{
+		It("should ZInterStore", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{
+			err = client.ZAdd(ctx, "zset1", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset3", redis.Z{Score: 3, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset3", kv.Z{Score: 3, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			n, err := client.ZInterStore(ctx, "out", &redis.ZStore{
+			n, err := client.ZInterStore(ctx, "out", &kv.ZStore{
 				Keys:    []string{"zset1", "zset2"},
 				Weights: []float64{2, 3},
 			}).Result()
@@ -5642,7 +5642,7 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "out", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  5,
 				Member: "one",
 			}, {
@@ -5651,43 +5651,43 @@ var _ = Describe("Commands", func() {
 			}}))
 		})
 
-		It("should ZMPop", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZMPop", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			key, elems, err := client.ZMPop(ctx, "min", 1, "zset").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("zset"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}}))
 
 			_, _, err = client.ZMPop(ctx, "min", 1, "nosuchkey").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 
-			err = client.ZAdd(ctx, "myzset", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "myzset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "myzset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "myzset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "myzset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "myzset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			key, elems, err = client.ZMPop(ctx, "min", 1, "myzset").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("myzset"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}}))
@@ -5695,7 +5695,7 @@ var _ = Describe("Commands", func() {
 			key, elems, err = client.ZMPop(ctx, "max", 10, "myzset").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("myzset"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}, {
@@ -5703,17 +5703,17 @@ var _ = Describe("Commands", func() {
 				Member: "two",
 			}}))
 
-			err = client.ZAdd(ctx, "myzset2", redis.Z{Score: 4, Member: "four"}).Err()
+			err = client.ZAdd(ctx, "myzset2", kv.Z{Score: 4, Member: "four"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "myzset2", redis.Z{Score: 5, Member: "five"}).Err()
+			err = client.ZAdd(ctx, "myzset2", kv.Z{Score: 5, Member: "five"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "myzset2", redis.Z{Score: 6, Member: "six"}).Err()
+			err = client.ZAdd(ctx, "myzset2", kv.Z{Score: 6, Member: "six"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			key, elems, err = client.ZMPop(ctx, "min", 10, "myzset", "myzset2").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("myzset2"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  4,
 				Member: "four",
 			}, {
@@ -5725,39 +5725,39 @@ var _ = Describe("Commands", func() {
 			}}))
 		})
 
-		It("should BZMPop", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should BZMPop", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			key, elems, err := client.BZMPop(ctx, 0, "min", 1, "zset").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("zset"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}}))
 			key, elems, err = client.BZMPop(ctx, 0, "max", 1, "zset").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("zset"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}}))
 			key, elems, err = client.BZMPop(ctx, 0, "min", 10, "zset").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("zset"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  2,
 				Member: "two",
 			}}))
@@ -5765,7 +5765,7 @@ var _ = Describe("Commands", func() {
 			key, elems, err = client.BZMPop(ctx, 0, "max", 10, "zset2").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("zset2"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}, {
@@ -5776,25 +5776,25 @@ var _ = Describe("Commands", func() {
 				Member: "one",
 			}}))
 
-			err = client.ZAdd(ctx, "myzset", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "myzset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 			key, elems, err = client.BZMPop(ctx, 0, "min", 10, "myzset").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("myzset"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}}))
 
-			err = client.ZAdd(ctx, "myzset2", redis.Z{Score: 4, Member: "four"}).Err()
+			err = client.ZAdd(ctx, "myzset2", kv.Z{Score: 4, Member: "four"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "myzset2", redis.Z{Score: 5, Member: "five"}).Err()
+			err = client.ZAdd(ctx, "myzset2", kv.Z{Score: 5, Member: "five"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			key, elems, err = client.BZMPop(ctx, 0, "min", 10, "myzset", "myzset2").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(key).To(Equal("myzset2"))
-			Expect(elems).To(Equal([]redis.Z{{
+			Expect(elems).To(Equal([]kv.Z{{
 				Score:  4,
 				Member: "four",
 			}, {
@@ -5813,7 +5813,7 @@ var _ = Describe("Commands", func() {
 				key, elems, err := client.BZMPop(ctx, 0, "min", 1, "list_list").Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(key).To(Equal("list_list"))
-				Expect(elems).To(Equal([]redis.Z{{
+				Expect(elems).To(Equal([]kv.Z{{
 					Score:  1,
 					Member: "one",
 				}}))
@@ -5828,7 +5828,7 @@ var _ = Describe("Commands", func() {
 				// ok
 			}
 
-			err := client.ZAdd(ctx, "list_list", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "list_list", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			select {
@@ -5841,7 +5841,7 @@ var _ = Describe("Commands", func() {
 
 		It("should BZMPop timeout", func() {
 			_, val, err := client.BZMPop(ctx, time.Second, "min", 1, "list1").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 			Expect(val).To(BeNil())
 
 			Expect(client.Ping(ctx).Err()).NotTo(HaveOccurred())
@@ -5858,11 +5858,11 @@ var _ = Describe("Commands", func() {
 			Expect(zmScore.Val()).To(HaveLen(2))
 			Expect(zmScore.Val()[0]).To(Equal(float64(0)))
 
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zmScore = client.ZMScore(ctx, "zset", "one", "three")
@@ -5880,17 +5880,17 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZPopMax", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{
+			err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "three",
 			}).Err()
@@ -5898,20 +5898,20 @@ var _ = Describe("Commands", func() {
 
 			members, err := client.ZPopMax(ctx, "zset").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(members).To(Equal([]redis.Z{{
+			Expect(members).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}}))
 
 			// adding back 3
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "three",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 			members, err = client.ZPopMax(ctx, "zset", 2).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(members).To(Equal([]redis.Z{{
+			Expect(members).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}, {
@@ -5920,19 +5920,19 @@ var _ = Describe("Commands", func() {
 			}}))
 
 			// adding back 2 & 3
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "three",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 			members, err = client.ZPopMax(ctx, "zset", 10).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(members).To(Equal([]redis.Z{{
+			Expect(members).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}, {
@@ -5948,17 +5948,17 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZPopMin", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{
+			err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  3,
 				Member: "three",
 			}).Err()
@@ -5966,20 +5966,20 @@ var _ = Describe("Commands", func() {
 
 			members, err := client.ZPopMin(ctx, "zset").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(members).To(Equal([]redis.Z{{
+			Expect(members).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}}))
 
 			// adding back 1
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 			members, err = client.ZPopMin(ctx, "zset", 2).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(members).To(Equal([]redis.Z{{
+			Expect(members).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -5988,13 +5988,13 @@ var _ = Describe("Commands", func() {
 			}}))
 
 			// adding back 1 & 2
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  1,
 				Member: "one",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  2,
 				Member: "two",
 			}).Err()
@@ -6002,7 +6002,7 @@ var _ = Describe("Commands", func() {
 
 			members, err = client.ZPopMin(ctx, "zset", 10).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(members).To(Equal([]redis.Z{{
+			Expect(members).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -6018,11 +6018,11 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRange", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRange := client.ZRange(ctx, "zset", 0, -1)
@@ -6039,16 +6039,16 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRangeWithScores", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -6061,11 +6061,11 @@ var _ = Describe("Commands", func() {
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", 2, 3).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 3, Member: "three"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 3, Member: "three"}}))
 
 			vals, err = client.ZRangeWithScores(ctx, "zset", -2, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  2,
 				Member: "two",
 			}, {
@@ -6075,8 +6075,8 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRangeArgs", func() {
-			added, err := client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
-				Members: []redis.Z{
+			added, err := client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 					{Score: 2, Member: "two"},
 					{Score: 3, Member: "three"},
@@ -6086,7 +6086,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(4)))
 
-			zRange, err := client.ZRangeArgs(ctx, redis.ZRangeArgs{
+			zRange, err := client.ZRangeArgs(ctx, kv.ZRangeArgs{
 				Key:     "zset",
 				Start:   1,
 				Stop:    4,
@@ -6098,7 +6098,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(zRange).To(Equal([]string{"three", "two"}))
 
-			zRange, err = client.ZRangeArgs(ctx, redis.ZRangeArgs{
+			zRange, err = client.ZRangeArgs(ctx, kv.ZRangeArgs{
 				Key:    "zset",
 				Start:  "-",
 				Stop:   "+",
@@ -6110,7 +6110,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(zRange).To(Equal([]string{"two", "one"}))
 
-			zRange, err = client.ZRangeArgs(ctx, redis.ZRangeArgs{
+			zRange, err = client.ZRangeArgs(ctx, kv.ZRangeArgs{
 				Key:     "zset",
 				Start:   "(1",
 				Stop:    "(4",
@@ -6120,7 +6120,7 @@ var _ = Describe("Commands", func() {
 			Expect(zRange).To(Equal([]string{"two", "three"}))
 
 			// withScores.
-			zSlice, err := client.ZRangeArgsWithScores(ctx, redis.ZRangeArgs{
+			zSlice, err := client.ZRangeArgsWithScores(ctx, kv.ZRangeArgs{
 				Key:     "zset",
 				Start:   1,
 				Stop:    4,
@@ -6130,42 +6130,42 @@ var _ = Describe("Commands", func() {
 				Count:   2,
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(zSlice).To(Equal([]redis.Z{
+			Expect(zSlice).To(Equal([]kv.Z{
 				{Score: 3, Member: "three"},
 				{Score: 2, Member: "two"},
 			}))
 		})
 
 		It("should ZRangeByScore", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			zRangeByScore := client.ZRangeByScore(ctx, "zset", &redis.ZRangeBy{
+			zRangeByScore := client.ZRangeByScore(ctx, "zset", &kv.ZRangeBy{
 				Min: "-inf",
 				Max: "+inf",
 			})
 			Expect(zRangeByScore.Err()).NotTo(HaveOccurred())
 			Expect(zRangeByScore.Val()).To(Equal([]string{"one", "two", "three"}))
 
-			zRangeByScore = client.ZRangeByScore(ctx, "zset", &redis.ZRangeBy{
+			zRangeByScore = client.ZRangeByScore(ctx, "zset", &kv.ZRangeBy{
 				Min: "1",
 				Max: "2",
 			})
 			Expect(zRangeByScore.Err()).NotTo(HaveOccurred())
 			Expect(zRangeByScore.Val()).To(Equal([]string{"one", "two"}))
 
-			zRangeByScore = client.ZRangeByScore(ctx, "zset", &redis.ZRangeBy{
+			zRangeByScore = client.ZRangeByScore(ctx, "zset", &kv.ZRangeBy{
 				Min: "(1",
 				Max: "2",
 			})
 			Expect(zRangeByScore.Err()).NotTo(HaveOccurred())
 			Expect(zRangeByScore.Val()).To(Equal([]string{"two"}))
 
-			zRangeByScore = client.ZRangeByScore(ctx, "zset", &redis.ZRangeBy{
+			zRangeByScore = client.ZRangeByScore(ctx, "zset", &kv.ZRangeBy{
 				Min: "(1",
 				Max: "(2",
 			})
@@ -6174,44 +6174,44 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRangeByLex", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{
+			err := client.ZAdd(ctx, "zset", kv.Z{
 				Score:  0,
 				Member: "a",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  0,
 				Member: "b",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{
+			err = client.ZAdd(ctx, "zset", kv.Z{
 				Score:  0,
 				Member: "c",
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			zRangeByLex := client.ZRangeByLex(ctx, "zset", &redis.ZRangeBy{
+			zRangeByLex := client.ZRangeByLex(ctx, "zset", &kv.ZRangeBy{
 				Min: "-",
 				Max: "+",
 			})
 			Expect(zRangeByLex.Err()).NotTo(HaveOccurred())
 			Expect(zRangeByLex.Val()).To(Equal([]string{"a", "b", "c"}))
 
-			zRangeByLex = client.ZRangeByLex(ctx, "zset", &redis.ZRangeBy{
+			zRangeByLex = client.ZRangeByLex(ctx, "zset", &kv.ZRangeBy{
 				Min: "[a",
 				Max: "[b",
 			})
 			Expect(zRangeByLex.Err()).NotTo(HaveOccurred())
 			Expect(zRangeByLex.Val()).To(Equal([]string{"a", "b"}))
 
-			zRangeByLex = client.ZRangeByLex(ctx, "zset", &redis.ZRangeBy{
+			zRangeByLex = client.ZRangeByLex(ctx, "zset", &kv.ZRangeBy{
 				Min: "(a",
 				Max: "[b",
 			})
 			Expect(zRangeByLex.Err()).NotTo(HaveOccurred())
 			Expect(zRangeByLex.Val()).To(Equal([]string{"b"}))
 
-			zRangeByLex = client.ZRangeByLex(ctx, "zset", &redis.ZRangeBy{
+			zRangeByLex = client.ZRangeByLex(ctx, "zset", &kv.ZRangeBy{
 				Min: "(a",
 				Max: "(b",
 			})
@@ -6220,19 +6220,19 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRangeByScoreWithScoresMap", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			vals, err := client.ZRangeByScoreWithScores(ctx, "zset", &redis.ZRangeBy{
+			vals, err := client.ZRangeByScoreWithScores(ctx, "zset", &kv.ZRangeBy{
 				Min: "-inf",
 				Max: "+inf",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -6243,12 +6243,12 @@ var _ = Describe("Commands", func() {
 				Member: "three",
 			}}))
 
-			vals, err = client.ZRangeByScoreWithScores(ctx, "zset", &redis.ZRangeBy{
+			vals, err = client.ZRangeByScoreWithScores(ctx, "zset", &kv.ZRangeBy{
 				Min: "1",
 				Max: "2",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -6256,24 +6256,24 @@ var _ = Describe("Commands", func() {
 				Member: "two",
 			}}))
 
-			vals, err = client.ZRangeByScoreWithScores(ctx, "zset", &redis.ZRangeBy{
+			vals, err = client.ZRangeByScoreWithScores(ctx, "zset", &kv.ZRangeBy{
 				Min: "(1",
 				Max: "2",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "two"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "two"}}))
 
-			vals, err = client.ZRangeByScoreWithScores(ctx, "zset", &redis.ZRangeBy{
+			vals, err = client.ZRangeByScoreWithScores(ctx, "zset", &kv.ZRangeBy{
 				Min: "(1",
 				Max: "(2",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{}))
+			Expect(vals).To(Equal([]kv.Z{}))
 		})
 
-		It("should ZRangeStore", Label("NonRedisEnterprise"), func() {
-			added, err := client.ZAddArgs(ctx, "zset", redis.ZAddArgs{
-				Members: []redis.Z{
+		It("should ZRangeStore", Label("NonKVEnterprise"), func() {
+			added, err := client.ZAddArgs(ctx, "zset", kv.ZAddArgs{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 					{Score: 2, Member: "two"},
 					{Score: 3, Member: "three"},
@@ -6283,7 +6283,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(added).To(Equal(int64(4)))
 
-			rangeStore, err := client.ZRangeStore(ctx, "new-zset", redis.ZRangeArgs{
+			rangeStore, err := client.ZRangeStore(ctx, "new-zset", kv.ZRangeArgs{
 				Key:     "zset",
 				Start:   1,
 				Stop:    4,
@@ -6301,11 +6301,11 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRank", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRank := client.ZRank(ctx, "zset", "three")
@@ -6313,41 +6313,41 @@ var _ = Describe("Commands", func() {
 			Expect(zRank.Val()).To(Equal(int64(2)))
 
 			zRank = client.ZRank(ctx, "zset", "four")
-			Expect(zRank.Err()).To(Equal(redis.Nil))
+			Expect(zRank.Err()).To(Equal(kv.Nil))
 			Expect(zRank.Val()).To(Equal(int64(0)))
 		})
 
 		It("should ZRankWithScore", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRankWithScore := client.ZRankWithScore(ctx, "zset", "one")
 			Expect(zRankWithScore.Err()).NotTo(HaveOccurred())
-			Expect(zRankWithScore.Result()).To(Equal(redis.RankScore{Rank: 0, Score: 1}))
+			Expect(zRankWithScore.Result()).To(Equal(kv.RankScore{Rank: 0, Score: 1}))
 
 			zRankWithScore = client.ZRankWithScore(ctx, "zset", "two")
 			Expect(zRankWithScore.Err()).NotTo(HaveOccurred())
-			Expect(zRankWithScore.Result()).To(Equal(redis.RankScore{Rank: 1, Score: 2}))
+			Expect(zRankWithScore.Result()).To(Equal(kv.RankScore{Rank: 1, Score: 2}))
 
 			zRankWithScore = client.ZRankWithScore(ctx, "zset", "three")
 			Expect(zRankWithScore.Err()).NotTo(HaveOccurred())
-			Expect(zRankWithScore.Result()).To(Equal(redis.RankScore{Rank: 2, Score: 3}))
+			Expect(zRankWithScore.Result()).To(Equal(kv.RankScore{Rank: 2, Score: 3}))
 
 			zRankWithScore = client.ZRankWithScore(ctx, "zset", "four")
 			Expect(zRankWithScore.Err()).To(HaveOccurred())
-			Expect(zRankWithScore.Err()).To(Equal(redis.Nil))
+			Expect(zRankWithScore.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should ZRem", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRem := client.ZRem(ctx, "zset", "two")
@@ -6356,7 +6356,7 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  1,
 				Member: "one",
 			}, {
@@ -6366,11 +6366,11 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRemRangeByRank", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRemRangeByRank := client.ZRemRangeByRank(ctx, "zset", 0, 1)
@@ -6379,18 +6379,18 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}}))
 		})
 
 		It("should ZRemRangeByScore", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRemRangeByScore := client.ZRemRangeByScore(ctx, "zset", "-inf", "(2")
@@ -6399,7 +6399,7 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.ZRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  2,
 				Member: "two",
 			}, {
@@ -6409,7 +6409,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRemRangeByLex", func() {
-			zz := []redis.Z{
+			zz := []kv.Z{
 				{Score: 0, Member: "aaaa"},
 				{Score: 0, Member: "b"},
 				{Score: 0, Member: "c"},
@@ -6436,11 +6436,11 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRevRange", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRevRange := client.ZRevRange(ctx, "zset", 0, -1)
@@ -6457,16 +6457,16 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRevRangeWithScoresMap", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			val, err := client.ZRevRangeWithScores(ctx, "zset", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(val).To(Equal([]redis.Z{{
+			Expect(val).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}, {
@@ -6479,11 +6479,11 @@ var _ = Describe("Commands", func() {
 
 			val, err = client.ZRevRangeWithScores(ctx, "zset", 2, 3).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(val).To(Equal([]redis.Z{{Score: 1, Member: "one"}}))
+			Expect(val).To(Equal([]kv.Z{{Score: 1, Member: "one"}}))
 
 			val, err = client.ZRevRangeWithScores(ctx, "zset", -2, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(val).To(Equal([]redis.Z{{
+			Expect(val).To(Equal([]kv.Z{{
 				Score:  2,
 				Member: "two",
 			}, {
@@ -6493,65 +6493,65 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRevRangeByScore", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			vals, err := client.ZRevRangeByScore(
-				ctx, "zset", &redis.ZRangeBy{Max: "+inf", Min: "-inf"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "+inf", Min: "-inf"}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(Equal([]string{"three", "two", "one"}))
 
 			vals, err = client.ZRevRangeByScore(
-				ctx, "zset", &redis.ZRangeBy{Max: "2", Min: "(1"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "2", Min: "(1"}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(Equal([]string{"two"}))
 
 			vals, err = client.ZRevRangeByScore(
-				ctx, "zset", &redis.ZRangeBy{Max: "(2", Min: "(1"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "(2", Min: "(1"}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(Equal([]string{}))
 		})
 
 		It("should ZRevRangeByLex", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 0, Member: "a"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 0, Member: "a"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 0, Member: "b"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 0, Member: "b"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 0, Member: "c"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 0, Member: "c"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			vals, err := client.ZRevRangeByLex(
-				ctx, "zset", &redis.ZRangeBy{Max: "+", Min: "-"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "+", Min: "-"}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(Equal([]string{"c", "b", "a"}))
 
 			vals, err = client.ZRevRangeByLex(
-				ctx, "zset", &redis.ZRangeBy{Max: "[b", Min: "(a"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "[b", Min: "(a"}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(Equal([]string{"b"}))
 
 			vals, err = client.ZRevRangeByLex(
-				ctx, "zset", &redis.ZRangeBy{Max: "(b", Min: "(a"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "(b", Min: "(a"}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(vals).To(Equal([]string{}))
 		})
 
 		It("should ZRevRangeByScoreWithScores", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			vals, err := client.ZRevRangeByScoreWithScores(
-				ctx, "zset", &redis.ZRangeBy{Max: "+inf", Min: "-inf"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "+inf", Min: "-inf"}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}, {
@@ -6564,17 +6564,17 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRevRangeByScoreWithScoresMap", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			vals, err := client.ZRevRangeByScoreWithScores(
-				ctx, "zset", &redis.ZRangeBy{Max: "+inf", Min: "-inf"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "+inf", Min: "-inf"}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}, {
@@ -6586,22 +6586,22 @@ var _ = Describe("Commands", func() {
 			}}))
 
 			vals, err = client.ZRevRangeByScoreWithScores(
-				ctx, "zset", &redis.ZRangeBy{Max: "2", Min: "(1"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "2", Min: "(1"}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{Score: 2, Member: "two"}}))
+			Expect(vals).To(Equal([]kv.Z{{Score: 2, Member: "two"}}))
 
 			vals, err = client.ZRevRangeByScoreWithScores(
-				ctx, "zset", &redis.ZRangeBy{Max: "(2", Min: "(1"}).Result()
+				ctx, "zset", &kv.ZRangeBy{Max: "(2", Min: "(1"}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{}))
+			Expect(vals).To(Equal([]kv.Z{}))
 		})
 
 		It("should ZRevRank", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRevRank := client.ZRevRank(ctx, "zset", "one")
@@ -6609,37 +6609,37 @@ var _ = Describe("Commands", func() {
 			Expect(zRevRank.Val()).To(Equal(int64(2)))
 
 			zRevRank = client.ZRevRank(ctx, "zset", "four")
-			Expect(zRevRank.Err()).To(Equal(redis.Nil))
+			Expect(zRevRank.Err()).To(Equal(kv.Nil))
 			Expect(zRevRank.Val()).To(Equal(int64(0)))
 		})
 
 		It("should ZRevRankWithScore", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			zRevRankWithScore := client.ZRevRankWithScore(ctx, "zset", "one")
 			Expect(zRevRankWithScore.Err()).NotTo(HaveOccurred())
-			Expect(zRevRankWithScore.Result()).To(Equal(redis.RankScore{Rank: 2, Score: 1}))
+			Expect(zRevRankWithScore.Result()).To(Equal(kv.RankScore{Rank: 2, Score: 1}))
 
 			zRevRankWithScore = client.ZRevRankWithScore(ctx, "zset", "two")
 			Expect(zRevRankWithScore.Err()).NotTo(HaveOccurred())
-			Expect(zRevRankWithScore.Result()).To(Equal(redis.RankScore{Rank: 1, Score: 2}))
+			Expect(zRevRankWithScore.Result()).To(Equal(kv.RankScore{Rank: 1, Score: 2}))
 
 			zRevRankWithScore = client.ZRevRankWithScore(ctx, "zset", "three")
 			Expect(zRevRankWithScore.Err()).NotTo(HaveOccurred())
-			Expect(zRevRankWithScore.Result()).To(Equal(redis.RankScore{Rank: 0, Score: 3}))
+			Expect(zRevRankWithScore.Result()).To(Equal(kv.RankScore{Rank: 0, Score: 3}))
 
 			zRevRankWithScore = client.ZRevRankWithScore(ctx, "zset", "four")
 			Expect(zRevRankWithScore.Err()).To(HaveOccurred())
-			Expect(zRevRankWithScore.Err()).To(Equal(redis.Nil))
+			Expect(zRevRankWithScore.Err()).To(Equal(kv.Nil))
 		})
 
 		It("should ZScore", func() {
-			zAdd := client.ZAdd(ctx, "zset", redis.Z{Score: 1.001, Member: "one"})
+			zAdd := client.ZAdd(ctx, "zset", kv.Z{Score: 1.001, Member: "one"})
 			Expect(zAdd.Err()).NotTo(HaveOccurred())
 
 			zScore := client.ZScore(ctx, "zset", "one")
@@ -6647,17 +6647,17 @@ var _ = Describe("Commands", func() {
 			Expect(zScore.Val()).To(Equal(1.001))
 		})
 
-		It("should ZUnion", Label("NonRedisEnterprise"), func() {
-			err := client.ZAddArgs(ctx, "zset1", redis.ZAddArgs{
-				Members: []redis.Z{
+		It("should ZUnion", Label("NonKVEnterprise"), func() {
+			err := client.ZAddArgs(ctx, "zset1", kv.ZAddArgs{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 					{Score: 2, Member: "two"},
 				},
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ZAddArgs(ctx, "zset2", redis.ZAddArgs{
-				Members: []redis.Z{
+			err = client.ZAddArgs(ctx, "zset2", kv.ZAddArgs{
+				Members: []kv.Z{
 					{Score: 1, Member: "one"},
 					{Score: 2, Member: "two"},
 					{Score: 3, Member: "three"},
@@ -6665,7 +6665,7 @@ var _ = Describe("Commands", func() {
 			}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			union, err := client.ZUnion(ctx, redis.ZStore{
+			union, err := client.ZUnion(ctx, kv.ZStore{
 				Keys:      []string{"zset1", "zset2"},
 				Weights:   []float64{2, 3},
 				Aggregate: "sum",
@@ -6673,33 +6673,33 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(union).To(Equal([]string{"one", "three", "two"}))
 
-			unionScores, err := client.ZUnionWithScores(ctx, redis.ZStore{
+			unionScores, err := client.ZUnionWithScores(ctx, kv.ZStore{
 				Keys:      []string{"zset1", "zset2"},
 				Weights:   []float64{2, 3},
 				Aggregate: "sum",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(unionScores).To(Equal([]redis.Z{
+			Expect(unionScores).To(Equal([]kv.Z{
 				{Score: 5, Member: "one"},
 				{Score: 9, Member: "three"},
 				{Score: 10, Member: "two"},
 			}))
 		})
 
-		It("should ZUnionStore", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZUnionStore", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 2, Member: "two"}).Err()
-			Expect(err).NotTo(HaveOccurred())
-
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
-			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
-			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			n, err := client.ZUnionStore(ctx, "out", &redis.ZStore{
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
+			Expect(err).NotTo(HaveOccurred())
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
+			Expect(err).NotTo(HaveOccurred())
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 3, Member: "three"}).Err()
+			Expect(err).NotTo(HaveOccurred())
+
+			n, err := client.ZUnionStore(ctx, "out", &kv.ZStore{
 				Keys:    []string{"zset1", "zset2"},
 				Weights: []float64{2, 3},
 			}).Result()
@@ -6708,7 +6708,7 @@ var _ = Describe("Commands", func() {
 
 			val, err := client.ZRangeWithScores(ctx, "out", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(val).To(Equal([]redis.Z{{
+			Expect(val).To(Equal([]kv.Z{{
 				Score:  5,
 				Member: "one",
 			}, {
@@ -6721,9 +6721,9 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should ZRandMember", func() {
-			err := client.ZAdd(ctx, "zset", redis.Z{Score: 1, Member: "one"}).Err()
+			err := client.ZAdd(ctx, "zset", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			v := client.ZRandMember(ctx, "zset", 1)
@@ -6737,19 +6737,19 @@ var _ = Describe("Commands", func() {
 			kv, err := client.ZRandMemberWithScores(ctx, "zset", 1).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(kv).To(Or(
-				Equal([]redis.Z{{Member: "one", Score: 1}}),
-				Equal([]redis.Z{{Member: "two", Score: 2}}),
+				Equal([]kv.Z{{Member: "one", Score: 1}}),
+				Equal([]kv.Z{{Member: "two", Score: 2}}),
 			))
 		})
 
-		It("should ZDiff", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZDiff", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			v, err := client.ZDiff(ctx, "zset1", "zset2").Result()
@@ -6757,19 +6757,19 @@ var _ = Describe("Commands", func() {
 			Expect(v).To(Equal([]string{"two", "three"}))
 		})
 
-		It("should ZDiffWithScores", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZDiffWithScores", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			v, err := client.ZDiffWithScores(ctx, "zset1", "zset2").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(v).To(Equal([]redis.Z{
+			Expect(v).To(Equal([]kv.Z{
 				{
 					Member: "two",
 					Score:  2,
@@ -6781,35 +6781,35 @@ var _ = Describe("Commands", func() {
 			}))
 		})
 
-		It("should ZInter", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZInter", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			v, err := client.ZInter(ctx, &redis.ZStore{
+			v, err := client.ZInter(ctx, &kv.ZStore{
 				Keys: []string{"zset1", "zset2"},
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(v).To(Equal([]string{"one", "two"}))
 		})
 
-		It("should ZInterCard", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZInterCard", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// limit 0 means no limit
@@ -6826,25 +6826,25 @@ var _ = Describe("Commands", func() {
 			Expect(sInterCard.Val()).To(Equal(int64(2)))
 		})
 
-		It("should ZInterWithScores", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZInterWithScores", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			v, err := client.ZInterWithScores(ctx, &redis.ZStore{
+			v, err := client.ZInterWithScores(ctx, &kv.ZStore{
 				Keys:      []string{"zset1", "zset2"},
 				Weights:   []float64{2, 3},
 				Aggregate: "Max",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(v).To(Equal([]redis.Z{
+			Expect(v).To(Equal([]kv.Z{
 				{
 					Member: "one",
 					Score:  3,
@@ -6856,16 +6856,16 @@ var _ = Describe("Commands", func() {
 			}))
 		})
 
-		It("should ZDiffStore", Label("NonRedisEnterprise"), func() {
-			err := client.ZAdd(ctx, "zset1", redis.Z{Score: 1, Member: "one"}).Err()
+		It("should ZDiffStore", Label("NonKVEnterprise"), func() {
+			err := client.ZAdd(ctx, "zset1", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset1", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset1", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 1, Member: "one"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 1, Member: "one"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 2, Member: "two"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 2, Member: "two"}).Err()
 			Expect(err).NotTo(HaveOccurred())
-			err = client.ZAdd(ctx, "zset2", redis.Z{Score: 3, Member: "three"}).Err()
+			err = client.ZAdd(ctx, "zset2", kv.Z{Score: 3, Member: "three"}).Err()
 			Expect(err).NotTo(HaveOccurred())
 			v, err := client.ZDiffStore(ctx, "out1", "zset1", "zset2").Result()
 			Expect(err).NotTo(HaveOccurred())
@@ -6875,7 +6875,7 @@ var _ = Describe("Commands", func() {
 			Expect(v).To(Equal(int64(1)))
 			vals, err := client.ZRangeWithScores(ctx, "out1", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.Z{{
+			Expect(vals).To(Equal([]kv.Z{{
 				Score:  3,
 				Member: "three",
 			}}))
@@ -6884,7 +6884,7 @@ var _ = Describe("Commands", func() {
 
 	Describe("streams", func() {
 		BeforeEach(func() {
-			id, err := client.XAdd(ctx, &redis.XAddArgs{
+			id, err := client.XAdd(ctx, &kv.XAddArgs{
 				Stream: "stream",
 				ID:     "1-0",
 				Values: map[string]interface{}{"uno": "un"},
@@ -6893,7 +6893,7 @@ var _ = Describe("Commands", func() {
 			Expect(id).To(Equal("1-0"))
 
 			// Values supports []interface{}.
-			id, err = client.XAdd(ctx, &redis.XAddArgs{
+			id, err = client.XAdd(ctx, &kv.XAddArgs{
 				Stream: "stream",
 				ID:     "2-0",
 				Values: []interface{}{"dos", "deux"},
@@ -6902,7 +6902,7 @@ var _ = Describe("Commands", func() {
 			Expect(id).To(Equal("2-0"))
 
 			// Value supports []string.
-			id, err = client.XAdd(ctx, &redis.XAddArgs{
+			id, err = client.XAdd(ctx, &kv.XAddArgs{
 				Stream: "stream",
 				ID:     "3-0",
 				Values: []string{"tres", "troix"},
@@ -6936,35 +6936,35 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should XTrimMaxLenMode", func() {
-			SkipBeforeRedisVersion(8.2, "doesn't work with older redis stack images")
+			SkipBeforeKVVersion(8.2, "doesn't work with older kv stack images")
 			n, err := client.XTrimMaxLenMode(ctx, "stream", 0, "KEEPREF").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(BeNumerically(">=", 0))
 		})
 
 		It("should XTrimMaxLenApproxMode", func() {
-			SkipBeforeRedisVersion(8.2, "doesn't work with older redis stack images")
+			SkipBeforeKVVersion(8.2, "doesn't work with older kv stack images")
 			n, err := client.XTrimMaxLenApproxMode(ctx, "stream", 0, 0, "KEEPREF").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(BeNumerically(">=", 0))
 		})
 
 		It("should XTrimMinIDMode", func() {
-			SkipBeforeRedisVersion(8.2, "doesn't work with older redis stack images")
+			SkipBeforeKVVersion(8.2, "doesn't work with older kv stack images")
 			n, err := client.XTrimMinIDMode(ctx, "stream", "4-0", "KEEPREF").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(BeNumerically(">=", 0))
 		})
 
 		It("should XTrimMinIDApproxMode", func() {
-			SkipBeforeRedisVersion(8.2, "doesn't work with older redis stack images")
+			SkipBeforeKVVersion(8.2, "doesn't work with older kv stack images")
 			n, err := client.XTrimMinIDApproxMode(ctx, "stream", "4-0", 0, "KEEPREF").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(BeNumerically(">=", 0))
 		})
 
 		It("should XAdd", func() {
-			id, err := client.XAdd(ctx, &redis.XAddArgs{
+			id, err := client.XAdd(ctx, &kv.XAddArgs{
 				Stream: "stream",
 				Values: map[string]interface{}{"quatro": "quatre"},
 			}).Result()
@@ -6972,7 +6972,7 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.XRange(ctx, "stream", "-", "+").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.XMessage{
+			Expect(vals).To(Equal([]kv.XMessage{
 				{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 				{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
@@ -6981,7 +6981,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should XAdd with MaxLen", func() {
-			id, err := client.XAdd(ctx, &redis.XAddArgs{
+			id, err := client.XAdd(ctx, &kv.XAddArgs{
 				Stream: "stream",
 				MaxLen: 1,
 				Values: map[string]interface{}{"quatro": "quatre"},
@@ -6990,13 +6990,13 @@ var _ = Describe("Commands", func() {
 
 			vals, err := client.XRange(ctx, "stream", "-", "+").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]redis.XMessage{
+			Expect(vals).To(Equal([]kv.XMessage{
 				{ID: id, Values: map[string]interface{}{"quatro": "quatre"}},
 			}))
 		})
 
 		It("should XAdd with MinID", func() {
-			id, err := client.XAdd(ctx, &redis.XAddArgs{
+			id, err := client.XAdd(ctx, &kv.XAddArgs{
 				Stream: "stream",
 				MinID:  "5-0",
 				ID:     "4-0",
@@ -7017,13 +7017,13 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should XAckDel", func() {
-			SkipBeforeRedisVersion(8.2, "doesn't work with older redis stack images")
+			SkipBeforeKVVersion(8.2, "doesn't work with older kv stack images")
 			// First, create a consumer group
 			err := client.XGroupCreate(ctx, "stream", "testgroup", "0").Err()
 			Expect(err).NotTo(HaveOccurred())
 
 			// Read messages to create pending entries
-			_, err = client.XReadGroup(ctx, &redis.XReadGroupArgs{
+			_, err = client.XReadGroup(ctx, &kv.XReadGroupArgs{
 				Group:    "testgroup",
 				Consumer: "testconsumer",
 				Streams:  []string{"stream", ">"},
@@ -7040,7 +7040,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should XDelEx", func() {
-			SkipBeforeRedisVersion(8.2, "doesn't work with older redis stack images")
+			SkipBeforeKVVersion(8.2, "doesn't work with older kv stack images")
 			// Test XDelEx with KEEPREF mode
 			n, err := client.XDelEx(ctx, "stream", "KEEPREF", "1-0", "2-0").Result()
 			Expect(err).NotTo(HaveOccurred())
@@ -7056,7 +7056,7 @@ var _ = Describe("Commands", func() {
 		It("should XRange", func() {
 			msgs, err := client.XRange(ctx, "stream", "-", "+").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 				{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
@@ -7064,14 +7064,14 @@ var _ = Describe("Commands", func() {
 
 			msgs, err = client.XRange(ctx, "stream", "2", "+").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 				{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 			}))
 
 			msgs, err = client.XRange(ctx, "stream", "-", "2").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 			}))
@@ -7080,20 +7080,20 @@ var _ = Describe("Commands", func() {
 		It("should XRangeN", func() {
 			msgs, err := client.XRangeN(ctx, "stream", "-", "+", 2).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 			}))
 
 			msgs, err = client.XRangeN(ctx, "stream", "2", "+", 1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 			}))
 
 			msgs, err = client.XRangeN(ctx, "stream", "-", "2", 1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 			}))
 		})
@@ -7101,7 +7101,7 @@ var _ = Describe("Commands", func() {
 		It("should XRevRange", func() {
 			msgs, err := client.XRevRange(ctx, "stream", "+", "-").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 				{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
@@ -7109,7 +7109,7 @@ var _ = Describe("Commands", func() {
 
 			msgs, err = client.XRevRange(ctx, "stream", "+", "2").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 			}))
@@ -7118,14 +7118,14 @@ var _ = Describe("Commands", func() {
 		It("should XRevRangeN", func() {
 			msgs, err := client.XRevRangeN(ctx, "stream", "+", "-", 2).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 				{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 			}))
 
 			msgs, err = client.XRevRangeN(ctx, "stream", "+", "2", 1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(msgs).To(Equal([]redis.XMessage{
+			Expect(msgs).To(Equal([]kv.XMessage{
 				{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 			}))
 		})
@@ -7133,10 +7133,10 @@ var _ = Describe("Commands", func() {
 		It("should XRead", func() {
 			res, err := client.XReadStreams(ctx, "stream", "0").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(Equal([]redis.XStream{
+			Expect(res).To(Equal([]kv.XStream{
 				{
 					Stream: "stream",
-					Messages: []redis.XMessage{
+					Messages: []kv.XMessage{
 						{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 						{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 						{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
@@ -7145,83 +7145,83 @@ var _ = Describe("Commands", func() {
 			}))
 
 			_, err = client.XReadStreams(ctx, "stream", "3").Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 		})
 
 		It("should XRead", func() {
-			res, err := client.XRead(ctx, &redis.XReadArgs{
+			res, err := client.XRead(ctx, &kv.XReadArgs{
 				Streams: []string{"stream", "0"},
 				Count:   2,
 				Block:   100 * time.Millisecond,
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(Equal([]redis.XStream{
+			Expect(res).To(Equal([]kv.XStream{
 				{
 					Stream: "stream",
-					Messages: []redis.XMessage{
+					Messages: []kv.XMessage{
 						{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 						{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 					},
 				},
 			}))
 
-			_, err = client.XRead(ctx, &redis.XReadArgs{
+			_, err = client.XRead(ctx, &kv.XReadArgs{
 				Streams: []string{"stream", "3"},
 				Count:   1,
 				Block:   100 * time.Millisecond,
 			}).Result()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 		})
 
-		It("should XRead LastEntry", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
-			res, err := client.XRead(ctx, &redis.XReadArgs{
+		It("should XRead LastEntry", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
+			res, err := client.XRead(ctx, &kv.XReadArgs{
 				Streams: []string{"stream"},
 				Count:   2, // we expect 1 message
 				ID:      "+",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(Equal([]redis.XStream{
+			Expect(res).To(Equal([]kv.XStream{
 				{
 					Stream: "stream",
-					Messages: []redis.XMessage{
+					Messages: []kv.XMessage{
 						{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 					},
 				},
 			}))
 		})
 
-		It("should XRead LastEntry from two streams", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
-			res, err := client.XRead(ctx, &redis.XReadArgs{
+		It("should XRead LastEntry from two streams", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
+			res, err := client.XRead(ctx, &kv.XReadArgs{
 				Streams: []string{"stream", "stream"},
 				ID:      "+",
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(Equal([]redis.XStream{
+			Expect(res).To(Equal([]kv.XStream{
 				{
 					Stream: "stream",
-					Messages: []redis.XMessage{
+					Messages: []kv.XMessage{
 						{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 					},
 				},
 				{
 					Stream: "stream",
-					Messages: []redis.XMessage{
+					Messages: []kv.XMessage{
 						{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 					},
 				},
 			}))
 		})
 
-		It("should XRead LastEntry blocks", Label("NonRedisEnterprise"), func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+		It("should XRead LastEntry blocks", Label("NonKVEnterprise"), func() {
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			start := time.Now()
 			go func() {
 				defer GinkgoRecover()
 
 				time.Sleep(100 * time.Millisecond)
-				id, err := client.XAdd(ctx, &redis.XAddArgs{
+				id, err := client.XAdd(ctx, &kv.XAddArgs{
 					Stream: "empty",
 					ID:     "4-0",
 					Values: map[string]interface{}{"quatro": "quatre"},
@@ -7230,7 +7230,7 @@ var _ = Describe("Commands", func() {
 				Expect(id).To(Equal("4-0"))
 			}()
 
-			res, err := client.XRead(ctx, &redis.XReadArgs{
+			res, err := client.XRead(ctx, &kv.XReadArgs{
 				Streams: []string{"empty"},
 				Block:   500 * time.Millisecond,
 				ID:      "+",
@@ -7238,10 +7238,10 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			// Ensure that the XRead call with LastEntry option blocked for at least 100ms.
 			Expect(time.Since(start)).To(BeNumerically(">=", 100*time.Millisecond))
-			Expect(res).To(Equal([]redis.XStream{
+			Expect(res).To(Equal([]kv.XStream{
 				{
 					Stream: "empty",
-					Messages: []redis.XMessage{
+					Messages: []kv.XMessage{
 						{ID: "4-0", Values: map[string]interface{}{"quatro": "quatre"}},
 					},
 				},
@@ -7253,16 +7253,16 @@ var _ = Describe("Commands", func() {
 				err := client.XGroupCreate(ctx, "stream", "group", "0").Err()
 				Expect(err).NotTo(HaveOccurred())
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group",
 					Consumer: "consumer",
 					Streams:  []string{"stream", ">"},
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal([]redis.XStream{
+				Expect(res).To(Equal([]kv.XStream{
 					{
 						Stream: "stream",
-						Messages: []redis.XMessage{
+						Messages: []kv.XMessage{
 							{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 							{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 							{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
@@ -7282,16 +7282,16 @@ var _ = Describe("Commands", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(n).To(Equal(int64(1)))
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group",
 					Consumer: "consumer",
 					Streams:  []string{"stream", "0"},
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal([]redis.XStream{
+				Expect(res).To(Equal([]kv.XStream{
 					{
 						Stream: "stream",
-						Messages: []redis.XMessage{
+						Messages: []kv.XMessage{
 							{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 							{ID: "2-0", Values: nil},
 							{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
@@ -7305,7 +7305,7 @@ var _ = Describe("Commands", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				err = client.XGroupCreateMkStream(ctx, "stream2", "group", "0").Err()
-				Expect(err).To(Equal(proto.RedisError("BUSYGROUP Consumer Group name already exists")))
+				Expect(err).To(Equal(proto.KVError("BUSYGROUP Consumer Group name already exists")))
 
 				n, err := client.XGroupDestroy(ctx, "stream2", "group").Result()
 				Expect(err).NotTo(HaveOccurred())
@@ -7319,13 +7319,13 @@ var _ = Describe("Commands", func() {
 			It("should XPending", func() {
 				info, err := client.XPending(ctx, "stream", "group").Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(info).To(Equal(&redis.XPending{
+				Expect(info).To(Equal(&kv.XPending{
 					Count:     3,
 					Lower:     "1-0",
 					Higher:    "3-0",
 					Consumers: map[string]int64{"consumer": 3},
 				}))
-				args := &redis.XPendingExtArgs{
+				args := &kv.XPendingExtArgs{
 					Stream:   "stream",
 					Group:    "group",
 					Start:    "-",
@@ -7338,7 +7338,7 @@ var _ = Describe("Commands", func() {
 				for i := range infoExt {
 					infoExt[i].Idle = 0
 				}
-				Expect(infoExt).To(Equal([]redis.XPendingExt{
+				Expect(infoExt).To(Equal([]kv.XPendingExt{
 					{ID: "1-0", Consumer: "consumer", Idle: 0, RetryCount: 1},
 					{ID: "2-0", Consumer: "consumer", Idle: 0, RetryCount: 1},
 					{ID: "3-0", Consumer: "consumer", Idle: 0, RetryCount: 1},
@@ -7361,7 +7361,7 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XAutoClaim", func() {
-				xca := &redis.XAutoClaimArgs{
+				xca := &kv.XAutoClaimArgs{
 					Stream:   "stream",
 					Group:    "group",
 					Consumer: "consumer",
@@ -7371,7 +7371,7 @@ var _ = Describe("Commands", func() {
 				msgs, start, err := client.XAutoClaim(ctx, xca).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(start).To(Equal("3-0"))
-				Expect(msgs).To(Equal([]redis.XMessage{{
+				Expect(msgs).To(Equal([]kv.XMessage{{
 					ID:     "1-0",
 					Values: map[string]interface{}{"uno": "un"},
 				}, {
@@ -7383,7 +7383,7 @@ var _ = Describe("Commands", func() {
 				msgs, start, err = client.XAutoClaim(ctx, xca).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(start).To(Equal("0-0"))
-				Expect(msgs).To(Equal([]redis.XMessage{{
+				Expect(msgs).To(Equal([]kv.XMessage{{
 					ID:     "3-0",
 					Values: map[string]interface{}{"tres": "troix"},
 				}}))
@@ -7395,14 +7395,14 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XClaim", func() {
-				msgs, err := client.XClaim(ctx, &redis.XClaimArgs{
+				msgs, err := client.XClaim(ctx, &kv.XClaimArgs{
 					Stream:   "stream",
 					Group:    "group",
 					Consumer: "consumer",
 					Messages: []string{"1-0", "2-0", "3-0"},
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(msgs).To(Equal([]redis.XMessage{{
+				Expect(msgs).To(Equal([]kv.XMessage{{
 					ID:     "1-0",
 					Values: map[string]interface{}{"uno": "un"},
 				}, {
@@ -7413,7 +7413,7 @@ var _ = Describe("Commands", func() {
 					Values: map[string]interface{}{"tres": "troix"},
 				}}))
 
-				ids, err := client.XClaimJustID(ctx, &redis.XClaimArgs{
+				ids, err := client.XClaimJustID(ctx, &kv.XClaimArgs{
 					Stream:   "stream",
 					Group:    "group",
 					Consumer: "consumer",
@@ -7430,11 +7430,11 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XReadGroup with CLAIM argument", func() {
-				SkipBeforeRedisVersion(8.3, "XREADGROUP CLAIM requires Redis 8.3+")
+				SkipBeforeKVVersion(8.3, "XREADGROUP CLAIM requires KV 8.3+")
 
 				time.Sleep(100 * time.Millisecond)
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group",
 					Consumer: "consumer2",
 					Streams:  []string{"stream", ">"},
@@ -7456,11 +7456,11 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XReadGroup with CLAIM and COUNT", func() {
-				SkipBeforeRedisVersion(8.3, "XREADGROUP CLAIM requires Redis 8.3+")
+				SkipBeforeKVVersion(8.3, "XREADGROUP CLAIM requires KV 8.3+")
 
 				time.Sleep(100 * time.Millisecond)
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group",
 					Consumer: "consumer3",
 					Streams:  []string{"stream", ">"},
@@ -7475,11 +7475,11 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XReadGroup with CLAIM and NOACK", func() {
-				SkipBeforeRedisVersion(8.3, "XREADGROUP CLAIM requires Redis 8.3+")
+				SkipBeforeKVVersion(8.3, "XREADGROUP CLAIM requires KV 8.3+")
 
 				time.Sleep(100 * time.Millisecond)
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group",
 					Consumer: "consumer4",
 					Streams:  []string{"stream", ">"},
@@ -7494,11 +7494,11 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XReadGroup CLAIM empties PEL after acknowledgment", func() {
-				SkipBeforeRedisVersion(8.3, "XREADGROUP CLAIM requires Redis 8.3+")
+				SkipBeforeKVVersion(8.3, "XREADGROUP CLAIM requires KV 8.3+")
 
 				time.Sleep(100 * time.Millisecond)
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group",
 					Consumer: "consumer5",
 					Streams:  []string{"stream", ">"},
@@ -7523,7 +7523,7 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XReadGroup backward compatibility without CLAIM", func() {
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group",
 					Consumer: "consumer_compat",
 					Streams:  []string{"stream", "0"},
@@ -7539,9 +7539,9 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XReadGroup CLAIM with multiple streams", func() {
-				SkipBeforeRedisVersion(8.3, "XREADGROUP CLAIM requires Redis 8.3+")
+				SkipBeforeKVVersion(8.3, "XREADGROUP CLAIM requires KV 8.3+")
 
-				id, err := client.XAdd(ctx, &redis.XAddArgs{
+				id, err := client.XAdd(ctx, &kv.XAddArgs{
 					Stream: "stream2",
 					ID:     "1-0",
 					Values: map[string]interface{}{"field1": "value1"},
@@ -7549,7 +7549,7 @@ var _ = Describe("Commands", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(id).To(Equal("1-0"))
 
-				id, err = client.XAdd(ctx, &redis.XAddArgs{
+				id, err = client.XAdd(ctx, &kv.XAddArgs{
 					Stream: "stream2",
 					ID:     "2-0",
 					Values: map[string]interface{}{"field2": "value2"},
@@ -7560,7 +7560,7 @@ var _ = Describe("Commands", func() {
 				err = client.XGroupCreate(ctx, "stream2", "group2", "0").Err()
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				_, err = client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group2",
 					Consumer: "consumer1",
 					Streams:  []string{"stream2", ">"},
@@ -7569,7 +7569,7 @@ var _ = Describe("Commands", func() {
 
 				time.Sleep(100 * time.Millisecond)
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group2",
 					Consumer: "consumer2",
 					Streams:  []string{"stream2", ">"},
@@ -7590,16 +7590,16 @@ var _ = Describe("Commands", func() {
 			})
 
 			It("should XReadGroup CLAIM work consistently on RESP2 and RESP3", func() {
-				SkipBeforeRedisVersion(8.3, "XREADGROUP CLAIM requires Redis 8.3+")
+				SkipBeforeKVVersion(8.3, "XREADGROUP CLAIM requires KV 8.3+")
 
 				streamName := "stream-resp-test"
-				err := client.XAdd(ctx, &redis.XAddArgs{
+				err := client.XAdd(ctx, &kv.XAddArgs{
 					Stream: streamName,
 					Values: map[string]interface{}{"field1": "value1"},
 				}).Err()
 				Expect(err).NotTo(HaveOccurred())
 
-				err = client.XAdd(ctx, &redis.XAddArgs{
+				err = client.XAdd(ctx, &kv.XAddArgs{
 					Stream: streamName,
 					Values: map[string]interface{}{"field2": "value2"},
 				}).Err()
@@ -7609,7 +7609,7 @@ var _ = Describe("Commands", func() {
 				err = client.XGroupCreate(ctx, streamName, groupName, "0").Err()
 				Expect(err).NotTo(HaveOccurred())
 
-				_, err = client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				_, err = client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    groupName,
 					Consumer: "consumer1",
 					Streams:  []string{streamName, ">"},
@@ -7619,13 +7619,13 @@ var _ = Describe("Commands", func() {
 				time.Sleep(100 * time.Millisecond)
 
 				// Test with RESP2 (protocol 2)
-				resp2Client := redis.NewClient(&redis.Options{
-					Addr:     redisAddr,
+				resp2Client := kv.NewClient(&kv.Options{
+					Addr:     kvAddr,
 					Protocol: 2,
 				})
 				defer resp2Client.Close()
 
-				resp2Result, err := resp2Client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				resp2Result, err := resp2Client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    groupName,
 					Consumer: "consumer2",
 					Streams:  []string{streamName, "0"},
@@ -7635,13 +7635,13 @@ var _ = Describe("Commands", func() {
 				Expect(resp2Result).To(HaveLen(1))
 
 				// Test with RESP3 (protocol 3)
-				resp3Client := redis.NewClient(&redis.Options{
-					Addr:     redisAddr,
+				resp3Client := kv.NewClient(&kv.Options{
+					Addr:     kvAddr,
 					Protocol: 3,
 				})
 				defer resp3Client.Close()
 
-				resp3Result, err := resp3Client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				resp3Result, err := resp3Client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    groupName,
 					Consumer: "consumer3",
 					Streams:  []string{streamName, "0"},
@@ -7671,33 +7671,33 @@ var _ = Describe("Commands", func() {
 				err := client.XGroupCreate(ctx, "stream", "group1", "0").Err()
 				Expect(err).NotTo(HaveOccurred())
 
-				res, err := client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err := client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group1",
 					Consumer: "consumer1",
 					Streams:  []string{"stream", ">"},
 					Count:    2,
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal([]redis.XStream{
+				Expect(res).To(Equal([]kv.XStream{
 					{
 						Stream: "stream",
-						Messages: []redis.XMessage{
+						Messages: []kv.XMessage{
 							{ID: "1-0", Values: map[string]interface{}{"uno": "un"}},
 							{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 						},
 					},
 				}))
 
-				res, err = client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err = client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group1",
 					Consumer: "consumer2",
 					Streams:  []string{"stream", ">"},
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal([]redis.XStream{
+				Expect(res).To(Equal([]kv.XStream{
 					{
 						Stream: "stream",
-						Messages: []redis.XMessage{
+						Messages: []kv.XMessage{
 							{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 						},
 					},
@@ -7706,16 +7706,16 @@ var _ = Describe("Commands", func() {
 				err = client.XGroupCreate(ctx, "stream", "group2", "1-0").Err()
 				Expect(err).NotTo(HaveOccurred())
 
-				res, err = client.XReadGroup(ctx, &redis.XReadGroupArgs{
+				res, err = client.XReadGroup(ctx, &kv.XReadGroupArgs{
 					Group:    "group2",
 					Consumer: "consumer1",
 					Streams:  []string{"stream", ">"},
 				}).Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal([]redis.XStream{
+				Expect(res).To(Equal([]kv.XStream{
 					{
 						Stream: "stream",
-						Messages: []redis.XMessage{
+						Messages: []kv.XMessage{
 							{ID: "2-0", Values: map[string]interface{}{"dos": "deux"}},
 							{ID: "3-0", Values: map[string]interface{}{"tres": "troix"}},
 						},
@@ -7738,7 +7738,7 @@ var _ = Describe("Commands", func() {
 				res.RadixTreeKeys = 0
 				res.RadixTreeNodes = 0
 
-				Expect(res).To(Equal(&redis.XInfoStream{
+				Expect(res).To(Equal(&kv.XInfoStream{
 					Length:            3,
 					RadixTreeKeys:     0,
 					RadixTreeNodes:    0,
@@ -7746,11 +7746,11 @@ var _ = Describe("Commands", func() {
 					LastGeneratedID:   "3-0",
 					MaxDeletedEntryID: "0-0",
 					EntriesAdded:      3,
-					FirstEntry: redis.XMessage{
+					FirstEntry: kv.XMessage{
 						ID:     "1-0",
 						Values: map[string]interface{}{"uno": "un"},
 					},
-					LastEntry: redis.XMessage{
+					LastEntry: kv.XMessage{
 						ID:     "3-0",
 						Values: map[string]interface{}{"tres": "troix"},
 					},
@@ -7767,7 +7767,7 @@ var _ = Describe("Commands", func() {
 				res.RadixTreeKeys = 0
 				res.RadixTreeNodes = 0
 
-				Expect(res).To(Equal(&redis.XInfoStream{
+				Expect(res).To(Equal(&kv.XInfoStream{
 					Length:               0,
 					RadixTreeKeys:        0,
 					RadixTreeNodes:       0,
@@ -7775,8 +7775,8 @@ var _ = Describe("Commands", func() {
 					LastGeneratedID:      "3-0",
 					MaxDeletedEntryID:    "3-0",
 					EntriesAdded:         3,
-					FirstEntry:           redis.XMessage{},
-					LastEntry:            redis.XMessage{},
+					FirstEntry:           kv.XMessage{},
+					LastEntry:            kv.XMessage{},
 					RecordedFirstEntryID: "0-0",
 				}))
 			})
@@ -7808,24 +7808,24 @@ var _ = Describe("Commands", func() {
 					}
 				}
 
-				Expect(res.Groups).To(Equal([]redis.XInfoStreamGroup{
+				Expect(res.Groups).To(Equal([]kv.XInfoStreamGroup{
 					{
 						Name:            "group1",
 						LastDeliveredID: "3-0",
 						EntriesRead:     3,
 						Lag:             0,
 						PelCount:        3,
-						Pending: []redis.XInfoStreamGroupPending{
+						Pending: []kv.XInfoStreamGroupPending{
 							{ID: "1-0", Consumer: "consumer1", DeliveryTime: time.Time{}, DeliveryCount: 1},
 							{ID: "2-0", Consumer: "consumer1", DeliveryTime: time.Time{}, DeliveryCount: 1},
 						},
-						Consumers: []redis.XInfoStreamConsumer{
+						Consumers: []kv.XInfoStreamConsumer{
 							{
 								Name:       "consumer1",
 								SeenTime:   time.Time{},
 								ActiveTime: time.Time{},
 								PelCount:   2,
-								Pending: []redis.XInfoStreamConsumerPending{
+								Pending: []kv.XInfoStreamConsumerPending{
 									{ID: "1-0", DeliveryTime: time.Time{}, DeliveryCount: 1},
 									{ID: "2-0", DeliveryTime: time.Time{}, DeliveryCount: 1},
 								},
@@ -7835,7 +7835,7 @@ var _ = Describe("Commands", func() {
 								SeenTime:   time.Time{},
 								ActiveTime: time.Time{},
 								PelCount:   1,
-								Pending: []redis.XInfoStreamConsumerPending{
+								Pending: []kv.XInfoStreamConsumerPending{
 									{ID: "3-0", DeliveryTime: time.Time{}, DeliveryCount: 1},
 								},
 							},
@@ -7847,17 +7847,17 @@ var _ = Describe("Commands", func() {
 						EntriesRead:     3,
 						Lag:             0,
 						PelCount:        2,
-						Pending: []redis.XInfoStreamGroupPending{
+						Pending: []kv.XInfoStreamGroupPending{
 							{ID: "2-0", Consumer: "consumer1", DeliveryTime: time.Time{}, DeliveryCount: 1},
 							{ID: "3-0", Consumer: "consumer1", DeliveryTime: time.Time{}, DeliveryCount: 1},
 						},
-						Consumers: []redis.XInfoStreamConsumer{
+						Consumers: []kv.XInfoStreamConsumer{
 							{
 								Name:       "consumer1",
 								SeenTime:   time.Time{},
 								ActiveTime: time.Time{},
 								PelCount:   2,
-								Pending: []redis.XInfoStreamConsumerPending{
+								Pending: []kv.XInfoStreamConsumerPending{
 									{ID: "2-0", DeliveryTime: time.Time{}, DeliveryCount: 1},
 									{ID: "3-0", DeliveryTime: time.Time{}, DeliveryCount: 1},
 								},
@@ -7868,7 +7868,7 @@ var _ = Describe("Commands", func() {
 
 				// entries-read = nil
 				Expect(client.Del(ctx, "xinfo-stream-full-stream").Err()).NotTo(HaveOccurred())
-				id, err := client.XAdd(ctx, &redis.XAddArgs{
+				id, err := client.XAdd(ctx, &kv.XAddArgs{
 					Stream: "xinfo-stream-full-stream",
 					ID:     "*",
 					Values: []any{"k1", "v1"},
@@ -7877,23 +7877,23 @@ var _ = Describe("Commands", func() {
 				Expect(client.XGroupCreateMkStream(ctx, "xinfo-stream-full-stream", "xinfo-stream-full-group", "0").Err()).NotTo(HaveOccurred())
 				res, err = client.XInfoStreamFull(ctx, "xinfo-stream-full-stream", 0).Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal(&redis.XInfoStreamFull{
+				Expect(res).To(Equal(&kv.XInfoStreamFull{
 					Length:            1,
 					RadixTreeKeys:     1,
 					RadixTreeNodes:    2,
 					LastGeneratedID:   id,
 					MaxDeletedEntryID: "0-0",
 					EntriesAdded:      1,
-					Entries:           []redis.XMessage{{ID: id, Values: map[string]any{"k1": "v1"}}},
-					Groups: []redis.XInfoStreamGroup{
+					Entries:           []kv.XMessage{{ID: id, Values: map[string]any{"k1": "v1"}}},
+					Groups: []kv.XInfoStreamGroup{
 						{
 							Name:            "xinfo-stream-full-group",
 							LastDeliveredID: "0-0",
 							EntriesRead:     0,
 							Lag:             1,
 							PelCount:        0,
-							Pending:         []redis.XInfoStreamGroupPending{},
-							Consumers:       []redis.XInfoStreamConsumer{},
+							Pending:         []kv.XInfoStreamGroupPending{},
+							Consumers:       []kv.XInfoStreamConsumer{},
 						},
 					},
 					RecordedFirstEntryID: id,
@@ -7903,38 +7903,38 @@ var _ = Describe("Commands", func() {
 			It("should XINFO GROUPS", func() {
 				res, err := client.XInfoGroups(ctx, "stream").Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal([]redis.XInfoGroup{
+				Expect(res).To(Equal([]kv.XInfoGroup{
 					{Name: "group1", Consumers: 2, Pending: 3, LastDeliveredID: "3-0", EntriesRead: 3},
 					{Name: "group2", Consumers: 1, Pending: 2, LastDeliveredID: "3-0", EntriesRead: 3},
 				}))
 			})
 
 			It("should return -1 for nil lag in XINFO GROUPS", func() {
-				_, err := client.XAdd(ctx, &redis.XAddArgs{Stream: "s", ID: "0-1", Values: []string{"foo", "1"}}).Result()
+				_, err := client.XAdd(ctx, &kv.XAddArgs{Stream: "s", ID: "0-1", Values: []string{"foo", "1"}}).Result()
 				Expect(err).NotTo(HaveOccurred())
 
-				client.XAdd(ctx, &redis.XAddArgs{Stream: "s", ID: "0-2", Values: []string{"foo", "2"}})
+				client.XAdd(ctx, &kv.XAddArgs{Stream: "s", ID: "0-2", Values: []string{"foo", "2"}})
 				Expect(err).NotTo(HaveOccurred())
-				client.XAdd(ctx, &redis.XAddArgs{Stream: "s", ID: "0-3", Values: []string{"foo", "3"}})
+				client.XAdd(ctx, &kv.XAddArgs{Stream: "s", ID: "0-3", Values: []string{"foo", "3"}})
 				Expect(err).NotTo(HaveOccurred())
 
 				err = client.XGroupCreate(ctx, "s", "g", "0").Err()
 				Expect(err).NotTo(HaveOccurred())
-				err = client.XReadGroup(ctx, &redis.XReadGroupArgs{Group: "g", Consumer: "c", Streams: []string{"s", ">"}, Count: 1, Block: -1, NoAck: false}).Err()
+				err = client.XReadGroup(ctx, &kv.XReadGroupArgs{Group: "g", Consumer: "c", Streams: []string{"s", ">"}, Count: 1, Block: -1, NoAck: false}).Err()
 				Expect(err).NotTo(HaveOccurred())
 
 				client.XDel(ctx, "s", "0-2")
 
 				res, err := client.XInfoGroups(ctx, "s").Result()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(res).To(Equal([]redis.XInfoGroup{
+				Expect(res).To(Equal([]kv.XInfoGroup{
 					{
 						Name:            "g",
 						Consumers:       1,
 						Pending:         1,
 						LastDeliveredID: "0-1",
 						EntriesRead:     1,
-						Lag:             -1, // nil lag from Redis is reported as -1
+						Lag:             -1, // nil lag from KV is reported as -1
 					},
 				}))
 			})
@@ -7947,7 +7947,7 @@ var _ = Describe("Commands", func() {
 					res[i].Inactive = 0
 				}
 
-				Expect(res).To(Equal([]redis.XInfoConsumer{
+				Expect(res).To(Equal([]kv.XInfoConsumer{
 					{Name: "consumer1", Pending: 2, Idle: 0, Inactive: 0},
 					{Name: "consumer2", Pending: 1, Idle: 0, Inactive: 0},
 				}))
@@ -7960,8 +7960,8 @@ var _ = Describe("Commands", func() {
 			n, err := client.GeoAdd(
 				ctx,
 				"Sicily",
-				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "Palermo"},
-				&redis.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "Catania"},
+				&kv.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "Palermo"},
+				&kv.GeoLocation{Longitude: 15.087269, Latitude: 37.502669, Name: "Catania"},
 			).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(n).To(Equal(int64(2)))
@@ -7971,14 +7971,14 @@ var _ = Describe("Commands", func() {
 			geoAdd := client.GeoAdd(
 				ctx,
 				"Sicily",
-				&redis.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "Palermo"},
+				&kv.GeoLocation{Longitude: 13.361389, Latitude: 38.115556, Name: "Palermo"},
 			)
 			Expect(geoAdd.Err()).NotTo(HaveOccurred())
 			Expect(geoAdd.Val()).To(Equal(int64(0)))
 		})
 
 		It("should search geo radius", func() {
-			res, err := client.GeoRadius(ctx, "Sicily", 15, 37, &redis.GeoRadiusQuery{
+			res, err := client.GeoRadius(ctx, "Sicily", 15, 37, &kv.GeoRadiusQuery{
 				Radius: 200,
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
@@ -7987,8 +7987,8 @@ var _ = Describe("Commands", func() {
 			Expect(res[1].Name).To(Equal("Catania"))
 		})
 
-		It("should geo radius and store the result", Label("NonRedisEnterprise"), func() {
-			n, err := client.GeoRadiusStore(ctx, "Sicily", 15, 37, &redis.GeoRadiusQuery{
+		It("should geo radius and store the result", Label("NonKVEnterprise"), func() {
+			n, err := client.GeoRadiusStore(ctx, "Sicily", 15, 37, &kv.GeoRadiusQuery{
 				Radius: 200,
 				Store:  "result",
 			}).Result()
@@ -7997,18 +7997,18 @@ var _ = Describe("Commands", func() {
 
 			res, err := client.ZRangeWithScores(ctx, "result", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(res).To(ContainElement(redis.Z{
+			Expect(res).To(ContainElement(kv.Z{
 				Score:  3.479099956230698e+15,
 				Member: "Palermo",
 			}))
-			Expect(res).To(ContainElement(redis.Z{
+			Expect(res).To(ContainElement(kv.Z{
 				Score:  3.479447370796909e+15,
 				Member: "Catania",
 			}))
 		})
 
-		It("should geo radius and store dist", Label("NonRedisEnterprise"), func() {
-			n, err := client.GeoRadiusStore(ctx, "Sicily", 15, 37, &redis.GeoRadiusQuery{
+		It("should geo radius and store dist", Label("NonKVEnterprise"), func() {
+			n, err := client.GeoRadiusStore(ctx, "Sicily", 15, 37, &kv.GeoRadiusQuery{
 				Radius:    200,
 				StoreDist: "result",
 			}).Result()
@@ -8018,7 +8018,7 @@ var _ = Describe("Commands", func() {
 			res, err := client.ZRangeWithScores(ctx, "result", 0, -1).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(len(res)).To(Equal(2))
-			var palermo, catania redis.Z
+			var palermo, catania kv.Z
 			Expect(res).To(ContainElement(HaveField("Member", "Palermo"), &palermo))
 			Expect(res).To(ContainElement(HaveField("Member", "Catania"), &catania))
 			Expect(palermo.Score).To(BeNumerically("~", 190, 1))
@@ -8026,7 +8026,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should search geo radius with options", func() {
-			res, err := client.GeoRadius(ctx, "Sicily", 15, 37, &redis.GeoRadiusQuery{
+			res, err := client.GeoRadius(ctx, "Sicily", 15, 37, &kv.GeoRadiusQuery{
 				Radius:      200,
 				Unit:        "km",
 				WithGeoHash: true,
@@ -8050,7 +8050,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should search geo radius with WithDist=false", func() {
-			res, err := client.GeoRadius(ctx, "Sicily", 15, 37, &redis.GeoRadiusQuery{
+			res, err := client.GeoRadius(ctx, "Sicily", 15, 37, &kv.GeoRadiusQuery{
 				Radius:      200,
 				Unit:        "km",
 				WithGeoHash: true,
@@ -8073,7 +8073,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should search geo radius by member with options", func() {
-			res, err := client.GeoRadiusByMember(ctx, "Sicily", "Catania", &redis.GeoRadiusQuery{
+			res, err := client.GeoRadiusByMember(ctx, "Sicily", "Catania", &kv.GeoRadiusQuery{
 				Radius:      200,
 				Unit:        "km",
 				WithGeoHash: true,
@@ -8097,7 +8097,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should search geo radius with no results", func() {
-			res, err := client.GeoRadius(ctx, "Sicily", 99, 37, &redis.GeoRadiusQuery{
+			res, err := client.GeoRadius(ctx, "Sicily", 99, 37, &kv.GeoRadiusQuery{
 				Radius:      200,
 				Unit:        "km",
 				WithGeoHash: true,
@@ -8109,8 +8109,8 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should get geo distance with unit options", func() {
-			// From Redis CLI, note the difference in rounding in m vs
-			// km on Redis itself.
+			// From KV CLI, note the difference in rounding in m vs
+			// km on KV itself.
 			//
 			// GEOADD Sicily 13.361389 38.115556 "Palermo" 15.087269 37.502669 "Catania"
 			// GEODIST Sicily Palermo Catania m
@@ -8135,7 +8135,7 @@ var _ = Describe("Commands", func() {
 		It("should return geo position", func() {
 			pos, err := client.GeoPos(ctx, "Sicily", "Palermo", "Catania", "NonExisting").Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(pos).To(ConsistOf([]*redis.GeoPos{
+			Expect(pos).To(ConsistOf([]*kv.GeoPos{
 				{
 					Longitude: 13.361389338970184,
 					Latitude:  38.1155563954963,
@@ -8149,7 +8149,7 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should geo search", func() {
-			q := &redis.GeoSearchQuery{
+			q := &kv.GeoSearchQuery{
 				Member:    "Catania",
 				BoxWidth:  400,
 				BoxHeight: 100,
@@ -8175,7 +8175,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(Equal([]string{"Palermo"}))
 
-			q = &redis.GeoSearchQuery{
+			q = &kv.GeoSearchQuery{
 				Member:     "Catania",
 				Radius:     100,
 				RadiusUnit: "km",
@@ -8200,7 +8200,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(Equal([]string{"Palermo"}))
 
-			q = &redis.GeoSearchQuery{
+			q = &kv.GeoSearchQuery{
 				Longitude: 15,
 				Latitude:  37,
 				BoxWidth:  200,
@@ -8227,7 +8227,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(Equal([]string{"Palermo"}))
 
-			q = &redis.GeoSearchQuery{
+			q = &kv.GeoSearchQuery{
 				Longitude:  15,
 				Latitude:   37,
 				Radius:     100,
@@ -8255,8 +8255,8 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("should geo search with options", func() {
-			q := &redis.GeoSearchLocationQuery{
-				GeoSearchQuery: redis.GeoSearchQuery{
+			q := &kv.GeoSearchLocationQuery{
+				GeoSearchQuery: kv.GeoSearchQuery{
 					Longitude:  15,
 					Latitude:   37,
 					Radius:     200,
@@ -8269,7 +8269,7 @@ var _ = Describe("Commands", func() {
 			}
 			val, err := client.GeoSearchLocation(ctx, "Sicily", q).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(val).To(Equal([]redis.GeoLocation{
+			Expect(val).To(Equal([]kv.GeoLocation{
 				{
 					Name:      "Catania",
 					Longitude: 15.08726745843887329,
@@ -8287,9 +8287,9 @@ var _ = Describe("Commands", func() {
 			}))
 		})
 
-		It("should geo search store", Label("NonRedisEnterprise"), func() {
-			q := &redis.GeoSearchStoreQuery{
-				GeoSearchQuery: redis.GeoSearchQuery{
+		It("should geo search store", Label("NonKVEnterprise"), func() {
+			q := &kv.GeoSearchStoreQuery{
+				GeoSearchQuery: kv.GeoSearchQuery{
 					Longitude:  15,
 					Latitude:   37,
 					Radius:     200,
@@ -8308,14 +8308,14 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(Equal(int64(2)))
 
-			loc, err := client.GeoSearchLocation(ctx, "key1", &redis.GeoSearchLocationQuery{
+			loc, err := client.GeoSearchLocation(ctx, "key1", &kv.GeoSearchLocationQuery{
 				GeoSearchQuery: q.GeoSearchQuery,
 				WithCoord:      true,
 				WithDist:       true,
 				WithHash:       true,
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(loc).To(Equal([]redis.GeoLocation{
+			Expect(loc).To(Equal([]kv.GeoLocation{
 				{
 					Name:      "Catania",
 					Longitude: 15.08726745843887329,
@@ -8336,7 +8336,7 @@ var _ = Describe("Commands", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(len(v)).To(Equal(2))
-			var palermo, catania redis.Z
+			var palermo, catania kv.Z
 			Expect(v).To(ContainElement(HaveField("Member", "Palermo"), &palermo))
 			Expect(v).To(ContainElement(HaveField("Member", "Catania"), &catania))
 			Expect(palermo.Score).To(BeNumerically("~", 190, 1))
@@ -8431,7 +8431,7 @@ var _ = Describe("Commands", func() {
 				nil,
 			).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]interface{}{int64(12), proto.RedisError("error"), "abc"}))
+			Expect(vals).To(Equal([]interface{}{int64(12), proto.KVError("error"), "abc"}))
 		})
 
 		It("returns empty values when args are nil", func() {
@@ -8465,7 +8465,7 @@ var _ = Describe("Commands", func() {
 				nil,
 			).Result()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(vals).To(Equal([]interface{}{int64(12), proto.RedisError("error"), "abc"}))
+			Expect(vals).To(Equal([]interface{}{int64(12), proto.KVError("error"), "abc"}))
 		})
 
 		It("returns empty values when args are nil", func() {
@@ -8482,21 +8482,21 @@ var _ = Describe("Commands", func() {
 
 	Describe("Functions", func() {
 		var (
-			q        redis.FunctionListQuery
+			q        kv.FunctionListQuery
 			lib1Code string
 			lib2Code string
-			lib1     redis.Library
-			lib2     redis.Library
+			lib1     kv.Library
+			lib2     kv.Library
 		)
 
 		BeforeEach(func() {
 			flush := client.FunctionFlush(ctx)
 			Expect(flush.Err()).NotTo(HaveOccurred())
 
-			lib1 = redis.Library{
+			lib1 = kv.Library{
 				Name:   "mylib1",
 				Engine: "LUA",
-				Functions: []redis.Function{
+				Functions: []kv.Function{
 					{
 						Name:        "lib1_func1",
 						Description: "This is the func-1 of lib 1",
@@ -8507,17 +8507,17 @@ var _ = Describe("Commands", func() {
 					
                      local function f1(keys, args)
                         local hash = keys[1]  -- Get the key name
-                        local time = redis.call('TIME')[1]  -- Get the current time from the Redis server
+                        local time = kv.call('TIME')[1]  -- Get the current time from the KV server
 
                         -- Add the current timestamp to the arguments that the user passed to the function, stored in args
                         table.insert(args, '_updated_at')
                         table.insert(args, time)
 
                         -- Run HSET with the updated argument list
-                        return redis.call('HSET', hash, unpack(args))
+                        return kv.call('HSET', hash, unpack(args))
                      end
 
-					redis.register_function{
+					kv.register_function{
 						function_name='%s',
 						description ='%s',
 						callback=f1,
@@ -8525,10 +8525,10 @@ var _ = Describe("Commands", func() {
 					}`,
 			}
 
-			lib2 = redis.Library{
+			lib2 = kv.Library{
 				Name:   "mylib2",
 				Engine: "LUA",
-				Functions: []redis.Function{
+				Functions: []kv.Function{
 					{
 						Name:  "lib2_func1",
 						Flags: []string{},
@@ -8549,8 +8549,8 @@ var _ = Describe("Commands", func() {
 						 return 'Function 2'
 					end
 					
-					redis.register_function('%s', f1)
-					redis.register_function{
+					kv.register_function('%s', f1)
+					kv.register_function{
 						function_name='%s',
 						description ='%s',
 						callback=f2,
@@ -8563,10 +8563,10 @@ var _ = Describe("Commands", func() {
 			lib2Code = fmt.Sprintf(lib2.Code, lib2.Name, lib2.Functions[0].Name,
 				lib2.Functions[1].Name, lib2.Functions[1].Description, lib2.Functions[1].Flags[0])
 
-			q = redis.FunctionListQuery{}
+			q = kv.FunctionListQuery{}
 		})
 
-		It("Loads a new library", Label("NonRedisEnterprise"), func() {
+		It("Loads a new library", Label("NonKVEnterprise"), func() {
 			functionLoad := client.FunctionLoad(ctx, lib1Code)
 			Expect(functionLoad.Err()).NotTo(HaveOccurred())
 			Expect(functionLoad.Val()).To(Equal(lib1.Name))
@@ -8576,7 +8576,7 @@ var _ = Describe("Commands", func() {
 			Expect(functionList.Val()).To(HaveLen(1))
 		})
 
-		It("Loads and replaces a new library", Label("NonRedisEnterprise"), func() {
+		It("Loads and replaces a new library", Label("NonKVEnterprise"), func() {
 			// Load a library for the first time
 			err := client.FunctionLoad(ctx, lib1Code).Err()
 			Expect(err).NotTo(HaveOccurred())
@@ -8593,7 +8593,7 @@ var _ = Describe("Commands", func() {
 
 			lib, err := client.FunctionList(ctx, q).First()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(lib.Functions).To(Equal([]redis.Function{
+			Expect(lib.Functions).To(Equal([]kv.Function{
 				{
 					Name:        newFuncName,
 					Description: newFuncDesc,
@@ -8609,7 +8609,7 @@ var _ = Describe("Commands", func() {
 			err = client.FunctionDelete(ctx, lib1.Name).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			val, err := client.FunctionList(ctx, redis.FunctionListQuery{
+			val, err := client.FunctionList(ctx, kv.FunctionListQuery{
 				LibraryNamePattern: lib1.Name,
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
@@ -8647,11 +8647,11 @@ var _ = Describe("Commands", func() {
 			// Add test for a long-running function, once we make the test for `function stats` pass
 		})
 
-		It("Lists registered functions", Label("NonRedisEnterprise"), func() {
+		It("Lists registered functions", Label("NonKVEnterprise"), func() {
 			err := client.FunctionLoad(ctx, lib1Code).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			val, err := client.FunctionList(ctx, redis.FunctionListQuery{
+			val, err := client.FunctionList(ctx, kv.FunctionListQuery{
 				LibraryNamePattern: "*",
 				WithCode:           true,
 			}).Result()
@@ -8665,13 +8665,13 @@ var _ = Describe("Commands", func() {
 			err = client.FunctionLoad(ctx, lib2Code).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			val, err = client.FunctionList(ctx, redis.FunctionListQuery{
+			val, err = client.FunctionList(ctx, kv.FunctionListQuery{
 				WithCode: true,
 			}).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).To(HaveLen(2))
 
-			lib, err := client.FunctionList(ctx, redis.FunctionListQuery{
+			lib, err := client.FunctionList(ctx, kv.FunctionListQuery{
 				LibraryNamePattern: lib2.Name,
 				WithCode:           false,
 			}).First()
@@ -8679,14 +8679,14 @@ var _ = Describe("Commands", func() {
 			Expect(lib.Name).To(Equal(lib2.Name))
 			Expect(lib.Code).To(Equal(""))
 
-			_, err = client.FunctionList(ctx, redis.FunctionListQuery{
+			_, err = client.FunctionList(ctx, kv.FunctionListQuery{
 				LibraryNamePattern: "non_lib",
 				WithCode:           true,
 			}).First()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 		})
 
-		It("Dump and restores all libraries", Label("NonRedisEnterprise"), func() {
+		It("Dump and restores all libraries", Label("NonKVEnterprise"), func() {
 			err := client.FunctionLoad(ctx, lib1Code).Err()
 			Expect(err).NotTo(HaveOccurred())
 			err = client.FunctionLoad(ctx, lib2Code).Err()
@@ -8752,15 +8752,15 @@ var _ = Describe("Commands", func() {
 		})
 
 		It("Shows function stats", func() {
-			SkipBeforeRedisVersion(7.4, "doesn't work with older redis stack images")
+			SkipBeforeKVVersion(7.4, "doesn't work with older kv stack images")
 			defer client.FunctionKill(ctx)
 
-			// We can not run blocking commands in Redis functions, so we're using an infinite loop,
+			// We can not run blocking commands in KV functions, so we're using an infinite loop,
 			// but we're killing the function after calling FUNCTION STATS
-			lib := redis.Library{
+			lib := kv.Library{
 				Name:   "mylib1",
 				Engine: "LUA",
-				Functions: []redis.Function{
+				Functions: []kv.Function{
 					{
 						Name:        "lib1_func1",
 						Description: "This is the func-1 of lib 1",
@@ -8775,7 +8775,7 @@ var _ = Describe("Commands", func() {
 					   	end
 					end
 
-					redis.register_function{
+					kv.register_function{
 						function_name='%s',
 						description ='%s',
 						callback=f1,
@@ -8797,7 +8797,7 @@ var _ = Describe("Commands", func() {
 			go func() {
 				defer GinkgoRecover()
 
-				client2 := redis.NewClient(redisOptions())
+				client2 := kv.NewClient(kvOptions())
 
 				started <- true
 				_, err = client2.FCall(ctx, lib.Functions[0].Name, nil).Result()
@@ -8837,7 +8837,7 @@ var _ = Describe("Commands", func() {
 			Expect(len(result)).NotTo(BeZero())
 		})
 
-		It("returns the number of slow queries", Label("NonRedisEnterprise"), func() {
+		It("returns the number of slow queries", Label("NonKVEnterprise"), func() {
 			// Reset slowlog
 			err := client.SlowLogReset(ctx).Err()
 			Expect(err).NotTo(HaveOccurred())
@@ -8866,7 +8866,7 @@ var _ = Describe("Commands", func() {
 		})
 	})
 
-	Describe("Latency", Label("NonRedisEnterprise"), func() {
+	Describe("Latency", Label("NonKVEnterprise"), func() {
 		It("returns latencies", func() {
 			const key = "latency-monitor-threshold"
 
@@ -8967,7 +8967,7 @@ func (n *numberStruct) UnmarshalBinary(b []byte) error {
 	return json.Unmarshal(b, n)
 }
 
-func (n *numberStruct) ScanRedis(str string) error {
+func (n *numberStruct) ScanKV(str string) error {
 	return json.Unmarshal([]byte(str), n)
 }
 

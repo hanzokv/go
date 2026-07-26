@@ -13,39 +13,39 @@ import (
 )
 
 type data struct {
-	Omit  string `redis:"-"`
+	Omit  string `kv:"-"`
 	Empty string
 
-	String  string  `redis:"string"`
-	Bytes   []byte  `redis:"byte"`
-	Int     int     `redis:"int"`
-	Int8    int8    `redis:"int8"`
-	Int16   int16   `redis:"int16"`
-	Int32   int32   `redis:"int32"`
-	Int64   int64   `redis:"int64"`
-	Uint    uint    `redis:"uint"`
-	Uint8   uint8   `redis:"uint8"`
-	Uint16  uint16  `redis:"uint16"`
-	Uint32  uint32  `redis:"uint32"`
-	Uint64  uint64  `redis:"uint64"`
-	Float   float32 `redis:"float"`
-	Float64 float64 `redis:"float64"`
-	Bool    bool    `redis:"bool"`
-	BoolRef *bool   `redis:"boolRef"`
+	String  string  `kv:"string"`
+	Bytes   []byte  `kv:"byte"`
+	Int     int     `kv:"int"`
+	Int8    int8    `kv:"int8"`
+	Int16   int16   `kv:"int16"`
+	Int32   int32   `kv:"int32"`
+	Int64   int64   `kv:"int64"`
+	Uint    uint    `kv:"uint"`
+	Uint8   uint8   `kv:"uint8"`
+	Uint16  uint16  `kv:"uint16"`
+	Uint32  uint32  `kv:"uint32"`
+	Uint64  uint64  `kv:"uint64"`
+	Float   float32 `kv:"float"`
+	Float64 float64 `kv:"float64"`
+	Bool    bool    `kv:"bool"`
+	BoolRef *bool   `kv:"boolRef"`
 }
 
 type TimeRFC3339Nano struct {
 	time.Time
 }
 
-func (t *TimeRFC3339Nano) ScanRedis(s string) (err error) {
+func (t *TimeRFC3339Nano) ScanKV(s string) (err error) {
 	t.Time, err = time.Parse(time.RFC3339Nano, s)
 	return
 }
 
 type TimeData struct {
-	Name string           `redis:"name"`
-	Time *TimeRFC3339Nano `redis:"login"`
+	Name string           `kv:"name"`
+	Time *TimeRFC3339Nano `kv:"login"`
 }
 
 type i []interface{}
@@ -142,12 +142,12 @@ var _ = Describe("Scan", func() {
 		// Scan a different type with the same values to test that
 		// the struct spec maps don't conflict.
 		type data2 struct {
-			String string  `redis:"string"`
-			Bytes  []byte  `redis:"byte"`
-			Int    int     `redis:"int"`
-			Uint   uint    `redis:"uint"`
-			Float  float32 `redis:"float"`
-			Bool   bool    `redis:"bool"`
+			String string  `kv:"string"`
+			Bytes  []byte  `kv:"byte"`
+			Int    int     `kv:"int"`
+			Uint   uint    `kv:"uint"`
+			Float  float32 `kv:"float"`
+			Bool   bool    `kv:"bool"`
 		}
 		var d2 data2
 		Expect(Scan(&d2, keys, vals)).NotTo(HaveOccurred())
@@ -208,7 +208,7 @@ var _ = Describe("Scan", func() {
 
 	It("should time.Time RFC3339Nano", func() {
 		type TimeTime struct {
-			Time time.Time `redis:"time"`
+			Time time.Time `kv:"time"`
 		}
 
 		now := time.Now()

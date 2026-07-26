@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -8,11 +8,11 @@ import (
 	"github.com/hanzokv/go/v9"
 )
 
-type redisHook struct{}
+type kvHook struct{}
 
-var _ redis.Hook = redisHook{}
+var _ kv.Hook = kvHook{}
 
-func (redisHook) DialHook(hook redis.DialHook) redis.DialHook {
+func (kvHook) DialHook(hook kv.DialHook) kv.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		fmt.Printf("dialing %s %s\n", network, addr)
 		conn, err := hook(ctx, network, addr)
@@ -21,8 +21,8 @@ func (redisHook) DialHook(hook redis.DialHook) redis.DialHook {
 	}
 }
 
-func (redisHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
-	return func(ctx context.Context, cmd redis.Cmder) error {
+func (kvHook) ProcessHook(hook kv.ProcessHook) kv.ProcessHook {
+	return func(ctx context.Context, cmd kv.Cmder) error {
 		fmt.Printf("starting processing: <%v>\n", cmd.Args())
 		err := hook(ctx, cmd)
 		fmt.Printf("finished processing: <%v>\n", cmd.Args())
@@ -30,8 +30,8 @@ func (redisHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 	}
 }
 
-func (redisHook) ProcessPipelineHook(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-	return func(ctx context.Context, cmds []redis.Cmder) error {
+func (kvHook) ProcessPipelineHook(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []kv.Cmder) error {
 		names := make([]string, 0, len(cmds))
 		for _, cmd := range cmds {
 			names = append(names, fmt.Sprintf("%v", cmd.Args()))
@@ -44,11 +44,11 @@ func (redisHook) ProcessPipelineHook(hook redis.ProcessPipelineHook) redis.Proce
 }
 
 func Example_instrumentation() {
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:            ":6379",
 		DisableIdentity: true,
 	})
-	rdb.AddHook(redisHook{})
+	rdb.AddHook(kvHook{})
 
 	rdb.Ping(ctx)
 	// Output:
@@ -63,13 +63,13 @@ func Example_instrumentation() {
 }
 
 func ExamplePipeline_instrumentation() {
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:            ":6379",
 		DisableIdentity: true,
 	})
-	rdb.AddHook(redisHook{})
+	rdb.AddHook(kvHook{})
 
-	rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	rdb.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 		pipe.Ping(ctx)
 		pipe.Ping(ctx)
 		return nil
@@ -86,13 +86,13 @@ func ExamplePipeline_instrumentation() {
 }
 
 func ExampleClient_Watch_instrumentation() {
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:            ":6379",
 		DisableIdentity: true,
 	})
-	rdb.AddHook(redisHook{})
+	rdb.AddHook(kvHook{})
 
-	rdb.Watch(ctx, func(tx *redis.Tx) error {
+	rdb.Watch(ctx, func(tx *kv.Tx) error {
 		tx.Ping(ctx)
 		tx.Ping(ctx)
 		return nil

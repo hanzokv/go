@@ -1,6 +1,6 @@
-# Release Notes Template for go-redis
+# Release Notes Template for go-kv
 
-This template provides a structured format for creating release notes for go-redis releases.
+This template provides a structured format for creating release notes for go-kv releases.
 
 ## Format Structure
 
@@ -20,22 +20,22 @@ Brief description of the major feature/change with context and impact.
 
 ## ✨ New Features
 
-- Feature description ([#XXXX](https://github.com/redis/go-redis/pull/XXXX)) by [@username](https://github.com/username)
+- Feature description ([#XXXX](https://github.com/kv/go-kv/pull/XXXX)) by [@username](https://github.com/username)
 - ...
 
 ## 🐛 Bug Fixes
 
-- Fix description ([#XXXX](https://github.com/redis/go-redis/pull/XXXX)) by [@username](https://github.com/username)
+- Fix description ([#XXXX](https://github.com/kv/go-kv/pull/XXXX)) by [@username](https://github.com/username)
 - ...
 
 ## ⚡ Performance
 
-- Performance improvement description ([#XXXX](https://github.com/redis/go-redis/pull/XXXX)) by [@username](https://github.com/username)
+- Performance improvement description ([#XXXX](https://github.com/kv/go-kv/pull/XXXX)) by [@username](https://github.com/username)
 - ...
 
 ## 🧪 Testing & Infrastructure
 
-- Testing/CI improvement ([#XXXX](https://github.com/redis/go-redis/pull/XXXX)) by [@username](https://github.com/username)
+- Testing/CI improvement ([#XXXX](https://github.com/kv/go-kv/pull/XXXX)) by [@username](https://github.com/username)
 - ...
 
 ## 👥 Contributors
@@ -46,7 +46,7 @@ We'd like to thank all the contributors who worked on this release!
 
 ---
 
-**Full Changelog**: https://github.com/redis/go-redis/compare/vX.Y-1.Z...vX.Y.Z
+**Full Changelog**: https://github.com/kv/go-kv/compare/vX.Y-1.Z...vX.Y.Z
 ```
 
 ## Guidelines
@@ -55,7 +55,7 @@ We'd like to thank all the contributors who worked on this release!
 The Highlights section should contain the **most important** user-facing changes. Common categories include:
 
 - **Typed Errors** - Error handling improvements
-- **New Commands** - New Redis commands support (especially for new Redis versions)
+- **New Commands** - New KV commands support (especially for new KV versions)
 - **Search & Vector** - RediSearch and vector-related features
 - **Connection Pool** - Pool improvements and performance
 - **Metrics & Observability** - Monitoring and instrumentation
@@ -86,7 +86,7 @@ Each highlight should:
 - Include only important testing/CI changes
 - **Exclude** dependency bumps (e.g., dependabot PRs for actions)
 - **Exclude** minor CI tweaks unless they're significant
-- Include major Redis version updates in CI
+- Include major KV version updates in CI
 
 ### What to Exclude
 - Dependency bumps (dependabot PRs)
@@ -96,9 +96,9 @@ Each highlight should:
 - `dependabot[bot]` from contributors list
 
 ### Formatting Rules
-1. **PR Links**: Use `([#XXXX](https://github.com/redis/go-redis/pull/XXXX))` format
+1. **PR Links**: Use `([#XXXX](https://github.com/kv/go-kv/pull/XXXX))` format
 2. **Contributor Links**: Use `[@username](https://github.com/username)` format
-3. **Issue Links**: Use `([#XXXX](https://github.com/redis/go-redis/issues/XXXX))` format
+3. **Issue Links**: Use `([#XXXX](https://github.com/kv/go-kv/issues/XXXX))` format
 4. **Full Changelog**: Always include at the bottom with correct version comparison
 
 ### Getting PR Information

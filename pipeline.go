@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -7,16 +7,16 @@ import (
 
 type pipelineExecer func(context.Context, []Cmder) error
 
-// Pipeliner is a mechanism to realise Redis Pipeline technique.
+// Pipeliner is a mechanism to realise KV Pipeline technique.
 //
 // Pipelining is a technique to extremely speed up processing by packing
-// operations to batches, send them at once to Redis and read a replies in a
+// operations to batches, send them at once to KV and read a replies in a
 // single step.
-// See https://redis.io/topics/pipelining
+// See https://kv.io/topics/pipelining
 //
 // Pay attention, that Pipeline is not a transaction, so you can get unexpected
 // results in case of big pipelines and small read/write timeouts.
-// Redis client has retransmission logic in case of timeouts, pipeline
+// KV client has retransmission logic in case of timeouts, pipeline
 // can be retransmitted and commands can be executed more then once.
 // To avoid this: it is good idea to use reasonable bigger read/write timeouts
 // depends of your batch size and/or use TxPipeline.
@@ -27,7 +27,7 @@ type Pipeliner interface {
 	Len() int
 
 	// Do is an API for executing any command.
-	// If a certain Redis command is not yet supported, you can use Do to execute it.
+	// If a certain KV command is not yet supported, you can use Do to execute it.
 	Do(ctx context.Context, args ...interface{}) *Cmd
 
 	// Process queues the cmd for later execution.
@@ -39,7 +39,7 @@ type Pipeliner interface {
 	// Discard discards all commands in the pipeline buffer that have not yet been executed.
 	Discard()
 
-	// Exec sends all the commands buffered in the pipeline to the redis server.
+	// Exec sends all the commands buffered in the pipeline to the kv server.
 	Exec(ctx context.Context) ([]Cmder, error)
 
 	// Cmds returns the list of queued commands.
@@ -49,7 +49,7 @@ type Pipeliner interface {
 var _ Pipeliner = (*Pipeline)(nil)
 
 // Pipeline implements pipelining as described in
-// http://redis.io/topics/pipelining.
+// http://kv.io/topics/pipelining.
 // Please note: it is not safe for concurrent use by multiple goroutines.
 type Pipeline struct {
 	cmdable
@@ -73,7 +73,7 @@ func (c *Pipeline) Len() int {
 func (c *Pipeline) Do(ctx context.Context, args ...interface{}) *Cmd {
 	cmd := NewCmd(ctx, args...)
 	if len(args) == 0 {
-		cmd.SetErr(errors.New("redis: please enter the command to be executed"))
+		cmd.SetErr(errors.New("kv: please enter the command to be executed"))
 		return cmd
 	}
 	_ = c.Process(ctx, cmd)

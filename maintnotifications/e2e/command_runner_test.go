@@ -21,7 +21,7 @@ type CommandRunnerStats struct {
 // CommandRunner provides utilities for running commands during tests
 type CommandRunner struct {
 	executing      atomic.Bool
-	client         redis.UniversalClient
+	client         kv.UniversalClient
 	stopCh         chan struct{}
 	operationCount atomic.Int64
 	errorCount     atomic.Int64
@@ -31,7 +31,7 @@ type CommandRunner struct {
 }
 
 // NewCommandRunner creates a new command runner
-func NewCommandRunner(client redis.UniversalClient) (*CommandRunner, func()) {
+func NewCommandRunner(client kv.UniversalClient) (*CommandRunner, func()) {
 	stopCh := make(chan struct{})
 	return &CommandRunner{
 			client: client,
@@ -94,7 +94,7 @@ func (cr *CommandRunner) FireCommandsUntilStop(ctx context.Context) {
 
 					cr.operationCount.Add(1)
 					if err != nil {
-						if err == redis.ErrClosed || strings.Contains(err.Error(), "client is closed") {
+						if err == kv.ErrClosed || strings.Contains(err.Error(), "client is closed") {
 							select {
 							case <-cr.stopCh:
 								return

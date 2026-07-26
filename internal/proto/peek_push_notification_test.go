@@ -394,7 +394,7 @@ func BenchmarkPeekPushNotificationName(b *testing.B) {
 // TestPeekPushNotificationNameSpecialCases tests special cases and realistic scenarios
 func TestPeekPushNotificationNameSpecialCases(t *testing.T) {
 	t.Run("RealisticNotifications", func(t *testing.T) {
-		// Test realistic Redis push notifications
+		// Test realistic KV push notifications
 		realisticCases := []struct {
 			name         string
 			notification []string

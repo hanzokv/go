@@ -5,10 +5,10 @@ import (
 	"strings"
 )
 
-// Typed Redis errors for better error handling with wrapping support.
+// Typed KV errors for better error handling with wrapping support.
 // These errors maintain backward compatibility by keeping the same error messages.
 
-// LoadingError is returned when Redis is loading the dataset in memory.
+// LoadingError is returned when KV is loading the dataset in memory.
 type LoadingError struct {
 	msg string
 }
@@ -17,7 +17,7 @@ func (e *LoadingError) Error() string {
 	return e.msg
 }
 
-func (e *LoadingError) RedisError() {}
+func (e *LoadingError) KVError() {}
 
 // NewLoadingError creates a new LoadingError with the given message.
 func NewLoadingError(msg string) *LoadingError {
@@ -33,7 +33,7 @@ func (e *ReadOnlyError) Error() string {
 	return e.msg
 }
 
-func (e *ReadOnlyError) RedisError() {}
+func (e *ReadOnlyError) KVError() {}
 
 // NewReadOnlyError creates a new ReadOnlyError with the given message.
 func NewReadOnlyError(msg string) *ReadOnlyError {
@@ -50,7 +50,7 @@ func (e *MovedError) Error() string {
 	return e.msg
 }
 
-func (e *MovedError) RedisError() {}
+func (e *MovedError) KVError() {}
 
 // Addr returns the address of the node where the key has been moved.
 func (e *MovedError) Addr() string {
@@ -72,7 +72,7 @@ func (e *AskError) Error() string {
 	return e.msg
 }
 
-func (e *AskError) RedisError() {}
+func (e *AskError) KVError() {}
 
 // Addr returns the address of the node to ask.
 func (e *AskError) Addr() string {
@@ -93,7 +93,7 @@ func (e *ClusterDownError) Error() string {
 	return e.msg
 }
 
-func (e *ClusterDownError) RedisError() {}
+func (e *ClusterDownError) KVError() {}
 
 // NewClusterDownError creates a new ClusterDownError with the given message.
 func NewClusterDownError(msg string) *ClusterDownError {
@@ -109,7 +109,7 @@ func (e *TryAgainError) Error() string {
 	return e.msg
 }
 
-func (e *TryAgainError) RedisError() {}
+func (e *TryAgainError) KVError() {}
 
 // NewTryAgainError creates a new TryAgainError with the given message.
 func NewTryAgainError(msg string) *TryAgainError {
@@ -125,7 +125,7 @@ func (e *MasterDownError) Error() string {
 	return e.msg
 }
 
-func (e *MasterDownError) RedisError() {}
+func (e *MasterDownError) KVError() {}
 
 // NewMasterDownError creates a new MasterDownError with the given message.
 func NewMasterDownError(msg string) *MasterDownError {
@@ -141,7 +141,7 @@ func (e *MaxClientsError) Error() string {
 	return e.msg
 }
 
-func (e *MaxClientsError) RedisError() {}
+func (e *MaxClientsError) KVError() {}
 
 // NewMaxClientsError creates a new MaxClientsError with the given message.
 func NewMaxClientsError(msg string) *MaxClientsError {
@@ -157,7 +157,7 @@ func (e *AuthError) Error() string {
 	return e.msg
 }
 
-func (e *AuthError) RedisError() {}
+func (e *AuthError) KVError() {}
 
 // NewAuthError creates a new AuthError with the given message.
 func NewAuthError(msg string) *AuthError {
@@ -173,7 +173,7 @@ func (e *PermissionError) Error() string {
 	return e.msg
 }
 
-func (e *PermissionError) RedisError() {}
+func (e *PermissionError) KVError() {}
 
 // NewPermissionError creates a new PermissionError with the given message.
 func NewPermissionError(msg string) *PermissionError {
@@ -189,14 +189,14 @@ func (e *ExecAbortError) Error() string {
 	return e.msg
 }
 
-func (e *ExecAbortError) RedisError() {}
+func (e *ExecAbortError) KVError() {}
 
 // NewExecAbortError creates a new ExecAbortError with the given message.
 func NewExecAbortError(msg string) *ExecAbortError {
 	return &ExecAbortError{msg: msg}
 }
 
-// OOMError is returned when Redis is out of memory.
+// OOMError is returned when KV is out of memory.
 type OOMError struct {
 	msg string
 }
@@ -205,7 +205,7 @@ func (e *OOMError) Error() string {
 	return e.msg
 }
 
-func (e *OOMError) RedisError() {}
+func (e *OOMError) KVError() {}
 
 // NewOOMError creates a new OOMError with the given message.
 func NewOOMError(msg string) *OOMError {
@@ -224,16 +224,16 @@ func (e *NoReplicasError) Error() string {
 	return e.msg
 }
 
-func (e *NoReplicasError) RedisError() {}
+func (e *NoReplicasError) KVError() {}
 
 // NewNoReplicasError creates a new NoReplicasError with the given message.
 func NewNoReplicasError(msg string) *NoReplicasError {
 	return &NoReplicasError{msg: msg}
 }
 
-// parseTypedRedisError parses a Redis error message and returns a typed error if applicable.
+// parseTypedKVError parses a KV error message and returns a typed error if applicable.
 // This function maintains backward compatibility by keeping the same error messages.
-func parseTypedRedisError(msg string) error {
+func parseTypedKVError(msg string) error {
 	// Check for specific error patterns and return typed errors
 	switch {
 	case strings.HasPrefix(msg, "LOADING "):
@@ -267,8 +267,8 @@ func parseTypedRedisError(msg string) error {
 	case strings.HasPrefix(msg, "OOM "):
 		return NewOOMError(msg)
 	default:
-		// Return generic RedisError for unknown error types
-		return RedisError(msg)
+		// Return generic KVError for unknown error types
+		return KVError(msg)
 	}
 }
 
@@ -291,9 +291,9 @@ func IsLoadingError(err error) bool {
 	if errors.As(err, &loadingErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with LOADING prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "LOADING ") {
+	// Check if wrapped error is a KVError with LOADING prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "LOADING ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -309,9 +309,9 @@ func IsReadOnlyError(err error) bool {
 	if errors.As(err, &readOnlyErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with READONLY prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "READONLY ") {
+	// Check if wrapped error is a KVError with READONLY prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "READONLY ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -371,9 +371,9 @@ func IsClusterDownError(err error) bool {
 	if errors.As(err, &clusterDownErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with CLUSTERDOWN prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "CLUSTERDOWN ") {
+	// Check if wrapped error is a KVError with CLUSTERDOWN prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "CLUSTERDOWN ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -389,9 +389,9 @@ func IsTryAgainError(err error) bool {
 	if errors.As(err, &tryAgainErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with TRYAGAIN prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "TRYAGAIN ") {
+	// Check if wrapped error is a KVError with TRYAGAIN prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "TRYAGAIN ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -407,9 +407,9 @@ func IsMasterDownError(err error) bool {
 	if errors.As(err, &masterDownErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with MASTERDOWN prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "MASTERDOWN ") {
+	// Check if wrapped error is a KVError with MASTERDOWN prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "MASTERDOWN ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -425,9 +425,9 @@ func IsMaxClientsError(err error) bool {
 	if errors.As(err, &maxClientsErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with max clients prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "ERR max number of clients reached") {
+	// Check if wrapped error is a KVError with max clients prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "ERR max number of clients reached") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -443,10 +443,10 @@ func IsAuthError(err error) bool {
 	if errors.As(err, &authErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with auth error prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) {
-		s := redisErr.Error()
+	// Check if wrapped error is a KVError with auth error prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) {
+		s := kvErr.Error()
 		return strings.HasPrefix(s, "NOAUTH ") || strings.HasPrefix(s, "WRONGPASS ") || strings.Contains(s, "unauthenticated")
 	}
 	// Fallback to string checking for backward compatibility
@@ -463,9 +463,9 @@ func IsPermissionError(err error) bool {
 	if errors.As(err, &permErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with NOPERM prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "NOPERM ") {
+	// Check if wrapped error is a KVError with NOPERM prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "NOPERM ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -481,9 +481,9 @@ func IsExecAbortError(err error) bool {
 	if errors.As(err, &execAbortErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with EXECABORT prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "EXECABORT ") {
+	// Check if wrapped error is a KVError with EXECABORT prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "EXECABORT ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -499,9 +499,9 @@ func IsOOMError(err error) bool {
 	if errors.As(err, &oomErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with OOM prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "OOM ") {
+	// Check if wrapped error is a KVError with OOM prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "OOM ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility
@@ -517,9 +517,9 @@ func IsNoReplicasError(err error) bool {
 	if errors.As(err, &noReplicasErr) {
 		return true
 	}
-	// Check if wrapped error is a RedisError with NOREPLICAS prefix
-	var redisErr RedisError
-	if errors.As(err, &redisErr) && strings.HasPrefix(redisErr.Error(), "NOREPLICAS ") {
+	// Check if wrapped error is a KVError with NOREPLICAS prefix
+	var kvErr KVError
+	if errors.As(err, &kvErr) && strings.HasPrefix(kvErr.Error(), "NOREPLICAS ") {
 		return true
 	}
 	// Fallback to string checking for backward compatibility

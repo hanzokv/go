@@ -16,7 +16,7 @@ import (
 type ActionType string
 
 const (
-	// Redis cluster actions
+	// KV cluster actions
 	ActionClusterFailover   ActionType = "cluster_failover"
 	ActionClusterReshard    ActionType = "cluster_reshard"
 	ActionClusterAddNode    ActionType = "cluster_add_node"
@@ -36,7 +36,7 @@ const (
 	ActionNetworkBandwidth  ActionType = "network_bandwidth"
 	ActionNetworkRestore    ActionType = "network_restore"
 
-	// Redis configuration actions
+	// KV configuration actions
 	ActionConfigChange    ActionType = "config_change"
 	ActionMaintenanceMode ActionType = "maintenance_mode"
 	ActionSlotMigration   ActionType = "slot_migration"
@@ -221,7 +221,7 @@ func (c *FaultInjectorClient) TriggerSlotMigration(ctx context.Context, startSlo
 
 // Node Management Actions
 
-// RestartNode restarts a specific Redis node
+// RestartNode restarts a specific KV node
 func (c *FaultInjectorClient) RestartNode(ctx context.Context, nodeID string, graceful bool) (*ActionResponse, error) {
 	return c.TriggerAction(ctx, ActionRequest{
 		Type: ActionNodeRestart,
@@ -232,7 +232,7 @@ func (c *FaultInjectorClient) RestartNode(ctx context.Context, nodeID string, gr
 	})
 }
 
-// StopNode stops a specific Redis node
+// StopNode stops a specific KV node
 func (c *FaultInjectorClient) StopNode(ctx context.Context, nodeID string, graceful bool) (*ActionResponse, error) {
 	return c.TriggerAction(ctx, ActionRequest{
 		Type: ActionNodeStop,
@@ -243,7 +243,7 @@ func (c *FaultInjectorClient) StopNode(ctx context.Context, nodeID string, grace
 	})
 }
 
-// StartNode starts a specific Redis node
+// StartNode starts a specific KV node
 func (c *FaultInjectorClient) StartNode(ctx context.Context, nodeID string) (*ActionResponse, error) {
 	return c.TriggerAction(ctx, ActionRequest{
 		Type: ActionNodeStart,
@@ -253,7 +253,7 @@ func (c *FaultInjectorClient) StartNode(ctx context.Context, nodeID string) (*Ac
 	})
 }
 
-// KillNode forcefully kills a Redis node
+// KillNode forcefully kills a KV node
 func (c *FaultInjectorClient) KillNode(ctx context.Context, nodeID string) (*ActionResponse, error) {
 	return c.TriggerAction(ctx, ActionRequest{
 		Type: ActionNodeKill,
@@ -322,7 +322,7 @@ func (c *FaultInjectorClient) RestoreNetwork(ctx context.Context, nodes []string
 
 // Configuration Actions
 
-// ChangeConfig changes Redis configuration
+// ChangeConfig changes KV configuration
 func (c *FaultInjectorClient) ChangeConfig(ctx context.Context, nodeID string, config map[string]string) (*ActionResponse, error) {
 	return c.TriggerAction(ctx, ActionRequest{
 		Type: ActionConfigChange,
@@ -375,7 +375,7 @@ type DatabaseConfig struct {
 	ShardKeyRegex                []ShardKeyRegexPattern `json:"shard_key_regex,omitempty"`
 }
 
-// DatabaseModule represents a Redis module configuration
+// DatabaseModule represents a KV module configuration
 type DatabaseModule struct {
 	ModuleArgs string `json:"module_args"`
 	ModuleName string `json:"module_name"`
@@ -623,19 +623,19 @@ func GetSlaveNodes() []string {
 
 // ParseNodeID extracts node ID from various formats
 func ParseNodeID(nodeAddr string) string {
-	// Extract node ID from address like "redis-node-1:7001" -> "node-1"
+	// Extract node ID from address like "kv-node-1:7001" -> "node-1"
 	parts := strings.Split(nodeAddr, ":")
 	if len(parts) > 0 {
 		addr := parts[0]
-		if strings.Contains(addr, "redis-") {
-			return strings.TrimPrefix(addr, "redis-")
+		if strings.Contains(addr, "kv-") {
+			return strings.TrimPrefix(addr, "kv-")
 		}
 		return addr
 	}
 	return nodeAddr
 }
 
-// FormatSlotRange formats a slot range for Redis commands
+// FormatSlotRange formats a slot range for KV commands
 func FormatSlotRange(start, end int) string {
 	if start == end {
 		return strconv.Itoa(start)

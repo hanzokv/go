@@ -13,7 +13,7 @@ import (
 func ExampleClient_setget() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -62,7 +62,7 @@ func ExampleClient_setget() {
 func ExampleClient_str() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -117,7 +117,7 @@ func ExampleClient_str() {
 func ExampleClient_num() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -173,7 +173,7 @@ func ExampleClient_num() {
 func ExampleClient_arr() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -244,7 +244,7 @@ func ExampleClient_arr() {
 func ExampleClient_arr2() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -300,7 +300,7 @@ func ExampleClient_arr2() {
 	rangeStop := 1
 
 	res21, err := rdb.JSONArrTrimWithArgs(ctx, "riders", "$",
-		&redis.JSONArrTrimArgs{Start: 1, Stop: &rangeStop},
+		&kv.JSONArrTrimArgs{Start: 1, Stop: &rangeStop},
 	).Result()
 
 	if err != nil {
@@ -349,7 +349,7 @@ func ExampleClient_arr2() {
 func ExampleClient_obj() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -472,7 +472,7 @@ var inventory_json = map[string]interface{}{
 func ExampleClient_setbikes() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -571,7 +571,7 @@ func ExampleClient_setbikes() {
 func ExampleClient_getbikes() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -589,7 +589,7 @@ func ExampleClient_getbikes() {
 
 	// STEP_START get_bikes
 	res2, err := rdb.JSONGetWithArgs(ctx, "bikes:inventory",
-		&redis.JSONGetArgs{Indent: "  ", Newline: "\n", Space: " "},
+		&kv.JSONGetArgs{Indent: "  ", Newline: "\n", Space: " "},
 		"$.inventory.*",
 	).Result()
 
@@ -682,7 +682,7 @@ func ExampleClient_getbikes() {
 func ExampleClient_getmtnbikes() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -742,7 +742,7 @@ func ExampleClient_getmtnbikes() {
 func ExampleClient_getmodels() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -775,7 +775,7 @@ func ExampleClient_getmodels() {
 func ExampleClient_get2mtnbikes() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -808,7 +808,7 @@ func ExampleClient_get2mtnbikes() {
 func ExampleClient_filter1() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -826,7 +826,7 @@ func ExampleClient_filter1() {
 
 	// STEP_START filter1
 	res8, err := rdb.JSONGetWithArgs(ctx, "bikes:inventory",
-		&redis.JSONGetArgs{Indent: "  ", Newline: "\n", Space: " "},
+		&kv.JSONGetArgs{Indent: "  ", Newline: "\n", Space: " "},
 		"$..mountain_bikes[?(@.price < 3000 && @.specs.weight < 10)]",
 	).Result()
 
@@ -868,7 +868,7 @@ func ExampleClient_filter1() {
 func ExampleClient_filter2() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -904,7 +904,7 @@ func ExampleClient_filter2() {
 func ExampleClient_filter3() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -940,7 +940,7 @@ func ExampleClient_filter3() {
 func ExampleClient_filter4() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -1015,7 +1015,7 @@ func ExampleClient_filter4() {
 func ExampleClient_updatebikes() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -1066,7 +1066,7 @@ func ExampleClient_updatebikes() {
 func ExampleClient_updatefilters1() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB
@@ -1112,7 +1112,7 @@ func ExampleClient_updatefilters1() {
 func ExampleClient_updatefilters2() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr:     "localhost:6379",
 		Password: "", // no password docs
 		DB:       0,  // use default DB

@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -22,23 +22,23 @@ import (
 type clusterScenario struct {
 	ports   []string
 	nodeIDs []string
-	clients map[string]*redis.Client
+	clients map[string]*kv.Client
 }
 
 func (s *clusterScenario) slots() []int {
 	return []int{0, 5461, 10923, 16384}
 }
 
-func (s *clusterScenario) masters() []*redis.Client {
-	result := make([]*redis.Client, 3)
+func (s *clusterScenario) masters() []*kv.Client {
+	result := make([]*kv.Client, 3)
 	for pos, port := range s.ports[:3] {
 		result[pos] = s.clients[port]
 	}
 	return result
 }
 
-func (s *clusterScenario) slaves() []*redis.Client {
-	result := make([]*redis.Client, 3)
+func (s *clusterScenario) slaves() []*kv.Client {
+	result := make([]*kv.Client, 3)
 	for pos, port := range s.ports[3:] {
 		result[pos] = s.clients[port]
 	}
@@ -53,14 +53,14 @@ func (s *clusterScenario) addrs() []string {
 	return addrs
 }
 
-func (s *clusterScenario) newClusterClientUnstable(opt *redis.ClusterOptions) *redis.ClusterClient {
+func (s *clusterScenario) newClusterClientUnstable(opt *kv.ClusterOptions) *kv.ClusterClient {
 	opt.Addrs = s.addrs()
-	return redis.NewClusterClient(opt)
+	return kv.NewClusterClient(opt)
 }
 
 func (s *clusterScenario) newClusterClient(
-	ctx context.Context, opt *redis.ClusterOptions,
-) *redis.ClusterClient {
+	ctx context.Context, opt *kv.ClusterOptions,
+) *kv.ClusterClient {
 	client := s.newClusterClientUnstable(opt)
 	client.SetCommandInfoResolver(client.NewDynamicResolver())
 	err := eventually(func() error {
@@ -160,10 +160,10 @@ func configureClusterTopology(ctx context.Context, scenario *clusterScenario) er
 	}
 
 	// Wait until all nodes have consistent info.
-	wanted := []redis.ClusterSlot{{
+	wanted := []kv.ClusterSlot{{
 		Start: 0,
 		End:   5460,
-		Nodes: []redis.ClusterNode{{
+		Nodes: []kv.ClusterNode{{
 			ID:   "",
 			Addr: "127.0.0.1:16600",
 		}, {
@@ -173,7 +173,7 @@ func configureClusterTopology(ctx context.Context, scenario *clusterScenario) er
 	}, {
 		Start: 5461,
 		End:   10922,
-		Nodes: []redis.ClusterNode{{
+		Nodes: []kv.ClusterNode{{
 			ID:   "",
 			Addr: "127.0.0.1:16601",
 		}, {
@@ -183,7 +183,7 @@ func configureClusterTopology(ctx context.Context, scenario *clusterScenario) er
 	}, {
 		Start: 10923,
 		End:   16383,
-		Nodes: []redis.ClusterNode{{
+		Nodes: []kv.ClusterNode{{
 			ID:   "",
 			Addr: "127.0.0.1:16602",
 		}, {
@@ -210,7 +210,7 @@ func configureClusterTopology(ctx context.Context, scenario *clusterScenario) er
 
 func collectNodeInformation(ctx context.Context, scenario *clusterScenario) error {
 	for pos, port := range scenario.ports {
-		client := redis.NewClient(&redis.Options{
+		client := kv.NewClient(&kv.Options{
 			Addr: ":" + port,
 		})
 
@@ -225,7 +225,7 @@ func collectNodeInformation(ctx context.Context, scenario *clusterScenario) erro
 	return nil
 }
 
-func assertSlotsEqual(slots, wanted []redis.ClusterSlot) error {
+func assertSlotsEqual(slots, wanted []kv.ClusterSlot) error {
 outerLoop:
 	for _, s2 := range wanted {
 		for _, s1 := range slots {
@@ -238,7 +238,7 @@ outerLoop:
 	return nil
 }
 
-func slotEqual(s1, s2 redis.ClusterSlot) bool {
+func slotEqual(s1, s2 kv.ClusterSlot) bool {
 	if s1.Start != s2.Start {
 		return false
 	}
@@ -260,8 +260,8 @@ func slotEqual(s1, s2 redis.ClusterSlot) bool {
 
 var _ = Describe("ClusterClient", func() {
 	var failover bool
-	var opt *redis.ClusterOptions
-	var client *redis.ClusterClient
+	var opt *kv.ClusterOptions
+	var client *kv.ClusterClient
 
 	assertClusterClient := func() {
 		It("do", func() {
@@ -272,7 +272,7 @@ var _ = Describe("ClusterClient", func() {
 
 		It("should GET/SET/DEL", func() {
 			err := client.Get(ctx, "A").Err()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 
 			err = client.Set(ctx, "A", "VALUE", 0).Err()
 			Expect(err).NotTo(HaveOccurred())
@@ -330,7 +330,7 @@ var _ = Describe("ClusterClient", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				defer GinkgoRecover()
 				Eventually(func() string {
 					return master.Info(ctx, "keyspace").Val()
@@ -346,8 +346,8 @@ var _ = Describe("ClusterClient", func() {
 		})
 
 		It("should distribute keys when using EVAL", func() {
-			script := redis.NewScript(`
-				local r = redis.call('SET', KEYS[1], ARGV[1])
+			script := kv.NewScript(`
+				local r = kv.call('SET', KEYS[1], ARGV[1])
 				return r
 			`)
 
@@ -358,7 +358,7 @@ var _ = Describe("ClusterClient", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				defer GinkgoRecover()
 				Eventually(func() string {
 					return master.Info(ctx, "keyspace").Val()
@@ -376,11 +376,11 @@ var _ = Describe("ClusterClient", func() {
 		It("should distribute scripts when using Script Load", func() {
 			client.ScriptFlush(ctx)
 
-			script := redis.NewScript(`return 'Unique script'`)
+			script := kv.NewScript(`return 'Unique script'`)
 
 			script.Load(ctx, client)
 
-			err := client.ForEachShard(ctx, func(ctx context.Context, shard *redis.Client) error {
+			err := client.ForEachShard(ctx, func(ctx context.Context, shard *kv.Client) error {
 				defer GinkgoRecover()
 
 				val, _ := script.Exists(ctx, shard).Result()
@@ -393,9 +393,9 @@ var _ = Describe("ClusterClient", func() {
 		It("should check all shards when using Script Exists", func() {
 			client.ScriptFlush(ctx)
 
-			script := redis.NewScript(`return 'First script'`)
+			script := kv.NewScript(`return 'First script'`)
 			lostScriptSrc := `return 'Lost script'`
-			lostScript := redis.NewScript(lostScriptSrc)
+			lostScript := kv.NewScript(lostScriptSrc)
 
 			script.Load(ctx, client)
 			client.Do(ctx, "script", "load", lostScriptSrc)
@@ -406,7 +406,7 @@ var _ = Describe("ClusterClient", func() {
 		})
 
 		It("should flush scripts from all shards when using ScriptFlush", func() {
-			script := redis.NewScript(`return 'Unnecessary script'`)
+			script := kv.NewScript(`return 'Unnecessary script'`)
 			script.Load(ctx, client)
 
 			val, _ := client.ScriptExists(ctx, script.Hash()).Result()
@@ -423,19 +423,19 @@ var _ = Describe("ClusterClient", func() {
 
 			// Transactionally increments key using GET and SET commands.
 			incr = func(key string) error {
-				err := client.Watch(ctx, func(tx *redis.Tx) error {
+				err := client.Watch(ctx, func(tx *kv.Tx) error {
 					n, err := tx.Get(ctx, key).Int64()
-					if err != nil && err != redis.Nil {
+					if err != nil && err != kv.Nil {
 						return err
 					}
 
-					_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+					_, err = tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 						pipe.Set(ctx, key, strconv.FormatInt(n+1, 10), 0)
 						return nil
 					})
 					return err
 				}, key)
-				if err == redis.TxFailedErr {
+				if err == kv.TxFailedErr {
 					return incr(key)
 				}
 				return err
@@ -460,7 +460,7 @@ var _ = Describe("ClusterClient", func() {
 		})
 
 		Describe("pipelining", func() {
-			var pipe *redis.Pipeline
+			var pipe *kv.Pipeline
 
 			assertPipeline := func(keys []string) {
 
@@ -505,10 +505,10 @@ var _ = Describe("ClusterClient", func() {
 					Expect(cmds).To(HaveLen(14))
 
 					for i, key := range keys {
-						get := cmds[i*2].(*redis.StringCmd)
+						get := cmds[i*2].(*kv.StringCmd)
 						Expect(get.Val()).To(Equal(key + "_value"))
 
-						ttl := cmds[(i*2)+1].(*redis.DurationCmd)
+						ttl := cmds[(i*2)+1].(*kv.DurationCmd)
 						dur := time.Duration(i+1) * time.Hour
 						Expect(ttl.Val()).To(BeNumerically("~", dur, 30*time.Second))
 					}
@@ -524,13 +524,13 @@ var _ = Describe("ClusterClient", func() {
 					b := pipe.Get(ctx, "B{s}")
 					c := pipe.Get(ctx, "C{s}")
 					cmds, err := pipe.Exec(ctx)
-					Expect(err).To(Equal(redis.Nil))
+					Expect(err).To(Equal(kv.Nil))
 					Expect(cmds).To(HaveLen(3))
 
 					Expect(a.Err()).NotTo(HaveOccurred())
 					Expect(a.Val()).To(Equal("A_value"))
 
-					Expect(b.Err()).To(Equal(redis.Nil))
+					Expect(b.Err()).To(Equal(kv.Nil))
 					Expect(b.Val()).To(Equal(""))
 
 					Expect(c.Err()).NotTo(HaveOccurred())
@@ -540,7 +540,7 @@ var _ = Describe("ClusterClient", func() {
 
 			Describe("with Pipeline", func() {
 				BeforeEach(func() {
-					pipe = client.Pipeline().(*redis.Pipeline)
+					pipe = client.Pipeline().(*kv.Pipeline)
 				})
 
 				AfterEach(func() {})
@@ -584,7 +584,7 @@ var _ = Describe("ClusterClient", func() {
 
 			Describe("with TxPipeline", func() {
 				BeforeEach(func() {
-					pipe = client.TxPipeline().(*redis.Pipeline)
+					pipe = client.TxPipeline().(*kv.Pipeline)
 				})
 
 				AfterEach(func() {})
@@ -600,7 +600,7 @@ var _ = Describe("ClusterClient", func() {
 					pipe.Set(ctx, "B{t}", "B_value", 0)
 					Expect(hashtag.Slot("A{s}")).NotTo(Equal(hashtag.Slot("B{t}")))
 					_, err := pipe.Exec(ctx)
-					Expect(err).To(MatchError(redis.ErrCrossSlot))
+					Expect(err).To(MatchError(kv.ErrCrossSlot))
 				})
 
 				It("works normally with keyless commands and no CrossSlot error", func() {
@@ -635,9 +635,9 @@ var _ = Describe("ClusterClient", func() {
 					return err
 				}
 
-				_, ok := msg.(*redis.Message)
+				_, ok := msg.(*kv.Message)
 				if !ok {
-					return fmt.Errorf("got %T, wanted *redis.Message", msg)
+					return fmt.Errorf("got %T, wanted *kv.Message", msg)
 				}
 
 				return nil
@@ -659,9 +659,9 @@ var _ = Describe("ClusterClient", func() {
 					return err
 				}
 
-				_, ok := msg.(*redis.Message)
+				_, ok := msg.(*kv.Message)
 				if !ok {
-					return fmt.Errorf("got %T, wanted *redis.Message", msg)
+					return fmt.Errorf("got %T, wanted *kv.Message", msg)
 				}
 
 				return nil
@@ -679,25 +679,25 @@ var _ = Describe("ClusterClient", func() {
 
 	Describe("ClusterClient PROTO 2", func() {
 		BeforeEach(func() {
-			opt = redisClusterOptions()
+			opt = kvClusterOptions()
 			opt.Protocol = 2
 			client = cluster.newClusterClient(ctx, opt)
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			_ = client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			_ = client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(client.Close()).NotTo(HaveOccurred())
 		})
 
 		It("should CLUSTER PROTO 2", func() {
-			_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+			_ = client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 				val, err := c.Do(ctx, "HELLO").Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(val).Should(ContainElements("proto", int64(2)))
@@ -708,18 +708,18 @@ var _ = Describe("ClusterClient", func() {
 
 	Describe("ClusterClient", func() {
 		BeforeEach(func() {
-			opt = redisClusterOptions()
+			opt = kvClusterOptions()
 			opt.ClientName = "cluster_hi"
 			client = cluster.newClusterClient(ctx, opt)
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		AfterEach(func() {
-			_ = client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			_ = client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(client.Close()).NotTo(HaveOccurred())
@@ -727,11 +727,11 @@ var _ = Describe("ClusterClient", func() {
 
 		It("should return pool stats", func() {
 			stats := client.PoolStats()
-			Expect(stats).To(BeAssignableToTypeOf(&redis.PoolStats{}))
+			Expect(stats).To(BeAssignableToTypeOf(&kv.PoolStats{}))
 		})
 
 		It("should return an error when there are no attempts left", func() {
-			opt := redisClusterOptions()
+			opt := kvClusterOptions()
 			opt.MaxRedirects = -1
 			client := cluster.newClusterClient(ctx, opt)
 
@@ -747,15 +747,15 @@ var _ = Describe("ClusterClient", func() {
 		})
 
 		It("should determine hash slots correctly for generic commands", func() {
-			opt := redisClusterOptions()
+			opt := kvClusterOptions()
 			opt.MaxRedirects = -1
 			client := cluster.newClusterClient(ctx, opt)
 
 			err := client.Do(ctx, "GET", "A").Err()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 
 			err = client.Do(ctx, []byte("GET"), []byte("A")).Err()
-			Expect(err).To(Equal(redis.Nil))
+			Expect(err).To(Equal(kv.Nil))
 
 			Eventually(func() error {
 				return client.SwapNodes(ctx, "A")
@@ -774,7 +774,7 @@ var _ = Describe("ClusterClient", func() {
 
 		It("should follow node redirection immediately", func() {
 			// Configure retry backoffs far in excess of the expected duration of redirection
-			opt := redisClusterOptions()
+			opt := kvClusterOptions()
 			opt.MinRetryBackoff = 10 * time.Minute
 			opt.MaxRetryBackoff = 20 * time.Minute
 			client := cluster.newClusterClient(ctx, opt)
@@ -803,7 +803,7 @@ var _ = Describe("ClusterClient", func() {
 				Expect(client.Set(ctx, strconv.Itoa(i), "", 0).Err()).NotTo(HaveOccurred())
 			}
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -818,10 +818,10 @@ var _ = Describe("ClusterClient", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).To(HaveLen(3))
 
-			wanted := []redis.ClusterSlot{{
+			wanted := []kv.ClusterSlot{{
 				Start: 0,
 				End:   5460,
-				Nodes: []redis.ClusterNode{{
+				Nodes: []kv.ClusterNode{{
 					ID:   "",
 					Addr: "127.0.0.1:16600",
 				}, {
@@ -831,7 +831,7 @@ var _ = Describe("ClusterClient", func() {
 			}, {
 				Start: 5461,
 				End:   10922,
-				Nodes: []redis.ClusterNode{{
+				Nodes: []kv.ClusterNode{{
 					ID:   "",
 					Addr: "127.0.0.1:16601",
 				}, {
@@ -841,7 +841,7 @@ var _ = Describe("ClusterClient", func() {
 			}, {
 				Start: 10923,
 				End:   16383,
-				Nodes: []redis.ClusterNode{{
+				Nodes: []kv.ClusterNode{{
 					ID:   "",
 					Addr: "127.0.0.1:16602",
 				}, {
@@ -908,12 +908,12 @@ var _ = Describe("ClusterClient", func() {
 		})
 
 		It("should cluster client setname", func() {
-			err := client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+			err := client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 				return c.Ping(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+			_ = client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 				val, err := c.ClientList(ctx).Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(val).Should(ContainSubstring("name=cluster_hi"))
@@ -922,7 +922,7 @@ var _ = Describe("ClusterClient", func() {
 		})
 
 		It("should CLUSTER PROTO 3", func() {
-			_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+			_ = client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 				val, err := c.Do(ctx, "HELLO").Result()
 				Expect(err).NotTo(HaveOccurred())
 				Expect(val).Should(HaveKeyWithValue("proto", int64(3)))
@@ -1018,7 +1018,7 @@ var _ = Describe("ClusterClient", func() {
 			err := client.Ping(ctx).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			err = client.ForEachShard(ctx, func(ctx context.Context, node *kv.Client) error {
 				return node.Ping(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -1027,8 +1027,8 @@ var _ = Describe("ClusterClient", func() {
 			var stack []string
 
 			clusterHook := &hook{
-				processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-					return func(ctx context.Context, cmd redis.Cmder) error {
+				processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+					return func(ctx context.Context, cmd kv.Cmder) error {
 						select {
 						case <-testCtx.Done():
 							return hook(ctx, cmd)
@@ -1054,8 +1054,8 @@ var _ = Describe("ClusterClient", func() {
 			client.AddHook(clusterHook)
 
 			nodeHook := &hook{
-				processHook: func(hook redis.ProcessHook) redis.ProcessHook {
-					return func(ctx context.Context, cmd redis.Cmder) error {
+				processHook: func(hook kv.ProcessHook) kv.ProcessHook {
+					return func(ctx context.Context, cmd kv.Cmder) error {
 						select {
 						case <-testCtx.Done():
 							return hook(ctx, cmd)
@@ -1079,7 +1079,7 @@ var _ = Describe("ClusterClient", func() {
 				},
 			}
 
-			_ = client.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			_ = client.ForEachShard(ctx, func(ctx context.Context, node *kv.Client) error {
 				node.AddHook(nodeHook)
 				return nil
 			})
@@ -1104,7 +1104,7 @@ var _ = Describe("ClusterClient", func() {
 			err := client.Ping(ctx).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			err = client.ForEachShard(ctx, func(ctx context.Context, node *kv.Client) error {
 				return node.Ping(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -1113,8 +1113,8 @@ var _ = Describe("ClusterClient", func() {
 			var stack []string
 
 			client.AddHook(&hook{
-				processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-					return func(ctx context.Context, cmds []redis.Cmder) error {
+				processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+					return func(ctx context.Context, cmds []kv.Cmder) error {
 						Expect(cmds).To(HaveLen(1))
 						cmdStr := cmds[0].String()
 
@@ -1142,10 +1142,10 @@ var _ = Describe("ClusterClient", func() {
 				},
 			})
 
-			_ = client.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			_ = client.ForEachShard(ctx, func(ctx context.Context, node *kv.Client) error {
 				node.AddHook(&hook{
-					processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-						return func(ctx context.Context, cmds []redis.Cmder) error {
+					processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+						return func(ctx context.Context, cmds []kv.Cmder) error {
 							Expect(cmds).To(HaveLen(1))
 							cmdStr := cmds[0].String()
 
@@ -1174,7 +1174,7 @@ var _ = Describe("ClusterClient", func() {
 				return nil
 			})
 
-			_, err = client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err = client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Set(ctx, "pipeline_test_key", "pipeline_test_value", 0)
 				return nil
 			})
@@ -1195,19 +1195,19 @@ var _ = Describe("ClusterClient", func() {
 
 		It("should reject ping command in pipeline", func() {
 			// Test that ping command fails in pipeline as expected
-			_, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("redis: cannot pipeline command \"ping\" with request policy ReqAllNodes/ReqAllShards/ReqMultiShard"))
+			Expect(err.Error()).To(ContainSubstring("kv: cannot pipeline command \"ping\" with request policy ReqAllNodes/ReqAllShards/ReqMultiShard"))
 		})
 
 		It("should support TxPipeline hook", func() {
 			err := client.Ping(ctx).Err()
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			err = client.ForEachShard(ctx, func(ctx context.Context, node *kv.Client) error {
 				return node.Ping(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -1216,8 +1216,8 @@ var _ = Describe("ClusterClient", func() {
 			var stack []string
 
 			client.AddHook(&hook{
-				processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-					return func(ctx context.Context, cmds []redis.Cmder) error {
+				processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+					return func(ctx context.Context, cmds []kv.Cmder) error {
 						Expect(cmds).To(HaveLen(3))
 						Expect(cmds[1].String()).To(Equal("ping: "))
 						mu.Lock()
@@ -1237,10 +1237,10 @@ var _ = Describe("ClusterClient", func() {
 				},
 			})
 
-			_ = client.ForEachShard(ctx, func(ctx context.Context, node *redis.Client) error {
+			_ = client.ForEachShard(ctx, func(ctx context.Context, node *kv.Client) error {
 				node.AddHook(&hook{
-					processPipelineHook: func(hook redis.ProcessPipelineHook) redis.ProcessPipelineHook {
-						return func(ctx context.Context, cmds []redis.Cmder) error {
+					processPipelineHook: func(hook kv.ProcessPipelineHook) kv.ProcessPipelineHook {
+						return func(ctx context.Context, cmds []kv.Cmder) error {
 							Expect(cmds).To(HaveLen(3))
 							Expect(cmds[1].String()).To(Equal("ping: "))
 							mu.Lock()
@@ -1262,7 +1262,7 @@ var _ = Describe("ClusterClient", func() {
 				return nil
 			})
 
-			_, err = client.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err = client.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
@@ -1300,16 +1300,16 @@ var _ = Describe("ClusterClient", func() {
 
 	Describe("ClusterClient with RouteByLatency", func() {
 		BeforeEach(func() {
-			opt = redisClusterOptions()
+			opt = kvClusterOptions()
 			opt.RouteByLatency = true
 			client = cluster.newClusterClient(ctx, opt)
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *redis.Client) error {
+			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *kv.Client) error {
 				Eventually(func() int64 {
 					return client.DBSize(ctx).Val()
 				}, 30*time.Second).Should(Equal(int64(0)))
@@ -1319,7 +1319,7 @@ var _ = Describe("ClusterClient", func() {
 		})
 
 		AfterEach(func() {
-			err := client.ForEachSlave(ctx, func(ctx context.Context, slave *redis.Client) error {
+			err := client.ForEachSlave(ctx, func(ctx context.Context, slave *kv.Client) error {
 				return slave.ReadWrite(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -1335,36 +1335,36 @@ var _ = Describe("ClusterClient", func() {
 		BeforeEach(func() {
 			failover = true
 
-			opt = redisClusterOptions()
-			opt.ClusterSlots = func(ctx context.Context) ([]redis.ClusterSlot, error) {
-				slots := []redis.ClusterSlot{{
+			opt = kvClusterOptions()
+			opt.ClusterSlots = func(ctx context.Context) ([]kv.ClusterSlot, error) {
+				slots := []kv.ClusterSlot{{
 					Start: 0,
 					End:   5460,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":" + ringShard1Port,
 					}},
 				}, {
 					Start: 5461,
 					End:   10922,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":" + ringShard2Port,
 					}},
 				}, {
 					Start: 10923,
 					End:   16383,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":" + ringShard3Port,
 					}},
 				}}
 				return slots, nil
 			}
 			client = cluster.newClusterClient(ctx, opt)
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *redis.Client) error {
+			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *kv.Client) error {
 				Eventually(func() int64 {
 					return client.DBSize(ctx).Val()
 				}, 30*time.Second).Should(Equal(int64(0)))
@@ -1387,25 +1387,25 @@ var _ = Describe("ClusterClient", func() {
 		BeforeEach(func() {
 			failover = true
 
-			opt = redisClusterOptions()
+			opt = kvClusterOptions()
 			opt.RouteRandomly = true
-			opt.ClusterSlots = func(ctx context.Context) ([]redis.ClusterSlot, error) {
-				slots := []redis.ClusterSlot{{
+			opt.ClusterSlots = func(ctx context.Context) ([]kv.ClusterSlot, error) {
+				slots := []kv.ClusterSlot{{
 					Start: 0,
 					End:   5460,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":" + ringShard1Port,
 					}},
 				}, {
 					Start: 5461,
 					End:   10922,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":" + ringShard2Port,
 					}},
 				}, {
 					Start: 10923,
 					End:   16383,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":" + ringShard3Port,
 					}},
 				}}
@@ -1413,12 +1413,12 @@ var _ = Describe("ClusterClient", func() {
 			}
 			client = cluster.newClusterClient(ctx, opt)
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *redis.Client) error {
+			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *kv.Client) error {
 				Eventually(func() int64 {
 					return client.DBSize(ctx).Val()
 				}, 30*time.Second).Should(Equal(int64(0)))
@@ -1441,13 +1441,13 @@ var _ = Describe("ClusterClient", func() {
 		BeforeEach(func() {
 			failover = true
 
-			opt = redisClusterOptions()
+			opt = kvClusterOptions()
 			opt.ReadOnly = true
-			opt.ClusterSlots = func(ctx context.Context) ([]redis.ClusterSlot, error) {
-				slots := []redis.ClusterSlot{{
+			opt.ClusterSlots = func(ctx context.Context) ([]kv.ClusterSlot, error) {
+				slots := []kv.ClusterSlot{{
 					Start: 0,
 					End:   5460,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":16600",
 					}, {
 						Addr: ":16603",
@@ -1455,7 +1455,7 @@ var _ = Describe("ClusterClient", func() {
 				}, {
 					Start: 5461,
 					End:   10922,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":16601",
 					}, {
 						Addr: ":16604",
@@ -1463,7 +1463,7 @@ var _ = Describe("ClusterClient", func() {
 				}, {
 					Start: 10923,
 					End:   16383,
-					Nodes: []redis.ClusterNode{{
+					Nodes: []kv.ClusterNode{{
 						Addr: ":16602",
 					}, {
 						Addr: ":16605",
@@ -1473,12 +1473,12 @@ var _ = Describe("ClusterClient", func() {
 			}
 			client = cluster.newClusterClient(ctx, opt)
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.FlushDB(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *redis.Client) error {
+			err = client.ForEachSlave(ctx, func(ctx context.Context, slave *kv.Client) error {
 				Eventually(func() int64 {
 					return client.DBSize(ctx).Val()
 				}, 30*time.Second).Should(Equal(int64(0)))
@@ -1499,10 +1499,10 @@ var _ = Describe("ClusterClient", func() {
 })
 
 var _ = Describe("ClusterClient without nodes", func() {
-	var client *redis.ClusterClient
+	var client *kv.ClusterClient
 
 	BeforeEach(func() {
-		client = redis.NewClusterClient(&redis.ClusterOptions{})
+		client = kv.NewClusterClient(&kv.ClusterOptions{})
 	})
 
 	AfterEach(func() {
@@ -1511,24 +1511,24 @@ var _ = Describe("ClusterClient without nodes", func() {
 
 	It("should return an error for Ping", func() {
 		err := client.Ping(ctx).Err()
-		Expect(err).To(MatchError("redis: cluster has no nodes"))
+		Expect(err).To(MatchError("kv: cluster has no nodes"))
 	})
 
 	It("should return an error for pipeline", func() {
-		_, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		_, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 			pipe.Ping(ctx)
 			return nil
 		})
-		Expect(err).To(MatchError("redis: cluster has no nodes"))
+		Expect(err).To(MatchError("kv: cluster has no nodes"))
 	})
 })
 
 var _ = Describe("ClusterClient without valid nodes", func() {
-	var client *redis.ClusterClient
+	var client *kv.ClusterClient
 
 	BeforeEach(func() {
-		client = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs: []string{redisAddr},
+		client = kv.NewClusterClient(&kv.ClusterOptions{
+			Addrs: []string{kvAddr},
 		})
 	})
 
@@ -1542,7 +1542,7 @@ var _ = Describe("ClusterClient without valid nodes", func() {
 	})
 
 	It("should return an error for pipeline when cluster support is disabled", func() {
-		_, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+		_, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 			pipe.Ping(ctx)
 			return nil
 		})
@@ -1551,10 +1551,10 @@ var _ = Describe("ClusterClient without valid nodes", func() {
 })
 
 var _ = Describe("ClusterClient with unavailable Cluster", func() {
-	var client *redis.ClusterClient
+	var client *kv.ClusterClient
 
 	BeforeEach(func() {
-		opt := redisClusterOptions()
+		opt := kvClusterOptions()
 		opt.ReadTimeout = 250 * time.Millisecond
 		opt.WriteTimeout = 250 * time.Millisecond
 		opt.MaxRedirects = 1
@@ -1582,7 +1582,7 @@ var _ = Describe("ClusterClient with unavailable Cluster", func() {
 })
 
 var _ = Describe("ClusterClient timeout", func() {
-	var client *redis.ClusterClient
+	var client *kv.ClusterClient
 
 	AfterEach(func() {
 		_ = client.Close()
@@ -1596,7 +1596,7 @@ var _ = Describe("ClusterClient timeout", func() {
 		})
 
 		It("should timeout Pipeline", func() {
-			_, err := client.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+			_, err := client.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Ping(ctx)
 				return nil
 			})
@@ -1605,7 +1605,7 @@ var _ = Describe("ClusterClient timeout", func() {
 		})
 
 		It("should timeout Tx", func() {
-			err := client.Watch(ctx, func(tx *redis.Tx) error {
+			err := client.Watch(ctx, func(tx *kv.Tx) error {
 				return tx.Ping(ctx).Err()
 			}, "foo")
 			Expect(err).To(HaveOccurred())
@@ -1613,8 +1613,8 @@ var _ = Describe("ClusterClient timeout", func() {
 		})
 
 		It("should timeout Tx Pipeline", func() {
-			err := client.Watch(ctx, func(tx *redis.Tx) error {
-				_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			err := client.Watch(ctx, func(tx *kv.Tx) error {
+				_, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					pipe.Ping(ctx)
 					return nil
 				})
@@ -1629,10 +1629,10 @@ var _ = Describe("ClusterClient timeout", func() {
 
 	Context("read/write timeout", func() {
 		BeforeEach(func() {
-			opt := redisClusterOptions()
+			opt := kvClusterOptions()
 			client = cluster.newClusterClient(ctx, opt)
 
-			err := client.ForEachShard(ctx, func(ctx context.Context, client *redis.Client) error {
+			err := client.ForEachShard(ctx, func(ctx context.Context, client *kv.Client) error {
 				err := client.ClientPause(ctx, pause).Err()
 
 				opt := client.Options()
@@ -1650,7 +1650,7 @@ var _ = Describe("ClusterClient timeout", func() {
 		})
 
 		AfterEach(func() {
-			_ = client.ForEachShard(ctx, func(ctx context.Context, client *redis.Client) error {
+			_ = client.ForEachShard(ctx, func(ctx context.Context, client *kv.Client) error {
 				defer GinkgoRecover()
 
 				opt := client.Options()
@@ -1672,10 +1672,10 @@ var _ = Describe("ClusterClient timeout", func() {
 })
 
 var _ = Describe("Command Tips tests", func() {
-	var client *redis.ClusterClient
+	var client *kv.ClusterClient
 
 	BeforeEach(func() {
-		opt := redisClusterOptions()
+		opt := kvClusterOptions()
 		client = cluster.newClusterClient(ctx, opt)
 	})
 
@@ -1684,7 +1684,7 @@ var _ = Describe("Command Tips tests", func() {
 	})
 
 	It("should verify COMMAND tips match router policy types", func() {
-		SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+		SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 		expectedPolicies := map[string]struct {
 			RequestPolicy  string
 			ResponsePolicy string
@@ -1719,7 +1719,7 @@ var _ = Describe("Command Tips tests", func() {
 
 	Describe("Explicit Routing Policy Tests", func() {
 		It("should test explicit routing policy for TOUCH", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			// Verify TOUCH command has multi_shard policy
 			cmds, err := client.Command(ctx).Result()
@@ -1743,7 +1743,7 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should test explicit routing policy for FLUSHALL", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			// Verify FLUSHALL command has all_shards policy
 			cmds, err := client.Command(ctx).Result()
@@ -1771,7 +1771,7 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should test explicit routing policy for PING", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			// Verify PING command has all_shards policy
 			cmds, err := client.Command(ctx).Result()
@@ -1788,7 +1788,7 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should test explicit routing policy for DBSIZE", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			// Verify DBSIZE command has all_shards policy with agg_sum response
 			cmds, err := client.Command(ctx).Result()
@@ -1820,7 +1820,7 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should test DDL commands routing policy for FT.CREATE", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			// Verify FT.CREATE command routing policy
 			cmds, err := client.Command(ctx).Result()
@@ -1841,13 +1841,13 @@ var _ = Describe("Command Tips tests", func() {
 			client.FTDropIndex(ctx, indexName)
 
 			result := client.FTCreate(ctx, indexName,
-				&redis.FTCreateOptions{
+				&kv.FTCreateOptions{
 					OnHash: true,
 					Prefix: []interface{}{"doc:"},
 				},
-				&redis.FieldSchema{
+				&kv.FieldSchema{
 					FieldName: "title",
-					FieldType: redis.SearchFieldTypeText,
+					FieldType: kv.SearchFieldTypeText,
 				})
 			Expect(result.Err()).NotTo(HaveOccurred())
 			Expect(result.Val()).To(Equal("OK"))
@@ -1859,7 +1859,7 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should test DDL commands routing policy for FT.ALTER", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			// Verify FT.ALTER command routing policy
 			cmds, err := client.Command(ctx).Result()
@@ -1879,34 +1879,34 @@ var _ = Describe("Command Tips tests", func() {
 			client.FTDropIndex(ctx, indexName)
 
 			result := client.FTCreate(ctx, indexName,
-				&redis.FTCreateOptions{
+				&kv.FTCreateOptions{
 					OnHash: true,
 					Prefix: []interface{}{"doc:"},
 				},
-				&redis.FieldSchema{
+				&kv.FieldSchema{
 					FieldName: "title",
-					FieldType: redis.SearchFieldTypeText,
+					FieldType: kv.SearchFieldTypeText,
 				})
 			Expect(result.Err()).NotTo(HaveOccurred())
 
 			alterResult := client.FTAlter(ctx, indexName, false,
-				[]interface{}{"description", redis.SearchFieldTypeText.String()})
+				[]interface{}{"description", kv.SearchFieldTypeText.String()})
 			Expect(alterResult.Err()).NotTo(HaveOccurred())
 			Expect(alterResult.Val()).To(Equal("OK"))
 			client.FTDropIndex(ctx, indexName)
 		})
 
 		It("should route keyed commands to correct shard based on hash slot", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			type masterNode struct {
-				client *redis.Client
+				client *kv.Client
 				addr   string
 			}
 			var masterNodes []masterNode
 			var mu sync.Mutex
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				addr := master.Options().Addr
 				mu.Lock()
 				masterNodes = append(masterNodes, masterNode{
@@ -1973,16 +1973,16 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should aggregate responses according to explicit aggregation policies", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			type masterNode struct {
-				client *redis.Client
+				client *kv.Client
 				addr   string
 			}
 			var masterNodes []masterNode
 			var mu sync.Mutex
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				addr := master.Options().Addr
 				mu.Lock()
 				masterNodes = append(masterNodes, masterNode{
@@ -2134,7 +2134,7 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should verify command aggregation policies", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			cmds, err := client.Command(ctx).Result()
 			Expect(err).NotTo(HaveOccurred())
@@ -2164,16 +2164,16 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should properly aggregate responses from keyless commands executed on multiple shards", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			type masterNode struct {
-				client *redis.Client
+				client *kv.Client
 				addr   string
 			}
 			var masterNodes []masterNode
 			var mu sync.Mutex
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				addr := master.Options().Addr
 				mu.Lock()
 				masterNodes = append(masterNodes, masterNode{
@@ -2240,15 +2240,15 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should properly aggregate responses from keyed commands executed on multiple shards", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 			type masterNode struct {
-				client *redis.Client
+				client *kv.Client
 				addr   string
 			}
 			var masterNodes []masterNode
 			var mu sync.Mutex
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				addr := master.Options().Addr
 				mu.Lock()
 				masterNodes = append(masterNodes, masterNode{
@@ -2336,16 +2336,16 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should propagate coordinator errors to client without modification", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			type masterNode struct {
-				client *redis.Client
+				client *kv.Client
 				addr   string
 			}
 			var masterNodes []masterNode
 			var mu sync.Mutex
 
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				addr := master.Options().Addr
 				mu.Lock()
 				masterNodes = append(masterNodes, masterNode{
@@ -2362,9 +2362,9 @@ var _ = Describe("Command Tips tests", func() {
 			coordinatorErr := invalidSlotResult.Err()
 
 			if coordinatorErr != nil {
-				// Verify the error is a Redis error
-				var redisErr redis.Error
-				Expect(errors.As(coordinatorErr, &redisErr)).To(BeTrue())
+				// Verify the error is a KV error
+				var kvErr kv.Error
+				Expect(errors.As(coordinatorErr, &kvErr)).To(BeTrue())
 
 				// Verify error message is preserved exactly as returned by coordinator
 				errorMsg := coordinatorErr.Error()
@@ -2390,8 +2390,8 @@ var _ = Describe("Command Tips tests", func() {
 			forgetErr := forgetResult.Err()
 
 			if forgetErr != nil {
-				var redisErr redis.Error
-				Expect(errors.As(forgetErr, &redisErr)).To(BeTrue())
+				var kvErr kv.Error
+				Expect(errors.As(forgetErr, &kvErr)).To(BeTrue())
 
 				errorMsg := forgetErr.Error()
 				Expect(errorMsg).To(SatisfyAny(
@@ -2414,8 +2414,8 @@ var _ = Describe("Command Tips tests", func() {
 			keySlotErr := keySlotResult.Err()
 
 			if keySlotErr != nil {
-				var redisErr redis.Error
-				Expect(errors.As(keySlotErr, &redisErr)).To(BeTrue())
+				var kvErr kv.Error
+				Expect(errors.As(keySlotErr, &kvErr)).To(BeTrue())
 
 				errorMsg := keySlotErr.Error()
 				Expect(len(errorMsg)).To(BeNumerically(">", 0))
@@ -2428,8 +2428,8 @@ var _ = Describe("Command Tips tests", func() {
 			clusterInfoErr := clusterInfoResult.Err()
 
 			if clusterInfoErr != nil {
-				var redisErr redis.Error
-				Expect(errors.As(clusterInfoErr, &redisErr)).To(BeTrue())
+				var kvErr kv.Error
+				Expect(errors.As(clusterInfoErr, &kvErr)).To(BeTrue())
 
 				coordinatorNode := masterNodes[0]
 				directInfoResult := coordinatorNode.client.ClusterInfo(ctx)
@@ -2445,8 +2445,8 @@ var _ = Describe("Command Tips tests", func() {
 			invalidReplicateErr := invalidReplicateResult.Err()
 
 			if invalidReplicateErr != nil {
-				var redisErr redis.Error
-				Expect(errors.As(invalidReplicateErr, &redisErr)).To(BeTrue())
+				var kvErr kv.Error
+				Expect(errors.As(invalidReplicateErr, &kvErr)).To(BeTrue())
 
 				errorMsg := invalidReplicateErr.Error()
 				Expect(errorMsg).NotTo(ContainSubstring("router"))
@@ -2463,7 +2463,7 @@ var _ = Describe("Command Tips tests", func() {
 
 		Describe("Routing Policies Comprehensive Test Suite", func() {
 			It("should test MGET command with multi-slot routing and key order preservation", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Set up test data across multiple shards
 				testData := map[string]string{
@@ -2508,7 +2508,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test MGET with non-existent keys across multiple shards", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Set up some keys
 				Expect(client.Set(ctx, "mget_exists_1111", "value1", 0).Err()).NotTo(HaveOccurred())
@@ -2536,7 +2536,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test TOUCH command with multi-slot routing", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Set up keys across multiple shards
 				keys := []string{
@@ -2566,7 +2566,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test DEL command with multi-slot routing", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Set up keys across multiple shards
 				keys := []string{
@@ -2596,12 +2596,12 @@ var _ = Describe("Command Tips tests", func() {
 				// Verify all keys were deleted
 				for _, key := range keys {
 					val := client.Get(ctx, key)
-					Expect(val.Err()).To(Equal(redis.Nil))
+					Expect(val.Err()).To(Equal(kv.Nil))
 				}
 			})
 
 			It("should test DBSIZE command with agg_sum aggregation across all shards", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Set keys across multiple shards
 				keys := []string{
@@ -2627,7 +2627,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test PING command with all_shards routing", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// PING should be sent to all shards and return one successful response
 				result := client.Ping(ctx)
@@ -2636,7 +2636,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test MGET with single shard optimization", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Use hash tags to ensure all keys are on the same shard
 				keys := []string{
@@ -2668,7 +2668,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test empty MGET command returns error", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// MGET with no keys should return an error
 				result := client.MGet(ctx)
@@ -2677,7 +2677,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test MGET integration with MSET across multiple shards", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Create test data
 				testData := map[string]string{
@@ -2719,7 +2719,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test multi-shard commands cannot be used in pipeline", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Create keys across multiple shards
 				keys := []string{
@@ -2745,7 +2745,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test DisableRoutingPolicies option disables routing policies", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Test 1: With routing policies enabled (default), MGET should work across slots
 				testData := map[string]string{
@@ -2778,7 +2778,7 @@ var _ = Describe("Command Tips tests", func() {
 				Expect(len(mgetResult.Val())).To(Equal(len(keys)))
 
 				// Test 2: With routing policies disabled, MGET should fail with CROSSSLOT error
-				opt := redisClusterOptions()
+				opt := kvClusterOptions()
 				opt.DisableRoutingPolicies = true
 				clientWithoutPolicies := cluster.newClusterClient(ctx, opt)
 				defer clientWithoutPolicies.Close()
@@ -2790,7 +2790,7 @@ var _ = Describe("Command Tips tests", func() {
 			})
 
 			It("should test large MGET with many keys across all shards", func() {
-				SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+				SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 				// Create many keys to ensure coverage across all shards
 				numKeys := 100
@@ -2827,11 +2827,11 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should route keyless commands to arbitrary shards using round robin", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			var numMasters int
 			var numMastersMu sync.Mutex
-			err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				numMastersMu.Lock()
 				numMasters++
 				numMastersMu.Unlock()
@@ -2840,7 +2840,7 @@ var _ = Describe("Command Tips tests", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(numMasters).To(BeNumerically(">", 1))
 
-			err = client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err = client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.ConfigResetStat(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -2849,7 +2849,7 @@ var _ = Describe("Command Tips tests", func() {
 			getEchoCounts := func() map[string]int {
 				echoCounts := make(map[string]int)
 				var echoCountsMu sync.Mutex
-				err := client.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+				err := client.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 					info := master.Info(ctx, "server")
 					Expect(info.Err()).NotTo(HaveOccurred())
 
@@ -2953,104 +2953,104 @@ var _ = Describe("Command Tips tests", func() {
 		cases := []struct {
 			test string
 			url  string
-			o    *redis.ClusterOptions // expected value
+			o    *kv.ClusterOptions // expected value
 			err  error
 		}{
 			{
-				test: "ParseRedisURL",
-				url:  "redis://localhost:123",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}},
+				test: "ParseKVURL",
+				url:  "kv://localhost:123",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}},
 			}, {
-				test: "ParseRedissURL",
-				url:  "rediss://localhost:123",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, TLSConfig: &tls.Config{ServerName: "localhost"}},
+				test: "ParseKVsURL",
+				url:  "kvs://localhost:123",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, TLSConfig: &tls.Config{ServerName: "localhost"}},
 			}, {
-				test: "MissingRedisPort",
-				url:  "redis://localhost",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:6379"}},
+				test: "MissingKVPort",
+				url:  "kv://localhost",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:6379"}},
 			}, {
-				test: "MissingRedissPort",
-				url:  "rediss://localhost",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:6379"}, TLSConfig: &tls.Config{ServerName: "localhost"}},
+				test: "MissingKVsPort",
+				url:  "kvs://localhost",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:6379"}, TLSConfig: &tls.Config{ServerName: "localhost"}},
 			}, {
-				test: "MultipleRedisURLs",
-				url:  "redis://localhost:123?addr=localhost:1234&addr=localhost:12345",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234", "localhost:12345"}},
+				test: "MultipleKVURLs",
+				url:  "kv://localhost:123?addr=localhost:1234&addr=localhost:12345",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234", "localhost:12345"}},
 			}, {
-				test: "MultipleRedissURLs",
-				url:  "rediss://localhost:123?addr=localhost:1234&addr=localhost:12345",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234", "localhost:12345"}, TLSConfig: &tls.Config{ServerName: "localhost"}},
+				test: "MultipleKVsURLs",
+				url:  "kvs://localhost:123?addr=localhost:1234&addr=localhost:12345",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234", "localhost:12345"}, TLSConfig: &tls.Config{ServerName: "localhost"}},
 			}, {
 				test: "OnlyPassword",
-				url:  "redis://:bar@localhost:123",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, Password: "bar"},
+				url:  "kv://:bar@localhost:123",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, Password: "bar"},
 			}, {
 				test: "OnlyUser",
-				url:  "redis://foo@localhost:123",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, Username: "foo"},
+				url:  "kv://foo@localhost:123",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, Username: "foo"},
 			}, {
-				test: "RedisUsernamePassword",
-				url:  "redis://foo:bar@localhost:123",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, Username: "foo", Password: "bar"},
+				test: "KVUsernamePassword",
+				url:  "kv://foo:bar@localhost:123",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, Username: "foo", Password: "bar"},
 			}, {
-				test: "RedissUsernamePassword",
-				url:  "rediss://foo:bar@localhost:123?addr=localhost:1234",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234"}, Username: "foo", Password: "bar", TLSConfig: &tls.Config{ServerName: "localhost"}},
+				test: "KVsUsernamePassword",
+				url:  "kvs://foo:bar@localhost:123?addr=localhost:1234",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234"}, Username: "foo", Password: "bar", TLSConfig: &tls.Config{ServerName: "localhost"}},
 			}, {
 				test: "QueryParameters",
-				url:  "redis://localhost:123?read_timeout=2&pool_fifo=true&addr=localhost:1234",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234"}, ReadTimeout: 2 * time.Second, PoolFIFO: true},
+				url:  "kv://localhost:123?read_timeout=2&pool_fifo=true&addr=localhost:1234",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123", "localhost:1234"}, ReadTimeout: 2 * time.Second, PoolFIFO: true},
 			}, {
 				test: "DisabledTimeout",
-				url:  "redis://localhost:123?conn_max_idle_time=0",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: -1},
+				url:  "kv://localhost:123?conn_max_idle_time=0",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: -1},
 			}, {
 				test: "DisabledTimeoutNeg",
-				url:  "redis://localhost:123?conn_max_idle_time=-1",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: -1},
+				url:  "kv://localhost:123?conn_max_idle_time=-1",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: -1},
 			}, {
 				test: "UseDefault",
-				url:  "redis://localhost:123?conn_max_idle_time=",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: 0},
+				url:  "kv://localhost:123?conn_max_idle_time=",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: 0},
 			}, {
 				test: "Protocol",
-				url:  "redis://localhost:123?protocol=2",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, Protocol: 2},
+				url:  "kv://localhost:123?protocol=2",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, Protocol: 2},
 			}, {
 				test: "ClientName",
-				url:  "redis://localhost:123?client_name=cluster_hi",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, ClientName: "cluster_hi"},
+				url:  "kv://localhost:123?client_name=cluster_hi",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, ClientName: "cluster_hi"},
 			}, {
 				test: "UseDefaultMissing=",
-				url:  "redis://localhost:123?conn_max_idle_time",
-				o:    &redis.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: 0},
+				url:  "kv://localhost:123?conn_max_idle_time",
+				o:    &kv.ClusterOptions{Addrs: []string{"localhost:123"}, ConnMaxIdleTime: 0},
 			}, {
 				test: "InvalidQueryAddr",
-				url:  "rediss://foo:bar@localhost:123?addr=rediss://foo:barr@localhost:1234",
-				err:  errors.New(`redis: unable to parse addr param: rediss://foo:barr@localhost:1234`),
+				url:  "kvs://foo:bar@localhost:123?addr=kvs://foo:barr@localhost:1234",
+				err:  errors.New(`kv: unable to parse addr param: kvs://foo:barr@localhost:1234`),
 			}, {
 				test: "InvalidInt",
-				url:  "redis://localhost?pool_size=five",
-				err:  errors.New(`redis: invalid pool_size number: strconv.Atoi: parsing "five": invalid syntax`),
+				url:  "kv://localhost?pool_size=five",
+				err:  errors.New(`kv: invalid pool_size number: strconv.Atoi: parsing "five": invalid syntax`),
 			}, {
 				test: "InvalidBool",
-				url:  "redis://localhost?pool_fifo=yes",
-				err:  errors.New(`redis: invalid pool_fifo boolean: expected true/false/1/0 or an empty string, got "yes"`),
+				url:  "kv://localhost?pool_fifo=yes",
+				err:  errors.New(`kv: invalid pool_fifo boolean: expected true/false/1/0 or an empty string, got "yes"`),
 			}, {
 				test: "UnknownParam",
-				url:  "redis://localhost?abc=123",
-				err:  errors.New("redis: unexpected option: abc"),
+				url:  "kv://localhost?abc=123",
+				err:  errors.New("kv: unexpected option: abc"),
 			}, {
 				test: "InvalidScheme",
 				url:  "https://google.com",
-				err:  errors.New("redis: invalid URL scheme: https"),
+				err:  errors.New("kv: invalid URL scheme: https"),
 			},
 		}
 
 		It("should match ParseClusterURL", func() {
 			for i := range cases {
 				tc := cases[i]
-				actual, err := redis.ParseClusterURL(tc.url)
+				actual, err := kv.ParseClusterURL(tc.url)
 				if tc.err != nil {
 					Expect(err).Should(MatchError(tc.err))
 				} else {
@@ -3081,10 +3081,10 @@ var _ = Describe("Command Tips tests", func() {
 		})
 
 		It("should distribute keyless commands randomly across shards using random shard picker", func() {
-			SkipBeforeRedisVersion(7.9, "The tips are included from Redis 8")
+			SkipBeforeKVVersion(7.9, "The tips are included from KV 8")
 
 			// Create a cluster client with random shard picker
-			opt := redisClusterOptions()
+			opt := kvClusterOptions()
 			opt.ShardPicker = &routing.RandomPicker{}
 			randomClient := cluster.newClusterClient(ctx, opt)
 			defer randomClient.Close()
@@ -3095,7 +3095,7 @@ var _ = Describe("Command Tips tests", func() {
 
 			var numMasters int
 			var numMastersMu sync.Mutex
-			err := randomClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err := randomClient.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				numMastersMu.Lock()
 				numMasters++
 				numMastersMu.Unlock()
@@ -3105,7 +3105,7 @@ var _ = Describe("Command Tips tests", func() {
 			Expect(numMasters).To(BeNumerically(">", 1))
 
 			// Reset command statistics on all masters
-			err = randomClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+			err = randomClient.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 				return master.ConfigResetStat(ctx).Err()
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -3114,7 +3114,7 @@ var _ = Describe("Command Tips tests", func() {
 			getEchoCounts := func() map[string]int {
 				echoCounts := make(map[string]int)
 				var echoCountsMu sync.Mutex
-				err := randomClient.ForEachMaster(ctx, func(ctx context.Context, master *redis.Client) error {
+				err := randomClient.ForEachMaster(ctx, func(ctx context.Context, master *kv.Client) error {
 					addr := master.Options().Addr
 					port := addr[strings.LastIndex(addr, ":")+1:]
 
@@ -3177,7 +3177,7 @@ var _ = Describe("Command Tips tests", func() {
 })
 
 var _ = Describe("ClusterClient FailingTimeoutSeconds", func() {
-	var client *redis.ClusterClient
+	var client *kv.ClusterClient
 
 	AfterEach(func() {
 		if client != nil {
@@ -3186,7 +3186,7 @@ var _ = Describe("ClusterClient FailingTimeoutSeconds", func() {
 	})
 
 	It("should use default failing timeout of 15 seconds", func() {
-		opt := redisClusterOptions()
+		opt := kvClusterOptions()
 		client = cluster.newClusterClient(ctx, opt)
 
 		// Default should be 15 seconds
@@ -3194,7 +3194,7 @@ var _ = Describe("ClusterClient FailingTimeoutSeconds", func() {
 	})
 
 	It("should use custom failing timeout", func() {
-		opt := redisClusterOptions()
+		opt := kvClusterOptions()
 		opt.FailingTimeoutSeconds = 30
 		client = cluster.newClusterClient(ctx, opt)
 
@@ -3203,14 +3203,14 @@ var _ = Describe("ClusterClient FailingTimeoutSeconds", func() {
 	})
 
 	It("should parse failing_timeout_seconds from URL", func() {
-		url := "redis://localhost:16600?failing_timeout_seconds=25"
-		opt, err := redis.ParseClusterURL(url)
+		url := "kv://localhost:16600?failing_timeout_seconds=25"
+		opt, err := kv.ParseClusterURL(url)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(opt.FailingTimeoutSeconds).To(Equal(25))
 	})
 
 	It("should handle node failing timeout correctly", func() {
-		opt := redisClusterOptions()
+		opt := kvClusterOptions()
 		opt.FailingTimeoutSeconds = 2 // Short timeout for testing
 		client = cluster.newClusterClient(ctx, opt)
 
@@ -3238,7 +3238,7 @@ var _ = Describe("ClusterClient FailingTimeoutSeconds", func() {
 	})
 
 	It("should handle zero timeout by using default", func() {
-		opt := redisClusterOptions()
+		opt := kvClusterOptions()
 		opt.FailingTimeoutSeconds = 0 // Should use default
 		client = cluster.newClusterClient(ctx, opt)
 

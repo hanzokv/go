@@ -14,7 +14,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	rdb := redis.NewClient(&redis.Options{
+	rdb := kv.NewClient(&kv.Options{
 		Addr: ":6379",
 	})
 
@@ -40,7 +40,7 @@ func main() {
 }
 
 type KeyChecker struct {
-	rdb       *redis.Client
+	rdb       *kv.Client
 	batchSize int
 	ch        chan string
 	delCh     chan string
@@ -49,7 +49,7 @@ type KeyChecker struct {
 	logger    *zap.Logger
 }
 
-func NewKeyChecker(rdb *redis.Client, batchSize int) *KeyChecker {
+func NewKeyChecker(rdb *kv.Client, batchSize int) *KeyChecker {
 	return &KeyChecker{
 		rdb:       rdb,
 		batchSize: batchSize,
@@ -107,7 +107,7 @@ func (c *KeyChecker) Stop() int {
 }
 
 func (c *KeyChecker) checkKeys(ctx context.Context, keys []string) error {
-	cmds, err := c.rdb.Pipelined(ctx, func(pipe redis.Pipeliner) error {
+	cmds, err := c.rdb.Pipelined(ctx, func(pipe kv.Pipeliner) error {
 		for _, key := range keys {
 			pipe.TTL(ctx, key)
 		}
@@ -118,7 +118,7 @@ func (c *KeyChecker) checkKeys(ctx context.Context, keys []string) error {
 	}
 
 	for i, cmd := range cmds {
-		d, err := cmd.(*redis.DurationCmd).Result()
+		d, err := cmd.(*kv.DurationCmd).Result()
 		if err != nil {
 			return err
 		}

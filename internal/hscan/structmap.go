@@ -25,7 +25,7 @@ func (s *structMap) get(t reflect.Type) *structSpec {
 		return v.(*structSpec)
 	}
 
-	spec := newStructSpec(t, "redis")
+	spec := newStructSpec(t, "kv")
 	s.m.Store(t, spec)
 	return spec
 }
@@ -106,7 +106,7 @@ func (s StructValue) Scan(key string, value string) error {
 	if isPtr && v.Type().NumMethod() > 0 && v.CanInterface() {
 		switch scan := v.Interface().(type) {
 		case Scanner:
-			return scan.ScanRedis(value)
+			return scan.ScanKV(value)
 		case encoding.TextUnmarshaler:
 			return scan.UnmarshalText(util.StringToBytes(value))
 		}
@@ -118,7 +118,7 @@ func (s StructValue) Scan(key string, value string) error {
 
 	if err := field.fn(v, value); err != nil {
 		t := s.value.Type()
-		return fmt.Errorf("cannot scan redis.result %s into struct field %s.%s of type %s, error-%s",
+		return fmt.Errorf("cannot scan kv.result %s into struct field %s.%s of type %s, error-%s",
 			value, t.Name(), t.Field(field.index).Name, t.Field(field.index).Type, err.Error())
 	}
 	return nil

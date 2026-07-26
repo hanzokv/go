@@ -1,4 +1,4 @@
-package redisotel
+package kvotel
 
 import (
 	"reflect"

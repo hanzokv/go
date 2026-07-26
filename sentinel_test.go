@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 )
 
 var _ = Describe("Sentinel PROTO 2", func() {
-	var client *redis.Client
+	var client *kv.Client
 	BeforeEach(func() {
-		client = redis.NewFailoverClient(&redis.FailoverOptions{
+		client = kv.NewFailoverClient(&kv.FailoverOptions{
 			MasterName:    sentinelName,
 			SentinelAddrs: sentinelAddrs,
 			MaxRetries:    -1,
@@ -42,7 +42,7 @@ var _ = Describe("Sentinel resolution", func() {
 		shortCtx, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
 		defer cancel()
 
-		client := redis.NewFailoverClient(&redis.FailoverOptions{
+		client := kv.NewFailoverClient(&kv.FailoverOptions{
 			MasterName:    sentinelName,
 			SentinelAddrs: sentinelAddrs,
 			MaxRetries:    -1,
@@ -56,12 +56,12 @@ var _ = Describe("Sentinel resolution", func() {
 })
 
 var _ = Describe("Sentinel", func() {
-	var client *redis.Client
-	var master *redis.Client
-	var sentinel *redis.SentinelClient
+	var client *kv.Client
+	var master *kv.Client
+	var sentinel *kv.SentinelClient
 
 	BeforeEach(func() {
-		client = redis.NewFailoverClient(&redis.FailoverOptions{
+		client = kv.NewFailoverClient(&kv.FailoverOptions{
 			ClientName:    "sentinel_hi",
 			MasterName:    sentinelName,
 			SentinelAddrs: sentinelAddrs,
@@ -69,7 +69,7 @@ var _ = Describe("Sentinel", func() {
 		})
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 
-		sentinel = redis.NewSentinelClient(&redis.Options{
+		sentinel = kv.NewSentinelClient(&kv.Options{
 			Addr:       ":" + sentinelPort1,
 			MaxRetries: -1,
 		})
@@ -77,7 +77,7 @@ var _ = Describe("Sentinel", func() {
 		addr, err := sentinel.GetMasterAddrByName(ctx, sentinelName).Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		master = redis.NewClient(&redis.Options{
+		master = kv.NewClient(&kv.Options{
 			Addr:       net.JoinHostPort(addr[0], addr[1]),
 			MaxRetries: -1,
 		})
@@ -113,13 +113,13 @@ var _ = Describe("Sentinel", func() {
 		// Verify master->slaves sync.
 		var slavesAddr []string
 		Eventually(func() []string {
-			slavesAddr = redis.GetSlavesAddrByName(ctx, sentinel, sentinelName)
+			slavesAddr = kv.GetSlavesAddrByName(ctx, sentinel, sentinelName)
 			return slavesAddr
 		}, "20s", "50ms").Should(HaveLen(2))
 		Eventually(func() bool {
 			sync := true
 			for _, addr := range slavesAddr {
-				slave := redis.NewClient(&redis.Options{
+				slave := kv.NewClient(&kv.Options{
 					Addr:       addr,
 					MaxRetries: -1,
 				})
@@ -148,8 +148,8 @@ var _ = Describe("Sentinel", func() {
 		}, "20s", "100ms").Should(Equal("master"))
 
 		// Check if subscription is renewed.
-		var msg *redis.Message
-		Eventually(func() <-chan *redis.Message {
+		var msg *kv.Message
+		Eventually(func() <-chan *kv.Message {
 			_ = client.Publish(ctx, "foo", "hello").Err()
 			return ch
 		}, "20s", "100ms").Should(Receive(&msg))
@@ -161,7 +161,7 @@ var _ = Describe("Sentinel", func() {
 	It("supports DB selection", func() {
 		Expect(client.Close()).NotTo(HaveOccurred())
 
-		client = redis.NewFailoverClient(&redis.FailoverOptions{
+		client = kv.NewFailoverClient(&kv.FailoverOptions{
 			MasterName:    sentinelName,
 			SentinelAddrs: sentinelAddrs,
 			DB:            1,
@@ -185,10 +185,10 @@ var _ = Describe("Sentinel", func() {
 })
 
 var _ = Describe("NewFailoverClusterClient PROTO 2", func() {
-	var client *redis.ClusterClient
+	var client *kv.ClusterClient
 
 	BeforeEach(func() {
-		client = redis.NewFailoverClusterClient(&redis.FailoverOptions{
+		client = kv.NewFailoverClusterClient(&kv.FailoverOptions{
 			MasterName:    sentinelName,
 			SentinelAddrs: sentinelAddrs,
 			Protocol:      2,
@@ -203,7 +203,7 @@ var _ = Describe("NewFailoverClusterClient PROTO 2", func() {
 	})
 
 	It("should sentinel cluster PROTO 2", func() {
-		_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_ = client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			val, err := client.Do(ctx, "HELLO").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).Should(ContainElements("proto", int64(2)))
@@ -213,11 +213,11 @@ var _ = Describe("NewFailoverClusterClient PROTO 2", func() {
 })
 
 var _ = Describe("NewFailoverClusterClient", func() {
-	var client *redis.ClusterClient
-	var master *redis.Client
+	var client *kv.ClusterClient
+	var master *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewFailoverClusterClient(&redis.FailoverOptions{
+		client = kv.NewFailoverClusterClient(&kv.FailoverOptions{
 			ClientName:    "sentinel_cluster_hi",
 			MasterName:    sentinelName,
 			SentinelAddrs: sentinelAddrs,
@@ -227,7 +227,7 @@ var _ = Describe("NewFailoverClusterClient", func() {
 		})
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 
-		sentinel := redis.NewSentinelClient(&redis.Options{
+		sentinel := kv.NewSentinelClient(&kv.Options{
 			Addr:       ":" + sentinelPort1,
 			MaxRetries: -1,
 		})
@@ -235,7 +235,7 @@ var _ = Describe("NewFailoverClusterClient", func() {
 		addr, err := sentinel.GetMasterAddrByName(ctx, sentinelName).Result()
 		Expect(err).NotTo(HaveOccurred())
 
-		master = redis.NewClient(&redis.Options{
+		master = kv.NewClient(&kv.Options{
 			Addr:       net.JoinHostPort(addr[0], addr[1]),
 			MaxRetries: -1,
 		})
@@ -288,8 +288,8 @@ var _ = Describe("NewFailoverClusterClient", func() {
 		}, "20s", "100ms").Should(Equal("master"))
 
 		// Check if subscription is renewed.
-		var msg *redis.Message
-		Eventually(func() <-chan *redis.Message {
+		var msg *kv.Message
+		Eventually(func() <-chan *kv.Message {
 			_ = client.Publish(ctx, "foo", "hello").Err()
 			return ch
 		}, "20s", "100ms").Should(Receive(&msg))
@@ -300,12 +300,12 @@ var _ = Describe("NewFailoverClusterClient", func() {
 	})
 
 	It("should sentinel cluster client setname", func() {
-		err := client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		err := client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			return c.Ping(ctx).Err()
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_ = client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			val, err := c.ClientList(ctx).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).Should(ContainSubstring("name=sentinel_cluster_hi"))
@@ -314,12 +314,12 @@ var _ = Describe("NewFailoverClusterClient", func() {
 	})
 
 	It("should sentinel cluster client db", func() {
-		err := client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		err := client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			return c.Ping(ctx).Err()
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_ = client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			clientInfo, err := c.ClientInfo(ctx).Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(clientInfo.DB).To(Equal(1))
@@ -328,7 +328,7 @@ var _ = Describe("NewFailoverClusterClient", func() {
 	})
 
 	It("should sentinel cluster PROTO 3", func() {
-		_ = client.ForEachShard(ctx, func(ctx context.Context, c *redis.Client) error {
+		_ = client.ForEachShard(ctx, func(ctx context.Context, c *kv.Client) error {
 			val, err := client.Do(ctx, "HELLO").Result()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(val).Should(HaveKeyWithValue("proto", int64(3)))
@@ -343,14 +343,14 @@ var _ = Describe("SentinelAclAuth", func() {
 		aclSentinelPassword = "sentinel-pass"
 	)
 
-	var client *redis.Client
-	var sentinel *redis.SentinelClient
-	sentinels := func() []*redis.Client {
-		return []*redis.Client{sentinel1, sentinel2, sentinel3}
+	var client *kv.Client
+	var sentinel *kv.SentinelClient
+	sentinels := func() []*kv.Client {
+		return []*kv.Client{sentinel1, sentinel2, sentinel3}
 	}
 
 	BeforeEach(func() {
-		authCmd := redis.NewStatusCmd(ctx, "ACL", "SETUSER", aclSentinelUsername, "ON",
+		authCmd := kv.NewStatusCmd(ctx, "ACL", "SETUSER", aclSentinelUsername, "ON",
 			">"+aclSentinelPassword, "-@all", "+auth", "+client|getname", "+client|id", "+client|setname",
 			"+command", "+hello", "+ping", "+client|setinfo", "+role", "+sentinel|get-master-addr-by-name", "+sentinel|master",
 			"+sentinel|myid", "+sentinel|replicas", "+sentinel|sentinels")
@@ -360,7 +360,7 @@ var _ = Describe("SentinelAclAuth", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 
-		client = redis.NewFailoverClient(&redis.FailoverOptions{
+		client = kv.NewFailoverClient(&kv.FailoverOptions{
 			MasterName:       sentinelName,
 			SentinelAddrs:    sentinelAddrs,
 			MaxRetries:       -1,
@@ -370,7 +370,7 @@ var _ = Describe("SentinelAclAuth", func() {
 
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 
-		sentinel = redis.NewSentinelClient(&redis.Options{
+		sentinel = kv.NewSentinelClient(&kv.Options{
 			Addr:       sentinelAddrs[0],
 			MaxRetries: -1,
 			Username:   aclSentinelUsername,
@@ -389,7 +389,7 @@ var _ = Describe("SentinelAclAuth", func() {
 	})
 
 	AfterEach(func() {
-		unauthCommand := redis.NewStatusCmd(ctx, "ACL", "DELUSER", aclSentinelUsername)
+		unauthCommand := kv.NewStatusCmd(ctx, "ACL", "DELUSER", aclSentinelUsername)
 
 		for _, process := range sentinels() {
 			err := process.Process(ctx, unauthCommand)
@@ -415,131 +415,131 @@ var _ = Describe("SentinelAclAuth", func() {
 func TestParseSentinelURL(t *testing.T) {
 	cases := []struct {
 		url string
-		o   *redis.FailoverOptions
+		o   *kv.FailoverOptions
 		err error
 	}{
 		{
-			url: "redis://localhost:6379?master_name=test",
-			o:   &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test"},
+			url: "kv://localhost:6379?master_name=test",
+			o:   &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test"},
 		},
 		{
-			url: "redis://localhost:6379/5?master_name=test",
-			o:   &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 5},
+			url: "kv://localhost:6379/5?master_name=test",
+			o:   &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 5},
 		},
 		{
-			url: "rediss://localhost:6379/5?master_name=test",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 5,
+			url: "kvs://localhost:6379/5?master_name=test",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 5,
 				TLSConfig: &tls.Config{
 					ServerName: "localhost",
 				}},
 		},
 		{
-			url: "rediss://localhost:6379/5?master_name=test&skip_verify=true",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 5,
+			url: "kvs://localhost:6379/5?master_name=test&skip_verify=true",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 5,
 				TLSConfig: &tls.Config{
 					ServerName:         "localhost",
 					InsecureSkipVerify: true,
 				}},
 		},
 		{
-			url: "redis://localhost:6379/5?master_name=test&db=2",
-			o:   &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 2},
+			url: "kv://localhost:6379/5?master_name=test&db=2",
+			o:   &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6379"}, MasterName: "test", DB: 2},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&addr=localhost:6381",
-			o:   &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379", "localhost:6381"}, DB: 5},
+			url: "kv://localhost:6379/5?addr=localhost:6380&addr=localhost:6381",
+			o:   &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379", "localhost:6381"}, DB: 5},
 		},
 		{
-			url: "redis://foo:bar@localhost:6379/5?addr=localhost:6380",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://foo:bar@localhost:6379/5?addr=localhost:6380",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				SentinelUsername: "foo", SentinelPassword: "bar", DB: 5},
 		},
 		{
-			url: "redis://:bar@localhost:6379/5?addr=localhost:6380",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://:bar@localhost:6379/5?addr=localhost:6380",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				SentinelUsername: "", SentinelPassword: "bar", DB: 5},
 		},
 		{
-			url: "redis://foo@localhost:6379/5?addr=localhost:6380",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://foo@localhost:6379/5?addr=localhost:6380",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				SentinelUsername: "foo", SentinelPassword: "", DB: 5},
 		},
 		{
-			url: "redis://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				SentinelUsername: "foo", SentinelPassword: "bar", DB: 5, DialTimeout: 3 * time.Second},
 		},
 		{
-			url: "redis://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3s",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3s",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				SentinelUsername: "foo", SentinelPassword: "bar", DB: 5, DialTimeout: 3 * time.Second},
 		},
 		{
-			url: "redis://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3ms",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3ms",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				SentinelUsername: "foo", SentinelPassword: "bar", DB: 5, DialTimeout: 3 * time.Millisecond},
 		},
 		{
-			url: "redis://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3&pool_fifo=true",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://foo:bar@localhost:6379/5?addr=localhost:6380&dial_timeout=3&pool_fifo=true",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				SentinelUsername: "foo", SentinelPassword: "bar", DB: 5, DialTimeout: 3 * time.Second, PoolFIFO: true},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout=3&pool_fifo=false",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout=3&pool_fifo=false",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: 3 * time.Second, PoolFIFO: false},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout=3&pool_fifo",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout=3&pool_fifo",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: 3 * time.Second, PoolFIFO: false},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: 0},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout=0",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout=0",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: -1},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout=-1",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout=-1",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: -1},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout=-2",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout=-2",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: -1},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout=",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout=",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: 0},
 		},
 		{
-			url: "redis://localhost:6379/5?addr=localhost:6380&dial_timeout=0&abc=5",
-			o: &redis.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
+			url: "kv://localhost:6379/5?addr=localhost:6380&dial_timeout=0&abc=5",
+			o: &kv.FailoverOptions{SentinelAddrs: []string{"localhost:6380", "localhost:6379"},
 				DB: 5, DialTimeout: -1},
-			err: errors.New("redis: unexpected option: abc"),
+			err: errors.New("kv: unexpected option: abc"),
 		},
 		{
 			url: "http://google.com",
-			err: errors.New("redis: invalid URL scheme: http"),
+			err: errors.New("kv: invalid URL scheme: http"),
 		},
 		{
-			url: "redis://localhost/1/2/3/4",
-			err: errors.New("redis: invalid URL path: /1/2/3/4"),
+			url: "kv://localhost/1/2/3/4",
+			err: errors.New("kv: invalid URL path: /1/2/3/4"),
 		},
 		{
 			url: "12345",
-			err: errors.New("redis: invalid URL scheme: "),
+			err: errors.New("kv: invalid URL scheme: "),
 		},
 		{
-			url: "redis://localhost/database",
-			err: errors.New(`redis: invalid database number: "database"`),
+			url: "kv://localhost/database",
+			err: errors.New(`kv: invalid database number: "database"`),
 		},
 	}
 
@@ -548,7 +548,7 @@ func TestParseSentinelURL(t *testing.T) {
 		t.Run(tc.url, func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := redis.ParseFailoverURL(tc.url)
+			actual, err := kv.ParseFailoverURL(tc.url)
 			if tc.err == nil && err != nil {
 				t.Fatalf("unexpected error: %q", err)
 				return
@@ -568,7 +568,7 @@ func TestParseSentinelURL(t *testing.T) {
 	}
 }
 
-func compareFailoverOptions(t *testing.T, a, e *redis.FailoverOptions) {
+func compareFailoverOptions(t *testing.T, a, e *kv.FailoverOptions) {
 	if a.MasterName != e.MasterName {
 		t.Errorf("MasterName got %q, want %q", a.MasterName, e.MasterName)
 	}

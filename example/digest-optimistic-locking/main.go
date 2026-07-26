@@ -12,19 +12,19 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Connect to Redis
-	rdb := redis.NewClient(&redis.Options{
+	// Connect to KV
+	rdb := kv.NewClient(&kv.Options{
 		Addr: "localhost:6379",
 	})
 	defer rdb.Close()
 
 	// Ping to verify connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		fmt.Printf("Failed to connect to Redis: %v\n", err)
+		fmt.Printf("Failed to connect to KV: %v\n", err)
 		return
 	}
 
-	fmt.Println("=== Redis Digest & Optimistic Locking Example ===")
+	fmt.Println("=== KV Digest & Optimistic Locking Example ===")
 	fmt.Println()
 
 	// Example 1: Basic Digest Usage
@@ -60,8 +60,8 @@ func main() {
 	fmt.Println("=== All examples completed successfully! ===")
 }
 
-// basicDigestExample demonstrates getting a digest from Redis
-func basicDigestExample(ctx context.Context, rdb *redis.Client) {
+// basicDigestExample demonstrates getting a digest from KV
+func basicDigestExample(ctx context.Context, rdb *kv.Client) {
 	// Set a value
 	key := "user:1000:name"
 	value := "Alice"
@@ -84,7 +84,7 @@ func basicDigestExample(ctx context.Context, rdb *redis.Client) {
 }
 
 // optimisticLockingExample demonstrates using SetIFDEQ for optimistic locking
-func optimisticLockingExample(ctx context.Context, rdb *redis.Client) {
+func optimisticLockingExample(ctx context.Context, rdb *kv.Client) {
 	key := "counter"
 
 	// Initial value
@@ -102,7 +102,7 @@ func optimisticLockingExample(ctx context.Context, rdb *redis.Client) {
 	newValue := "150"
 	result := rdb.SetIFDEQ(ctx, key, newValue, currentDigest, 0)
 
-	if result.Err() == redis.Nil {
+	if result.Err() == kv.Nil {
 		fmt.Println("✗ Update failed: value was modified by another client")
 	} else if result.Err() != nil {
 		fmt.Printf("✗ Error: %v\n", result.Err())
@@ -114,13 +114,13 @@ func optimisticLockingExample(ctx context.Context, rdb *redis.Client) {
 	wrongDigest := uint64(12345)
 	result = rdb.SetIFDEQ(ctx, key, "200", wrongDigest, 0)
 
-	if result.Err() == redis.Nil {
+	if result.Err() == kv.Nil {
 		fmt.Println("✓ Correctly rejected update with wrong digest")
 	}
 }
 
 // detectChangesExample demonstrates using SetIFDNE to detect if a value changed
-func detectChangesExample(ctx context.Context, rdb *redis.Client) {
+func detectChangesExample(ctx context.Context, rdb *kv.Client) {
 	key := "config:version"
 
 	// Set initial value
@@ -138,7 +138,7 @@ func detectChangesExample(ctx context.Context, rdb *redis.Client) {
 	newValue := "v2.0.0"
 	result := rdb.SetIFDNE(ctx, key, newValue, unwantedDigest, 0)
 
-	if result.Err() == redis.Nil {
+	if result.Err() == kv.Nil {
 		fmt.Println("✗ Current value matches unwanted value (digest matches)")
 	} else if result.Err() != nil {
 		fmt.Printf("✗ Error: %v\n", result.Err())
@@ -150,13 +150,13 @@ func detectChangesExample(ctx context.Context, rdb *redis.Client) {
 	currentDigest := rdb.Digest(ctx, key).Val()
 	result = rdb.SetIFDNE(ctx, key, "v3.0.0", currentDigest, 0)
 
-	if result.Err() == redis.Nil {
+	if result.Err() == kv.Nil {
 		fmt.Println("✓ Correctly rejected: current value matches the digest (IFDNE failed)")
 	}
 }
 
 // conditionalDeleteExample demonstrates using DelExArgs with digest
-func conditionalDeleteExample(ctx context.Context, rdb *redis.Client) {
+func conditionalDeleteExample(ctx context.Context, rdb *kv.Client) {
 	key := "session:abc123"
 	value := "user_data_here"
 
@@ -170,7 +170,7 @@ func conditionalDeleteExample(ctx context.Context, rdb *redis.Client) {
 
 	// Try to delete with wrong digest (should fail)
 	wrongDigest := uint64(99999)
-	deleted := rdb.DelExArgs(ctx, key, redis.DelExArgs{
+	deleted := rdb.DelExArgs(ctx, key, kv.DelExArgs{
 		Mode:        "IFDEQ",
 		MatchDigest: wrongDigest,
 	}).Val()
@@ -180,7 +180,7 @@ func conditionalDeleteExample(ctx context.Context, rdb *redis.Client) {
 	}
 
 	// Delete with correct digest (should succeed)
-	deleted = rdb.DelExArgs(ctx, key, redis.DelExArgs{
+	deleted = rdb.DelExArgs(ctx, key, kv.DelExArgs{
 		Mode:        "IFDEQ",
 		MatchDigest: expectedDigest,
 	}).Val()
@@ -196,8 +196,8 @@ func conditionalDeleteExample(ctx context.Context, rdb *redis.Client) {
 	}
 }
 
-// clientSideDigestExample demonstrates calculating digests without fetching from Redis
-func clientSideDigestExample(ctx context.Context, rdb *redis.Client) {
+// clientSideDigestExample demonstrates calculating digests without fetching from KV
+func clientSideDigestExample(ctx context.Context, rdb *kv.Client) {
 	key := "product:1001:price"
 
 	// Scenario: We know the expected current value
@@ -208,14 +208,14 @@ func clientSideDigestExample(ctx context.Context, rdb *redis.Client) {
 	rdb.Set(ctx, key, expectedCurrentValue, 0)
 	fmt.Printf("Current price: $%s\n", expectedCurrentValue)
 
-	// Calculate digest client-side (no need to fetch from Redis!)
+	// Calculate digest client-side (no need to fetch from KV!)
 	expectedDigest := helper.DigestString(expectedCurrentValue)
 	fmt.Printf("Expected digest (calculated client-side): 0x%016x\n", expectedDigest)
 
 	// Update price only if it matches our expectation
 	result := rdb.SetIFDEQ(ctx, key, newValue, expectedDigest, 0)
 
-	if result.Err() == redis.Nil {
+	if result.Err() == kv.Nil {
 		fmt.Println("✗ Price was already changed by someone else")
 		actualValue := rdb.Get(ctx, key).Val()
 		fmt.Printf("  Actual current price: $%s\n", actualValue)
@@ -236,9 +236,9 @@ func clientSideDigestExample(ctx context.Context, rdb *redis.Client) {
 	binaryDigest := helper.DigestBytes(binaryData)
 	fmt.Printf("Binary data digest: 0x%016x\n", binaryDigest)
 
-	// Verify it matches Redis
-	redisDigest := rdb.Digest(ctx, binaryKey).Val()
-	if binaryDigest == redisDigest {
+	// Verify it matches KV
+	kvDigest := rdb.Digest(ctx, binaryKey).Val()
+	if binaryDigest == kvDigest {
 		fmt.Println("✓ Binary digest matches!")
 	}
 }

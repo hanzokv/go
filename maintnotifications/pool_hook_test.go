@@ -115,7 +115,7 @@ func (mp *mockPool) Close() error {
 	return nil
 }
 
-// TestConnectionHook tests the Redis connection processor functionality
+// TestConnectionHook tests the KV connection processor functionality
 func TestConnectionHook(t *testing.T) {
 	// Create a base dialer for testing
 	baseDialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
@@ -343,7 +343,7 @@ func TestConnectionHook(t *testing.T) {
 
 		// For this test, we'll just verify the logic works for connections without buffered data
 		// The actual buffered data detection is handled by the pool's connection health check
-		// which is outside the scope of the Redis connection processor
+		// which is outside the scope of the KV connection processor
 
 		ctx := context.Background()
 		shouldPool, shouldRemove, err := processor.OnPut(ctx, conn)

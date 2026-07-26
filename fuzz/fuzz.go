@@ -12,11 +12,11 @@ import (
 
 var (
 	ctx = context.Background()
-	rdb *redis.Client
+	rdb *kv.Client
 )
 
 func init() {
-	rdb = redis.NewClient(&redis.Options{
+	rdb = kv.NewClient(&kv.Options{
 		Addr:         ":6379",
 		DialTimeout:  10 * time.Second,
 		ReadTimeout:  10 * time.Second,

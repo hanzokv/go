@@ -35,7 +35,7 @@ func TestTLSConfigurationsPushNotifications(t *testing.T) {
 	}
 
 	// Test different TLS configurations
-	// Note: TLS configuration is typically handled at the Redis connection config level
+	// Note: TLS configuration is typically handled at the KV connection config level
 	// This scenario demonstrates the testing pattern for different TLS setups
 	tlsConfigs := []struct {
 		name        string
@@ -110,7 +110,7 @@ func TestTLSConfigurationsPushNotifications(t *testing.T) {
 			poolSize := 8
 			maxConnections := 12
 
-			// Create Redis client with specific TLS configuration
+			// Create KV client with specific TLS configuration
 			// Note: TLS configuration is handled at the factory/connection level
 			client, err := factory.Create(fmt.Sprintf("tls-test-%s", tlsTest.name), &CreateClientOptions{
 				Protocol:       3, // RESP3 required for push notifications
@@ -149,7 +149,7 @@ func TestTLSConfigurationsPushNotifications(t *testing.T) {
 				if tlsTest.name == "TLSSecure" || tlsTest.name == "TLSStrict" {
 					t.Skipf("TLS configuration %s ping failed (expected in test environment): %v", tlsTest.name, err)
 				}
-				ef("Failed to ping Redis with %s TLS config: %v", tlsTest.name, err)
+				ef("Failed to ping KV with %s TLS config: %v", tlsTest.name, err)
 			}
 
 			p("Client connected successfully with %s TLS configuration", tlsTest.name)

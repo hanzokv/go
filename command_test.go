@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"errors"
@@ -11,10 +11,10 @@ import (
 )
 
 var _ = Describe("Cmd", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -88,7 +88,7 @@ var _ = Describe("Cmd", func() {
 
 	It("allows to set custom error", func() {
 		e := errors.New("custom error")
-		cmd := redis.Cmd{}
+		cmd := kv.Cmd{}
 		cmd.SetErr(e)
 		_, err := cmd.Result()
 		Expect(err).To(Equal(e))

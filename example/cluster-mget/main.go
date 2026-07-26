@@ -11,7 +11,7 @@ func main() {
 	ctx := context.Background()
 
 	// Create a cluster client
-	rdb := redis.NewClusterClient(&redis.ClusterOptions{
+	rdb := kv.NewClusterClient(&kv.ClusterOptions{
 		Addrs: []string{
 			"localhost:16600",
 			"localhost:16601",
@@ -25,10 +25,10 @@ func main() {
 
 	// Test connection
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		panic(fmt.Sprintf("Failed to connect to Redis cluster: %v", err))
+		panic(fmt.Sprintf("Failed to connect to KV cluster: %v", err))
 	}
 
-	fmt.Println("✓ Connected to Redis cluster")
+	fmt.Println("✓ Connected to KV cluster")
 
 	// Define 10 keys and values
 	keys := make([]string, 10)

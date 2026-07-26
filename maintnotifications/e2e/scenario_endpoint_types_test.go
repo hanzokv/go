@@ -105,7 +105,7 @@ func TestEndpointTypesPushNotifications(t *testing.T) {
 			poolSize := 8
 			maxConnections := 12
 
-			// Create Redis client with specific endpoint type
+			// Create KV client with specific endpoint type
 			client, err := factory.Create(fmt.Sprintf("endpoint-test-%s", endpointTest.name), &CreateClientOptions{
 				Protocol:       3, // RESP3 required for push notifications
 				PoolSize:       poolSize,
@@ -136,7 +136,7 @@ func TestEndpointTypesPushNotifications(t *testing.T) {
 			// Verify initial connectivity
 			err = client.Ping(ctx).Err()
 			if err != nil {
-				ef("Failed to ping Redis with %s endpoint type: %v", endpointTest.name, err)
+				ef("Failed to ping KV with %s endpoint type: %v", endpointTest.name, err)
 			}
 
 			p("Client connected successfully with %s endpoint type", endpointTest.name)
@@ -302,8 +302,8 @@ func TestEndpointTypesPushNotifications(t *testing.T) {
 					e("invalid message format, expected valid IP, got: %s", address)
 				}
 			case maintnotifications.EndpointTypeNone:
-				if address != internal.RedisNull {
-					e("invalid endpoint type, expected: %s, got: %s", internal.RedisNull, address)
+				if address != internal.KVNull {
+					e("invalid endpoint type, expected: %s, got: %s", internal.KVNull, address)
 				}
 			}
 

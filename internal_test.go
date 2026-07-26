@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -332,7 +332,7 @@ var _ = Describe("withConn", func() {
 
 		client.withConn(ctx, func(ctx context.Context, c *pool.Conn) error {
 			conn = c
-			return proto.RedisError("LOADING")
+			return proto.KVError("LOADING")
 		})
 
 		newConn, err := client.connPool.Get(ctx)
@@ -410,9 +410,9 @@ var _ = Describe("isLoopback", func() {
 		Entry("app.docker.internal", "app.docker.internal", true),
 
 		// Non-loopback hostnames
-		Entry("redis hostname", "redis-cluster", false),
-		Entry("FQDN", "redis.example.com", false),
-		Entry("docker but not internal", "redis.docker.com", false),
+		Entry("kv hostname", "kv-cluster", false),
+		Entry("FQDN", "kv.example.com", false),
+		Entry("docker but not internal", "kv.docker.com", false),
 
 		// Edge cases
 		Entry("empty string", "", false),

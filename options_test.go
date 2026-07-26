@@ -1,6 +1,6 @@
 //go:build go1.7
 
-package redis
+package kv
 
 import (
 	"crypto/tls"
@@ -16,120 +16,120 @@ func TestParseURL(t *testing.T) {
 		err error
 	}{
 		{
-			url: "redis://localhost:123/1",
+			url: "kv://localhost:123/1",
 			o:   &Options{Addr: "localhost:123", DB: 1},
 		}, {
-			url: "redis://localhost:123",
+			url: "kv://localhost:123",
 			o:   &Options{Addr: "localhost:123"},
 		}, {
-			url: "redis://localhost/1",
+			url: "kv://localhost/1",
 			o:   &Options{Addr: "localhost:6379", DB: 1},
 		}, {
-			url: "redis://12345",
+			url: "kv://12345",
 			o:   &Options{Addr: "12345:6379"},
 		}, {
-			url: "rediss://localhost:123",
+			url: "kvs://localhost:123",
 			o:   &Options{Addr: "localhost:123", TLSConfig: &tls.Config{ /* no deep comparison */ }},
 		}, {
-			url: "rediss://localhost:123/?skip_verify=true",
+			url: "kvs://localhost:123/?skip_verify=true",
 			o:   &Options{Addr: "localhost:123", TLSConfig: &tls.Config{InsecureSkipVerify: true}},
 		}, {
-			url: "redis://:bar@localhost:123",
+			url: "kv://:bar@localhost:123",
 			o:   &Options{Addr: "localhost:123", Password: "bar"},
 		}, {
-			url: "redis://foo@localhost:123",
+			url: "kv://foo@localhost:123",
 			o:   &Options{Addr: "localhost:123", Username: "foo"},
 		}, {
-			url: "redis://foo:bar@localhost:123",
+			url: "kv://foo:bar@localhost:123",
 			o:   &Options{Addr: "localhost:123", Username: "foo", Password: "bar"},
 		}, {
 			// multiple params
-			url: "redis://localhost:123/?db=2&read_timeout=2&pool_fifo=true",
+			url: "kv://localhost:123/?db=2&read_timeout=2&pool_fifo=true",
 			o:   &Options{Addr: "localhost:123", DB: 2, ReadTimeout: 2 * time.Second, PoolFIFO: true},
 		}, {
 			// special case handling for disabled timeouts
-			url: "redis://localhost:123/?db=2&conn_max_idle_time=0",
+			url: "kv://localhost:123/?db=2&conn_max_idle_time=0",
 			o:   &Options{Addr: "localhost:123", DB: 2, ConnMaxIdleTime: -1},
 		}, {
 			// negative values disable timeouts as well
-			url: "redis://localhost:123/?db=2&conn_max_idle_time=-1",
+			url: "kv://localhost:123/?db=2&conn_max_idle_time=-1",
 			o:   &Options{Addr: "localhost:123", DB: 2, ConnMaxIdleTime: -1},
 		}, {
 			// absent timeout values will use defaults
-			url: "redis://localhost:123/?db=2&conn_max_idle_time=",
+			url: "kv://localhost:123/?db=2&conn_max_idle_time=",
 			o:   &Options{Addr: "localhost:123", DB: 2, ConnMaxIdleTime: 0},
 		}, {
-			url: "redis://localhost:123/?db=2&conn_max_idle_time", // missing "=" at the end
+			url: "kv://localhost:123/?db=2&conn_max_idle_time", // missing "=" at the end
 			o:   &Options{Addr: "localhost:123", DB: 2, ConnMaxIdleTime: 0},
 		}, {
-			url: "redis://localhost:123/?db=2&client_name=hi", // client name
+			url: "kv://localhost:123/?db=2&client_name=hi", // client name
 			o:   &Options{Addr: "localhost:123", DB: 2, ClientName: "hi"},
 		}, {
-			url: "redis://localhost:123/?db=2&protocol=2", // RESP Protocol
+			url: "kv://localhost:123/?db=2&protocol=2", // RESP Protocol
 			o:   &Options{Addr: "localhost:123", DB: 2, Protocol: 2},
 		}, {
-			url: "redis://localhost:123/?max_concurrent_dials=5", // MaxConcurrentDials parameter
+			url: "kv://localhost:123/?max_concurrent_dials=5", // MaxConcurrentDials parameter
 			o:   &Options{Addr: "localhost:123", MaxConcurrentDials: 5},
 		}, {
-			url: "redis://localhost:123/?max_concurrent_dials=0", // MaxConcurrentDials zero value
+			url: "kv://localhost:123/?max_concurrent_dials=0", // MaxConcurrentDials zero value
 			o:   &Options{Addr: "localhost:123", MaxConcurrentDials: 0},
 		}, {
-			url: "redis://localhost:123/?conn_max_lifetime=1h&conn_max_lifetime_jitter=6m",
+			url: "kv://localhost:123/?conn_max_lifetime=1h&conn_max_lifetime_jitter=6m",
 			o:   &Options{Addr: "localhost:123", ConnMaxLifetime: time.Hour, ConnMaxLifetimeJitter: 6 * time.Minute},
 		}, {
 			// jitter > lifetime should be capped
-			url: "redis://localhost:123/?conn_max_lifetime=30m&conn_max_lifetime_jitter=1h",
+			url: "kv://localhost:123/?conn_max_lifetime=30m&conn_max_lifetime_jitter=1h",
 			o:   &Options{Addr: "localhost:123", ConnMaxLifetime: 30 * time.Minute, ConnMaxLifetimeJitter: 30 * time.Minute},
 		}, {
 			// jitter without lifetime should be capped to 0
-			url: "redis://localhost:123/?conn_max_lifetime_jitter=6m",
+			url: "kv://localhost:123/?conn_max_lifetime_jitter=6m",
 			o:   &Options{Addr: "localhost:123", ConnMaxLifetimeJitter: 0},
 		}, {
-			url: "unix:///tmp/redis.sock",
-			o:   &Options{Addr: "/tmp/redis.sock"},
+			url: "unix:///tmp/kv.sock",
+			o:   &Options{Addr: "/tmp/kv.sock"},
 		}, {
-			url: "unix://foo:bar@/tmp/redis.sock",
-			o:   &Options{Addr: "/tmp/redis.sock", Username: "foo", Password: "bar"},
+			url: "unix://foo:bar@/tmp/kv.sock",
+			o:   &Options{Addr: "/tmp/kv.sock", Username: "foo", Password: "bar"},
 		}, {
-			url: "unix://foo:bar@/tmp/redis.sock?db=3",
-			o:   &Options{Addr: "/tmp/redis.sock", Username: "foo", Password: "bar", DB: 3},
+			url: "unix://foo:bar@/tmp/kv.sock?db=3",
+			o:   &Options{Addr: "/tmp/kv.sock", Username: "foo", Password: "bar", DB: 3},
 		}, {
 			// invalid db format
-			url: "unix://foo:bar@/tmp/redis.sock?db=test",
-			err: errors.New(`redis: invalid database number: strconv.Atoi: parsing "test": invalid syntax`),
+			url: "unix://foo:bar@/tmp/kv.sock?db=test",
+			err: errors.New(`kv: invalid database number: strconv.Atoi: parsing "test": invalid syntax`),
 		}, {
 			// invalid int value
-			url: "redis://localhost/?pool_size=five",
-			err: errors.New(`redis: invalid pool_size number: strconv.Atoi: parsing "five": invalid syntax`),
+			url: "kv://localhost/?pool_size=five",
+			err: errors.New(`kv: invalid pool_size number: strconv.Atoi: parsing "five": invalid syntax`),
 		}, {
 			// invalid bool value
-			url: "redis://localhost/?pool_fifo=yes",
-			err: errors.New(`redis: invalid pool_fifo boolean: expected true/false/1/0 or an empty string, got "yes"`),
+			url: "kv://localhost/?pool_fifo=yes",
+			err: errors.New(`kv: invalid pool_fifo boolean: expected true/false/1/0 or an empty string, got "yes"`),
 		}, {
 			// it returns first error
-			url: "redis://localhost/?db=foo&pool_size=five",
-			err: errors.New(`redis: invalid database number: strconv.Atoi: parsing "foo": invalid syntax`),
+			url: "kv://localhost/?db=foo&pool_size=five",
+			err: errors.New(`kv: invalid database number: strconv.Atoi: parsing "foo": invalid syntax`),
 		}, {
-			url: "redis://localhost/?abc=123",
-			err: errors.New("redis: unexpected option: abc"),
+			url: "kv://localhost/?abc=123",
+			err: errors.New("kv: unexpected option: abc"),
 		}, {
-			url: "redis://foo@localhost/?username=bar",
-			err: errors.New("redis: unexpected option: username"),
+			url: "kv://foo@localhost/?username=bar",
+			err: errors.New("kv: unexpected option: username"),
 		}, {
-			url: "redis://localhost/?wrte_timout=10s&abc=123",
-			err: errors.New("redis: unexpected option: abc, wrte_timout"),
+			url: "kv://localhost/?wrte_timout=10s&abc=123",
+			err: errors.New("kv: unexpected option: abc, wrte_timout"),
 		}, {
 			url: "http://google.com",
-			err: errors.New("redis: invalid URL scheme: http"),
+			err: errors.New("kv: invalid URL scheme: http"),
 		}, {
-			url: "redis://localhost/1/2/3/4",
-			err: errors.New("redis: invalid URL path: /1/2/3/4"),
+			url: "kv://localhost/1/2/3/4",
+			err: errors.New("kv: invalid URL path: /1/2/3/4"),
 		}, {
 			url: "12345",
-			err: errors.New("redis: invalid URL scheme: "),
+			err: errors.New("kv: invalid URL scheme: "),
 		}, {
-			url: "redis://localhost/iamadatabase",
-			err: errors.New(`redis: invalid database number: "iamadatabase"`),
+			url: "kv://localhost/iamadatabase",
+			err: errors.New(`kv: invalid database number: "iamadatabase"`),
 		},
 	}
 

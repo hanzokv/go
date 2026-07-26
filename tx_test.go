@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 )
 
 var _ = Describe("Tx", func() {
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
-		client = redis.NewClient(redisOptions())
+		client = kv.NewClient(kvOptions())
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 	})
 
@@ -28,19 +28,19 @@ var _ = Describe("Tx", func() {
 
 		// Transactionally increments key using GET and SET commands.
 		incr = func(key string) error {
-			err := client.Watch(ctx, func(tx *redis.Tx) error {
+			err := client.Watch(ctx, func(tx *kv.Tx) error {
 				n, err := tx.Get(ctx, key).Int64()
-				if err != nil && err != redis.Nil {
+				if err != nil && err != kv.Nil {
 					return err
 				}
 
-				_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+				_, err = tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					pipe.Set(ctx, key, strconv.FormatInt(n+1, 10), 0)
 					return nil
 				})
 				return err
 			}, key)
-			if err == redis.TxFailedErr {
+			if err == kv.TxFailedErr {
 				return incr(key)
 			}
 			return err
@@ -64,9 +64,9 @@ var _ = Describe("Tx", func() {
 		Expect(n).To(Equal(int64(100)))
 	})
 
-	It("should discard", Label("NonRedisEnterprise"), func() {
-		err := client.Watch(ctx, func(tx *redis.Tx) error {
-			cmds, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+	It("should discard", Label("NonKVEnterprise"), func() {
+		err := client.Watch(ctx, func(tx *kv.Tx) error {
+			cmds, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				pipe.Set(ctx, "key1", "hello1", 0)
 				pipe.Discard()
 				pipe.Set(ctx, "key2", "hello2", 0)
@@ -79,7 +79,7 @@ var _ = Describe("Tx", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		get := client.Get(ctx, "key1")
-		Expect(get.Err()).To(Equal(redis.Nil))
+		Expect(get.Err()).To(Equal(kv.Nil))
 		Expect(get.Val()).To(Equal(""))
 
 		get = client.Get(ctx, "key2")
@@ -88,8 +88,8 @@ var _ = Describe("Tx", func() {
 	})
 
 	It("returns no error when there are no commands", func() {
-		err := client.Watch(ctx, func(tx *redis.Tx) error {
-			_, err := tx.TxPipelined(ctx, func(redis.Pipeliner) error { return nil })
+		err := client.Watch(ctx, func(tx *kv.Tx) error {
+			_, err := tx.TxPipelined(ctx, func(kv.Pipeliner) error { return nil })
 			return err
 		})
 		Expect(err).NotTo(HaveOccurred())
@@ -102,8 +102,8 @@ var _ = Describe("Tx", func() {
 	It("should exec bulks", func() {
 		const N = 20000
 
-		err := client.Watch(ctx, func(tx *redis.Tx) error {
-			cmds, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+		err := client.Watch(ctx, func(tx *kv.Tx) error {
+			cmds, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 				for i := 0; i < N; i++ {
 					pipe.Incr(ctx, "key")
 				}
@@ -132,8 +132,8 @@ var _ = Describe("Tx", func() {
 		client.Pool().Put(ctx, cn)
 
 		do := func() error {
-			err := client.Watch(ctx, func(tx *redis.Tx) error {
-				_, err := tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
+			err := client.Watch(ctx, func(tx *kv.Tx) error {
+				_, err := tx.TxPipelined(ctx, func(pipe kv.Pipeliner) error {
 					pipe.Ping(ctx)
 					return nil
 				})

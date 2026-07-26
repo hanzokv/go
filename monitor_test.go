@@ -1,4 +1,4 @@
-package redis_test
+package kv_test
 
 import (
 	"context"
@@ -13,16 +13,16 @@ import (
 	"github.com/hanzokv/go/v9"
 )
 
-// This test is for manual use and is not part of the CI of Go-Redis.
+// This test is for manual use and is not part of the CI of Go-KV.
 var _ = Describe("Monitor command", Label("monitor"), func() {
 	ctx := context.TODO()
-	var client *redis.Client
+	var client *kv.Client
 
 	BeforeEach(func() {
 		if os.Getenv("RUN_MONITOR_TEST") != "true" {
 			Skip("Skipping Monitor command test. Set RUN_MONITOR_TEST=true to run it.")
 		}
-		client = redis.NewClient(&redis.Options{Addr: redisPort})
+		client = kv.NewClient(&kv.Options{Addr: kvPort})
 		Expect(client.FlushDB(ctx).Err()).NotTo(HaveOccurred())
 
 	})
@@ -33,10 +33,10 @@ var _ = Describe("Monitor command", Label("monitor"), func() {
 
 	It("should monitor", Label("monitor"), func() {
 		ress := make(chan string)
-		client1 := redis.NewClient(&redis.Options{Addr: redisPort})
+		client1 := kv.NewClient(&kv.Options{Addr: kvPort})
 		mn := client1.Monitor(ctx, ress)
 		mn.Start()
-		// Wait for the Redis server to be in monitoring mode.
+		// Wait for the KV server to be in monitoring mode.
 		time.Sleep(100 * time.Millisecond)
 		client.Set(ctx, "foo", "bar", 0)
 		client.Set(ctx, "bar", "baz", 0)
@@ -61,7 +61,7 @@ func TestMonitorCommand(t *testing.T) {
 	}
 
 	ctx := context.TODO()
-	client := redis.NewClient(&redis.Options{Addr: redisPort})
+	client := kv.NewClient(&kv.Options{Addr: kvPort})
 	if err := client.FlushDB(ctx).Err(); err != nil {
 		t.Fatalf("FlushDB failed: %v", err)
 	}
@@ -73,10 +73,10 @@ func TestMonitorCommand(t *testing.T) {
 	}()
 
 	ress := make(chan string, 10)                               // Buffer to prevent blocking
-	client1 := redis.NewClient(&redis.Options{Addr: redisPort}) // Adjust the Addr field as necessary
+	client1 := kv.NewClient(&kv.Options{Addr: kvPort}) // Adjust the Addr field as necessary
 	mn := client1.Monitor(ctx, ress)
 	mn.Start()
-	// Wait for the Redis server to be in monitoring mode.
+	// Wait for the KV server to be in monitoring mode.
 	time.Sleep(100 * time.Millisecond)
 	client.Set(ctx, "foo", "bar", 0)
 	client.Set(ctx, "bar", "baz", 0)

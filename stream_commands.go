@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -414,13 +414,13 @@ func xClaimArgs(a *XClaimArgs) []interface{} {
 
 // TODO: refactor xTrim, xTrimMode and the wrappers over the functions
 
-// xTrim If approx is true, add the "~" parameter, otherwise it is the default "=" (redis default).
+// xTrim If approx is true, add the "~" parameter, otherwise it is the default "=" (kv default).
 // example:
 //
 //	XTRIM key MAXLEN/MINID threshold LIMIT limit.
 //	XTRIM key MAXLEN/MINID ~ threshold LIMIT limit.
 //
-// The redis-server version is lower than 6.2, please set limit to 0.
+// The kv-server version is lower than 6.2, please set limit to 0.
 func (c cmdable) xTrim(
 	ctx context.Context, key, strategy string,
 	approx bool, threshold interface{}, limit int64,
@@ -512,7 +512,7 @@ func (c cmdable) XInfoStream(ctx context.Context, key string) *XInfoStreamCmd {
 }
 
 // XInfoStreamFull XINFO STREAM FULL [COUNT count]
-// redis-server >= 6.0.
+// kv-server >= 6.0.
 func (c cmdable) XInfoStreamFull(ctx context.Context, key string, count int) *XInfoStreamFullCmd {
 	args := make([]interface{}, 0, 6)
 	args = append(args, "xinfo", "stream", key, "full")

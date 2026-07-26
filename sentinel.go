@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -305,18 +305,18 @@ func (opt *FailoverOptions) clusterOptions() *ClusterOptions {
 	}
 }
 
-// ParseFailoverURL parses a URL into FailoverOptions that can be used to connect to Redis.
+// ParseFailoverURL parses a URL into FailoverOptions that can be used to connect to KV.
 // The URL must be in the form:
 //
-//	redis://<user>:<password>@<host>:<port>/<db_number>
+//	kv://<user>:<password>@<host>:<port>/<db_number>
 //	or
-//	rediss://<user>:<password>@<host>:<port>/<db_number>
+//	kvs://<user>:<password>@<host>:<port>/<db_number>
 //
 // To add additional addresses, specify the query parameter, "addr" one or more times. e.g:
 //
-//	redis://<user>:<password>@<host>:<port>/<db_number>?addr=<host2>:<port2>&addr=<host3>:<port3>
+//	kv://<user>:<password>@<host>:<port>/<db_number>?addr=<host2>:<port2>&addr=<host3>:<port3>
 //	or
-//	rediss://<user>:<password>@<host>:<port>/<db_number>?addr=<host2>:<port2>&addr=<host3>:<port3>
+//	kvs://<user>:<password>@<host>:<port>/<db_number>?addr=<host2>:<port2>&addr=<host3>:<port3>
 //
 // Most Option fields can be set using query parameters, with the following restrictions:
 //   - field names are mapped using snake-case conversion: to set MaxRetries, use max_retries
@@ -334,7 +334,7 @@ func (opt *FailoverOptions) clusterOptions() *ClusterOptions {
 //
 // Example:
 //
-//	redis://user:password@localhost:6789?master_name=mymaster&dial_timeout=3&read_timeout=6s&addr=localhost:6790&addr=localhost:6791
+//	kv://user:password@localhost:6789?master_name=mymaster&dial_timeout=3&read_timeout=6s&addr=localhost:6790&addr=localhost:6791
 //	is equivalent to:
 //	&FailoverOptions{
 //		MasterName:  "mymaster",
@@ -342,8 +342,8 @@ func (opt *FailoverOptions) clusterOptions() *ClusterOptions {
 //		DialTimeout: 3 * time.Second, // no time unit = seconds
 //		ReadTimeout: 6 * time.Second,
 //	}
-func ParseFailoverURL(redisURL string) (*FailoverOptions, error) {
-	u, err := url.Parse(redisURL)
+func ParseFailoverURL(kvURL string) (*FailoverOptions, error) {
+	u, err := url.Parse(kvURL)
 	if err != nil {
 		return nil, err
 	}
@@ -359,12 +359,12 @@ func setupFailoverConn(u *url.URL) (*FailoverOptions, error) {
 	o.SentinelAddrs = append(o.SentinelAddrs, net.JoinHostPort(h, p))
 
 	switch u.Scheme {
-	case "rediss":
+	case "kvs":
 		o.TLSConfig = &tls.Config{ServerName: h, MinVersion: tls.VersionTLS12}
-	case "redis":
+	case "kv":
 		o.TLSConfig = nil
 	default:
-		return nil, fmt.Errorf("redis: invalid URL scheme: %s", u.Scheme)
+		return nil, fmt.Errorf("kv: invalid URL scheme: %s", u.Scheme)
 	}
 
 	f := strings.FieldsFunc(u.Path, func(r rune) bool {
@@ -376,10 +376,10 @@ func setupFailoverConn(u *url.URL) (*FailoverOptions, error) {
 	case 1:
 		var err error
 		if o.DB, err = strconv.Atoi(f[0]); err != nil {
-			return nil, fmt.Errorf("redis: invalid database number: %q", f[0])
+			return nil, fmt.Errorf("kv: invalid database number: %q", f[0])
 		}
 	default:
-		return nil, fmt.Errorf("redis: invalid URL path: %s", u.Path)
+		return nil, fmt.Errorf("kv: invalid URL path: %s", u.Path)
 	}
 
 	return setupFailoverConnParams(u, o)
@@ -426,7 +426,7 @@ func setupFailoverConnParams(u *url.URL, o *FailoverOptions) (*FailoverOptions, 
 	if tmp := q.string("db"); tmp != "" {
 		db, err := strconv.Atoi(tmp)
 		if err != nil {
-			return nil, fmt.Errorf("redis: invalid database number: %w", err)
+			return nil, fmt.Errorf("kv: invalid database number: %w", err)
 		}
 		o.DB = db
 	}
@@ -435,7 +435,7 @@ func setupFailoverConnParams(u *url.URL, o *FailoverOptions) (*FailoverOptions, 
 	for _, addr := range addrs {
 		h, p, err := net.SplitHostPort(addr)
 		if err != nil || h == "" || p == "" {
-			return nil, fmt.Errorf("redis: unable to parse addr param: %s", addr)
+			return nil, fmt.Errorf("kv: unable to parse addr param: %s", addr)
 		}
 
 		o.SentinelAddrs = append(o.SentinelAddrs, net.JoinHostPort(h, p))
@@ -447,18 +447,18 @@ func setupFailoverConnParams(u *url.URL, o *FailoverOptions) (*FailoverOptions, 
 
 	// any parameters left?
 	if r := q.remaining(); len(r) > 0 {
-		return nil, fmt.Errorf("redis: unexpected option: %s", strings.Join(r, ", "))
+		return nil, fmt.Errorf("kv: unexpected option: %s", strings.Join(r, ", "))
 	}
 
 	return o, nil
 }
 
-// NewFailoverClient returns a Redis client that uses Redis Sentinel
+// NewFailoverClient returns a KV client that uses KV Sentinel
 // for automatic failover. It's safe for concurrent use by multiple
 // goroutines.
 func NewFailoverClient(failoverOpt *FailoverOptions) *Client {
 	if failoverOpt == nil {
-		panic("redis: NewFailoverClient nil options")
+		panic("kv: NewFailoverClient nil options")
 	}
 
 	if failoverOpt.RouteByLatency {
@@ -498,11 +498,11 @@ func NewFailoverClient(failoverOpt *FailoverOptions) *Client {
 	var err error
 	rdb.connPool, err = newConnPool(opt, rdb.dialHook)
 	if err != nil {
-		panic(fmt.Errorf("redis: failed to create connection pool: %w", err))
+		panic(fmt.Errorf("kv: failed to create connection pool: %w", err))
 	}
 	rdb.pubSubPool, err = newPubSubPool(opt, rdb.dialHook)
 	if err != nil {
-		panic(fmt.Errorf("redis: failed to create pubsub pool: %w", err))
+		panic(fmt.Errorf("kv: failed to create pubsub pool: %w", err))
 	}
 
 	rdb.onClose = rdb.wrappedOnClose(failover.Close)
@@ -555,14 +555,14 @@ func masterReplicaDialer(
 
 //------------------------------------------------------------------------------
 
-// SentinelClient is a client for a Redis Sentinel.
+// SentinelClient is a client for a KV Sentinel.
 type SentinelClient struct {
 	*baseClient
 }
 
 func NewSentinelClient(opt *Options) *SentinelClient {
 	if opt == nil {
-		panic("redis: NewSentinelClient nil options")
+		panic("kv: NewSentinelClient nil options")
 	}
 	opt.init()
 	c := &SentinelClient{
@@ -582,11 +582,11 @@ func NewSentinelClient(opt *Options) *SentinelClient {
 	var err error
 	c.connPool, err = newConnPool(opt, c.dialHook)
 	if err != nil {
-		panic(fmt.Errorf("redis: failed to create connection pool: %w", err))
+		panic(fmt.Errorf("kv: failed to create connection pool: %w", err))
 	}
 	c.pubSubPool, err = newPubSubPool(opt, c.dialHook)
 	if err != nil {
-		panic(fmt.Errorf("redis: failed to create pubsub pool: %w", err))
+		panic(fmt.Errorf("kv: failed to create pubsub pool: %w", err))
 	}
 
 	return c
@@ -863,7 +863,7 @@ func (c *sentinelFailover) MasterAddr(ctx context.Context) (string, error) {
 
 	// short circuit if no sentinels configured
 	if len(c.sentinelAddrs) == 0 {
-		return "", errors.New("redis: no sentinels configured")
+		return "", errors.New("kv: no sentinels configured")
 	}
 
 	var (
@@ -909,7 +909,7 @@ func (c *sentinelFailover) MasterAddr(ctx context.Context) (string, error) {
 	for err := range errCh {
 		errs = append(errs, err)
 	}
-	return "", fmt.Errorf("redis: all sentinels specified in configuration are unreachable: %w", errors.Join(errs...))
+	return "", fmt.Errorf("kv: all sentinels specified in configuration are unreachable: %w", errors.Join(errs...))
 }
 
 func (c *sentinelFailover) replicaAddrs(ctx context.Context, useDisconnected bool) ([]string, error) {
@@ -982,7 +982,7 @@ func (c *sentinelFailover) replicaAddrs(ctx context.Context, useDisconnected boo
 	if sentinelReachable {
 		return []string{}, nil
 	}
-	return []string{}, errors.New("redis: all sentinels specified in configuration are unreachable")
+	return []string{}, errors.New("kv: all sentinels specified in configuration are unreachable")
 }
 
 func (c *sentinelFailover) getMasterAddr(ctx context.Context, sentinel *SentinelClient) (string, error) {
@@ -1128,7 +1128,7 @@ func contains(slice []string, str string) bool {
 // to a replica node.
 func NewFailoverClusterClient(failoverOpt *FailoverOptions) *ClusterClient {
 	if failoverOpt == nil {
-		panic("redis: NewFailoverClusterClient nil options")
+		panic("kv: NewFailoverClusterClient nil options")
 	}
 
 	sentinelAddrs := make([]string, len(failoverOpt.SentinelAddrs))

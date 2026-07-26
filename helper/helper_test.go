@@ -2,33 +2,33 @@ package helper
 
 import "testing"
 
-// Golden values from Redis DIGEST command:
-// redis-cli SET testkey myvalue && redis-cli DIGEST testkey
+// Golden values from KV DIGEST command:
+// kv-cli SET testkey myvalue && kv-cli DIGEST testkey
 // Returns: "5a32b091fa5dafe7" (hex) = 6499451353266237415 (decimal)
 //
-// Redis source (t_string.c):
+// KV source (t_string.c):
 //
 //	hash = XXH3_64bits(o->ptr, sdslen(o->ptr));  // No seed parameter!
 const (
 	goldenTestValue   = "myvalue"
-	goldenRedisDigest = uint64(0x5a32b091fa5dafe7) // 6499451353266237415
+	goldenKVDigest = uint64(0x5a32b091fa5dafe7) // 6499451353266237415
 )
 
-func TestDigestString_RedisCompatibility(t *testing.T) {
+func TestDigestString_KVCompatibility(t *testing.T) {
 	digest := DigestString(goldenTestValue)
 
-	if digest != goldenRedisDigest {
-		t.Errorf("DigestString(%q) = 0x%016x, want 0x%016x (Redis DIGEST)",
-			goldenTestValue, digest, goldenRedisDigest)
+	if digest != goldenKVDigest {
+		t.Errorf("DigestString(%q) = 0x%016x, want 0x%016x (KV DIGEST)",
+			goldenTestValue, digest, goldenKVDigest)
 	}
 }
 
-func TestDigestBytes_RedisCompatibility(t *testing.T) {
+func TestDigestBytes_KVCompatibility(t *testing.T) {
 	digest := DigestBytes([]byte(goldenTestValue))
 
-	if digest != goldenRedisDigest {
-		t.Errorf("DigestBytes(%q) = 0x%016x, want 0x%016x (Redis DIGEST)",
-			goldenTestValue, digest, goldenRedisDigest)
+	if digest != goldenKVDigest {
+		t.Errorf("DigestBytes(%q) = 0x%016x, want 0x%016x (KV DIGEST)",
+			goldenTestValue, digest, goldenKVDigest)
 	}
 }
 

@@ -471,7 +471,7 @@ func (hwm *handoffWorkerManager) createEndpointDialer(endpoint string) func(cont
 		// Parse endpoint to extract host and port
 		host, port, err := net.SplitHostPort(endpoint)
 		if err != nil {
-			// If no port specified, assume default Redis port
+			// If no port specified, assume default KV port
 			host = endpoint
 			if port == "" {
 				port = "6379"
@@ -503,7 +503,7 @@ func (hwm *handoffWorkerManager) closeConnFromRequest(ctx context.Context, reque
 	} else {
 		errClose := conn.Close() // Close the connection if no pool provided
 		if errClose != nil {
-			internal.Logger.Printf(ctx, "redis: failed to close connection: %v", errClose)
+			internal.Logger.Printf(ctx, "kv: failed to close connection: %v", errClose)
 		}
 		if internal.LogLevel.WarnOrAbove() {
 			internal.Logger.Printf(ctx, logs.NoPoolProvidedCannotRemove(conn.GetID(), err))

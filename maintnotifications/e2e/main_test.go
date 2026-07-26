@@ -29,10 +29,10 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic("Failed to create fault injector: " + err.Error())
 	}
-	// use log collector to capture logs from redis clients
+	// use log collector to capture logs from kv clients
 	logCollector = NewTestLogCollector()
-	redis.SetLogger(logCollector)
-	redis.SetLogLevel(logging.LogLevelDebug)
+	kv.SetLogger(logCollector)
+	kv.SetLogLevel(logging.LogLevelDebug)
 
 	logCollector.Clear()
 	defer logCollector.Clear()

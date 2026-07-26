@@ -17,10 +17,10 @@ runs:
 
     - name: Setup Test environment
       env:
-        REDIS_VERSION: ${{ inputs.redis-version }}
+        KV_VERSION: ${{ inputs.redis-version }}
       run: |
         set -e
-        redis_version_np=$(echo "$REDIS_VERSION" | grep -oP '^\d+.\d+')
+        redis_version_np=$(echo "$KV_VERSION" | grep -oP '^\d+.\d+')
 
         # Mapping of redis version to redis testing containers
         declare -A redis_version_mapping=(
@@ -29,10 +29,10 @@ runs:
           ["8.0.x"]="8.0.2"
         )
 
-        if [[ -v redis_version_mapping[$REDIS_VERSION] ]]; then
-          echo "REDIS_VERSION=${redis_version_np}" >> $GITHUB_ENV
-          echo "REDIS_IMAGE=redis:${REDIS_VERSION}" >> $GITHUB_ENV
-          echo "CLIENT_LIBS_TEST_IMAGE=redislabs/client-libs-test:${redis_version_mapping[$REDIS_VERSION]}" >> $GITHUB_ENV
+        if [[ -v redis_version_mapping[$KV_VERSION] ]]; then
+          echo "KV_VERSION=${redis_version_np}" >> $GITHUB_ENV
+          echo "REDIS_IMAGE=redis:${KV_VERSION}" >> $GITHUB_ENV
+          echo "CLIENT_LIBS_TEST_IMAGE=redislabs/client-libs-test:${redis_version_mapping[$KV_VERSION]}" >> $GITHUB_ENV
         else
           echo "Version not found in the mapping."
           exit 1

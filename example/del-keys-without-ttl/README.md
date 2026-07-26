@@ -8,4 +8,4 @@ To run this example:
 go run .
 ```
 
-See [documentation](https://redis.uptrace.dev/guide/get-all-keys.html) for more details.
+See [documentation](https://kv.uptrace.dev/guide/get-all-keys.html) for more details.

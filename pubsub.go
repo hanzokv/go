@@ -1,4 +1,4 @@
-package redis
+package kv
 
 import (
 	"context"
@@ -14,10 +14,10 @@ import (
 )
 
 // PubSub implements Pub/Sub commands as described in
-// http://redis.io/topics/pubsub. Message receiving is NOT safe
+// http://kv.io/topics/pubsub. Message receiving is NOT safe
 // for concurrent use by multiple goroutines.
 //
-// PubSub automatically reconnects to Redis Server and resubscribes
+// PubSub automatically reconnects to KV Server and resubscribes
 // to the channels in case of network errors.
 type PubSub struct {
 	opt *Options
@@ -81,7 +81,7 @@ func (c *PubSub) conn(ctx context.Context, newChannels []string) (*pool.Conn, er
 		// this is probably cluster client
 		// c.newConn will ignore the addr argument
 		// will be changed when we have maintenanceNotifications upgrades for cluster clients
-		c.opt.Addr = internal.RedisNull
+		c.opt.Addr = internal.KVNull
 	}
 
 	channels := mapKeys(c.channels)
@@ -142,10 +142,10 @@ func mapKeys(m map[string]struct{}) []string {
 }
 
 func (c *PubSub) _subscribe(
-	ctx context.Context, cn *pool.Conn, redisCmd string, channels []string,
+	ctx context.Context, cn *pool.Conn, kvCmd string, channels []string,
 ) error {
 	args := make([]interface{}, 0, 1+len(channels))
-	args = append(args, redisCmd)
+	args = append(args, kvCmd)
 	for _, channel := range channels {
 		args = append(args, channel)
 	}
@@ -182,7 +182,7 @@ func (c *PubSub) reconnect(ctx context.Context, reason error) {
 	if c.cn != nil && c.cn.ShouldHandoff() {
 		newEndpoint := c.cn.GetHandoffEndpoint()
 		// If new endpoint is NULL, use the original address
-		if newEndpoint == internal.RedisNull {
+		if newEndpoint == internal.KVNull {
 			newEndpoint = c.opt.Addr
 		}
 
@@ -334,13 +334,13 @@ func (c *PubSub) SUnsubscribe(ctx context.Context, channels ...string) error {
 	return err
 }
 
-func (c *PubSub) subscribe(ctx context.Context, redisCmd string, channels ...string) error {
+func (c *PubSub) subscribe(ctx context.Context, kvCmd string, channels ...string) error {
 	cn, err := c.conn(ctx, channels)
 	if err != nil {
 		return err
 	}
 
-	err = c._subscribe(ctx, cn, redisCmd, channels)
+	err = c._subscribe(ctx, cn, kvCmd, channels)
 	c.releaseConn(ctx, cn, err, false)
 	return err
 }
@@ -436,7 +436,7 @@ func (c *PubSub) newMessage(reply interface{}) (interface{}, error) {
 					PayloadSlice: ss,
 				}, nil
 			default:
-				return nil, fmt.Errorf("redis: unsupported pubsub message payload: %T", payload)
+				return nil, fmt.Errorf("kv: unsupported pubsub message payload: %T", payload)
 			}
 		case "pmessage":
 			return &Message{
@@ -449,10 +449,10 @@ func (c *PubSub) newMessage(reply interface{}) (interface{}, error) {
 				Payload: reply[1].(string),
 			}, nil
 		default:
-			return nil, fmt.Errorf("redis: unsupported pubsub message: %q", kind)
+			return nil, fmt.Errorf("kv: unsupported pubsub message: %q", kind)
 		}
 	default:
-		return nil, fmt.Errorf("redis: unsupported pubsub message: %#v", reply)
+		return nil, fmt.Errorf("kv: unsupported pubsub message: %#v", reply)
 	}
 }
 
@@ -474,7 +474,7 @@ func (c *PubSub) ReceiveTimeout(ctx context.Context, timeout time.Duration) (int
 		// To be sure there are no buffered push notifications, we process them before reading the reply
 		if err := c.processPendingPushNotificationWithReader(ctx, cn, rd); err != nil {
 			// Log the error but don't fail the command execution
-			// Push notification processing errors shouldn't break normal Redis operations
+			// Push notification processing errors shouldn't break normal KV operations
 			internal.Logger.Printf(ctx, "push: conn[%d] error processing pending notifications before reading reply: %v", cn.GetID(), err)
 		}
 		return c.cmd.readReply(rd)
@@ -519,7 +519,7 @@ func (c *PubSub) ReceiveMessage(ctx context.Context) (*Message, error) {
 		case *Message:
 			return msg, nil
 		default:
-			err := fmt.Errorf("redis: unknown message: %T", msg)
+			err := fmt.Errorf("kv: unknown message: %T", msg)
 			return nil, err
 		}
 	}
@@ -539,7 +539,7 @@ func (c *PubSub) getContext() context.Context {
 // is blocked full for 1 minute the message is dropped.
 // Receive* APIs can not be used after channel is created.
 //
-// go-redis periodically sends ping messages to test connection health
+// go-kv periodically sends ping messages to test connection health
 // and re-subscribes if ping can not received for 1 minute.
 func (c *PubSub) Channel(opts ...ChannelOption) <-chan *Message {
 	c.chOnce.Do(func() {
@@ -547,7 +547,7 @@ func (c *PubSub) Channel(opts ...ChannelOption) <-chan *Message {
 		c.msgCh.initMsgChan()
 	})
 	if c.msgCh == nil {
-		err := fmt.Errorf("redis: Channel can't be called after ChannelWithSubscriptions")
+		err := fmt.Errorf("kv: Channel can't be called after ChannelWithSubscriptions")
 		panic(err)
 	}
 	return c.msgCh.msgCh
@@ -572,7 +572,7 @@ func (c *PubSub) ChannelWithSubscriptions(opts ...ChannelOption) <-chan interfac
 		c.allCh.initAllChan()
 	})
 	if c.allCh == nil {
-		err := fmt.Errorf("redis: ChannelWithSubscriptions can't be called after Channel")
+		err := fmt.Errorf("kv: ChannelWithSubscriptions can't be called after Channel")
 		panic(err)
 	}
 	return c.allCh.allCh
@@ -611,7 +611,7 @@ func WithChannelSize(size int) ChannelOption {
 }
 
 // WithChannelHealthCheckInterval specifies the health check interval.
-// PubSub will ping Redis Server if it does not receive any messages within the interval.
+// PubSub will ping KV Server if it does not receive any messages within the interval.
 // To disable health check, use zero interval.
 //
 // The default is 3 seconds.
@@ -734,11 +734,11 @@ func (c *channel) initMsgChan() {
 					}
 				case <-timer.C:
 					internal.Logger.Printf(
-						ctx, "redis: %v channel is full for %s (message is dropped)",
+						ctx, "kv: %v channel is full for %s (message is dropped)",
 						c, c.chanSendTimeout)
 				}
 			default:
-				internal.Logger.Printf(ctx, "redis: unknown message type: %T", msg)
+				internal.Logger.Printf(ctx, "kv: unknown message type: %T", msg)
 			}
 		}
 	}()
@@ -788,11 +788,11 @@ func (c *channel) initAllChan() {
 					}
 				case <-timer.C:
 					internal.Logger.Printf(
-						ctx, "redis: %v channel is full for %s (message is dropped)",
+						ctx, "kv: %v channel is full for %s (message is dropped)",
 						c, c.chanSendTimeout)
 				}
 			default:
-				internal.Logger.Printf(ctx, "redis: unknown message type: %T", msg)
+				internal.Logger.Printf(ctx, "kv: unknown message type: %T", msg)
 			}
 		}
 	}()

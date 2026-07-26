@@ -2,7 +2,7 @@
 © 2023–present Harald Rudell <harald.rudell@gmail.com> (https://haraldrudell.github.io/haraldrudell/)
 ISC License
 
-Modified by htemelski-redis
+Modified by htemelski-kv
 Removed the treshold, adapted it to work with float64
 */
 

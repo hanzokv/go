@@ -1,4 +1,4 @@
-package rediscmd
+package kvcmd
 
 import (
 	"testing"
@@ -9,7 +9,7 @@ import (
 
 func TestGinkgo(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "redisext")
+	RunSpecs(t, "kvext")
 }
 
 var _ = Describe("AppendArg", func() {

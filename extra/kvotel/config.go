@@ -1,4 +1,4 @@
-package redisotel
+package kvotel
 
 import (
 	"strings"
@@ -25,8 +25,8 @@ type config struct {
 	dbStmtEnabled         bool
 	callerEnabled         bool
 	filterDial            bool
-	filterProcessPipeline func(cmds []redis.Cmder) bool
-	filterProcess         func(cmd redis.Cmder) bool
+	filterProcessPipeline func(cmds []kv.Cmder) bool
+	filterProcess         func(cmd kv.Cmder) bool
 
 	// Metrics options.
 
@@ -60,7 +60,7 @@ func (fn option) metrics() {}
 
 func newConfig(opts ...baseOption) *config {
 	conf := &config{
-		dbSystem: "redis",
+		dbSystem: "kv",
 		attrs:    []attribute.KeyValue{},
 
 		tp:            otel.GetTracerProvider(),
@@ -68,7 +68,7 @@ func newConfig(opts ...baseOption) *config {
 		dbStmtEnabled: true,
 		callerEnabled: true,
 		filterProcess: DefaultCommandFilter,
-		filterProcessPipeline: func(cmds []redis.Cmder) bool {
+		filterProcessPipeline: func(cmds []kv.Cmder) bool {
 			for _, cmd := range cmds {
 				if DefaultCommandFilter(cmd) {
 					return true
@@ -125,7 +125,7 @@ func WithTracerProvider(provider trace.TracerProvider) TracingOption {
 	})
 }
 
-// WithDBStatement tells the tracing hook to log raw redis commands.
+// WithDBStatement tells the tracing hook to log raw kv commands.
 func WithDBStatement(on bool) TracingOption {
 	return tracingOption(func(conf *config) {
 		conf.dbStmtEnabled = on
@@ -141,7 +141,7 @@ func WithCallerEnabled(on bool) TracingOption {
 
 // WithCommandFilter allows filtering of commands when tracing to omit commands that may have sensitive details like
 // passwords.
-func WithCommandFilter(filter func(cmd redis.Cmder) bool) TracingOption {
+func WithCommandFilter(filter func(cmd kv.Cmder) bool) TracingOption {
 	return tracingOption(func(conf *config) {
 		conf.filterProcess = filter
 	})
@@ -150,7 +150,7 @@ func WithCommandFilter(filter func(cmd redis.Cmder) bool) TracingOption {
 // WithCommandsFilter allows filtering of pipeline commands
 // when tracing to omit commands that may have sensitive details like
 // passwords in a pipeline.
-func WithCommandsFilter(filter func(cmds []redis.Cmder) bool) TracingOption {
+func WithCommandsFilter(filter func(cmds []kv.Cmder) bool) TracingOption {
 	return tracingOption(func(conf *config) {
 		conf.filterProcessPipeline = filter
 	})
@@ -164,7 +164,7 @@ func WithDialFilter(on bool) TracingOption {
 }
 
 // DefaultCommandFilter filters out AUTH commands from tracing.
-func DefaultCommandFilter(cmd redis.Cmder) bool {
+func DefaultCommandFilter(cmd kv.Cmder) bool {
 	if strings.ToLower(cmd.Name()) == "auth" {
 		return true
 	}
@@ -189,7 +189,7 @@ func DefaultCommandFilter(cmd redis.Cmder) bool {
 
 // BasicCommandFilter filters out AUTH commands from tracing.
 // Deprecated: use DefaultCommandFilter instead.
-func BasicCommandFilter(cmd redis.Cmder) bool {
+func BasicCommandFilter(cmd kv.Cmder) bool {
 	return DefaultCommandFilter(cmd)
 }
 

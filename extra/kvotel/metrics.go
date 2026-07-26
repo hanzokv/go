@@ -1,4 +1,4 @@
-package redisotel
+package kvotel
 
 import (
 	"context"
@@ -24,7 +24,7 @@ type metricsState struct {
 // InstrumentMetrics starts reporting OpenTelemetry Metrics.
 //
 // Based on https://github.com/open-telemetry/semantic-conventions/blob/main/docs/database/database-metrics.md
-func InstrumentMetrics(rdb redis.UniversalClient, opts ...MetricsOption) error {
+func InstrumentMetrics(rdb kv.UniversalClient, opts ...MetricsOption) error {
 	baseOpts := make([]baseOption, len(opts))
 	for i, opt := range opts {
 		baseOpts[i] = opt
@@ -34,7 +34,7 @@ func InstrumentMetrics(rdb redis.UniversalClient, opts ...MetricsOption) error {
 	if conf.meter == nil {
 		conf.meter = conf.mp.Meter(
 			instrumName,
-			metric.WithInstrumentationVersion("semver:"+redis.Version()),
+			metric.WithInstrumentationVersion("semver:"+kv.Version()),
 		)
 	}
 
@@ -62,28 +62,28 @@ func InstrumentMetrics(rdb redis.UniversalClient, opts ...MetricsOption) error {
 	}
 
 	switch rdb := rdb.(type) {
-	case *redis.Client:
+	case *kv.Client:
 		return registerClient(rdb, conf, state)
-	case *redis.ClusterClient:
-		rdb.OnNewNode(func(rdb *redis.Client) {
+	case *kv.ClusterClient:
+		rdb.OnNewNode(func(rdb *kv.Client) {
 			if err := registerClient(rdb, conf, state); err != nil {
 				otel.Handle(err)
 			}
 		})
 		return nil
-	case *redis.Ring:
-		rdb.OnNewNode(func(rdb *redis.Client) {
+	case *kv.Ring:
+		rdb.OnNewNode(func(rdb *kv.Client) {
 			if err := registerClient(rdb, conf, state); err != nil {
 				otel.Handle(err)
 			}
 		})
 		return nil
 	default:
-		return fmt.Errorf("redisotel: %T not supported", rdb)
+		return fmt.Errorf("kvotel: %T not supported", rdb)
 	}
 }
 
-func registerClient(rdb *redis.Client, conf *config, state *metricsState) error {
+func registerClient(rdb *kv.Client, conf *config, state *metricsState) error {
 	if state != nil {
 		state.mutex.Lock()
 		defer state.mutex.Unlock()
@@ -121,7 +121,7 @@ func poolStatsAttrs(conf *config) (poolAttrs, idleAttrs, usedAttrs attribute.Set
 	return
 }
 
-func reportPoolStats(rdb *redis.Client, conf *config) (metric.Registration, error) {
+func reportPoolStats(rdb *kv.Client, conf *config) (metric.Registration, error) {
 	poolAttrs, idleAttrs, usedAttrs := poolStatsAttrs(conf)
 
 	idleMax, err := conf.meter.Int64ObservableUpDownCounter(
@@ -197,14 +197,14 @@ func reportPoolStats(rdb *redis.Client, conf *config) (metric.Registration, erro
 		return nil, err
 	}
 
-	redisConf := rdb.Options()
+	kvConf := rdb.Options()
 	return conf.meter.RegisterCallback(
 		func(ctx context.Context, o metric.Observer) error {
 			stats := rdb.PoolStats()
 
-			o.ObserveInt64(idleMax, int64(redisConf.MaxIdleConns), metric.WithAttributeSet(poolAttrs))
-			o.ObserveInt64(idleMin, int64(redisConf.MinIdleConns), metric.WithAttributeSet(poolAttrs))
-			o.ObserveInt64(connsMax, int64(redisConf.PoolSize), metric.WithAttributeSet(poolAttrs))
+			o.ObserveInt64(idleMax, int64(kvConf.MaxIdleConns), metric.WithAttributeSet(poolAttrs))
+			o.ObserveInt64(idleMin, int64(kvConf.MinIdleConns), metric.WithAttributeSet(poolAttrs))
+			o.ObserveInt64(connsMax, int64(kvConf.PoolSize), metric.WithAttributeSet(poolAttrs))
 
 			o.ObserveInt64(usage, int64(stats.IdleConns), metric.WithAttributeSet(idleAttrs))
 			o.ObserveInt64(usage, int64(stats.TotalConns-stats.IdleConns), metric.WithAttributeSet(usedAttrs))
@@ -229,7 +229,7 @@ func reportPoolStats(rdb *redis.Client, conf *config) (metric.Registration, erro
 	)
 }
 
-func addMetricsHook(rdb *redis.Client, conf *config) error {
+func addMetricsHook(rdb *kv.Client, conf *config) error {
 	createTime, err := conf.meter.Float64Histogram(
 		"db.client.connections.create_time",
 		metric.WithDescription("The time it took to create a new connection."),
@@ -262,9 +262,9 @@ type metricsHook struct {
 	attrs      []attribute.KeyValue
 }
 
-var _ redis.Hook = (*metricsHook)(nil)
+var _ kv.Hook = (*metricsHook)(nil)
 
-func (mh *metricsHook) DialHook(hook redis.DialHook) redis.DialHook {
+func (mh *metricsHook) DialHook(hook kv.DialHook) kv.DialHook {
 	return func(ctx context.Context, network, addr string) (net.Conn, error) {
 		start := time.Now()
 
@@ -282,8 +282,8 @@ func (mh *metricsHook) DialHook(hook redis.DialHook) redis.DialHook {
 	}
 }
 
-func (mh *metricsHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
-	return func(ctx context.Context, cmd redis.Cmder) error {
+func (mh *metricsHook) ProcessHook(hook kv.ProcessHook) kv.ProcessHook {
+	return func(ctx context.Context, cmd kv.Cmder) error {
 		start := time.Now()
 
 		err := hook(ctx, cmd)
@@ -303,9 +303,9 @@ func (mh *metricsHook) ProcessHook(hook redis.ProcessHook) redis.ProcessHook {
 }
 
 func (mh *metricsHook) ProcessPipelineHook(
-	hook redis.ProcessPipelineHook,
-) redis.ProcessPipelineHook {
-	return func(ctx context.Context, cmds []redis.Cmder) error {
+	hook kv.ProcessPipelineHook,
+) kv.ProcessPipelineHook {
+	return func(ctx context.Context, cmds []kv.Cmder) error {
 		start := time.Now()
 
 		err := hook(ctx, cmds)
@@ -330,7 +330,7 @@ func milliseconds(d time.Duration) float64 {
 
 func statusAttr(err error) attribute.KeyValue {
 	if err != nil {
-		if err == redis.Nil {
+		if err == kv.Nil {
 			return attribute.String("status", "nil")
 		}
 		return attribute.String("status", "error")
