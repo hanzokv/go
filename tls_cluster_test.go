@@ -22,7 +22,7 @@ var _ = Describe("TLS Cluster", Label("NonRedisEnterprise"), func() {
 		tlsConfig, err = loadClusterTLSConfig(certDir)
 		Expect(err).NotTo(HaveOccurred())
 
-		// TLS cluster ports from docker-compose.yml
+		// TLS cluster ports from compose.yml
 		// TLS_PORT=5430 to avoid conflict with sentinel-cluster (which uses 4430-4432)
 		clusterAddrs = []string{
 			"localhost:5430",
