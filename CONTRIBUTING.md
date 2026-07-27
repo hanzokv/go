@@ -34,8 +34,8 @@ Here's how to get started with your code contribution:
 2.  Do the changes in your fork
 3.  If you need a development environment, run `make docker.start`.
  
-> Note: this clones and builds the docker containers specified in `docker-compose.yml`, to understand more about
-> the infrastructure that will be started you can check the `docker-compose.yml`. You also have the possiblity
+> Note: this clones and builds the docker containers specified in `compose.yml`, to understand more about
+> the infrastructure that will be started you can check the `compose.yml`. You also have the possiblity
 > to specify the redis image that will be pulled with the env variable `CLIENT_LIBS_TEST_IMAGE`.
 > By default the docker image that will be pulled and started is `redislabs/client-libs-test:8.2.1-pre`.
 > If you want to test with newer Redis version, using a newer version of `redislabs/client-libs-test` should work out of the box.

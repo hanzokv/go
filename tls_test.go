@@ -42,7 +42,7 @@ func loadTLSConfig(certDir string) (*tls.Config, error) {
 
 var _ = Describe("TLS", Label("NonRedisEnterprise"), func() {
 	var tlsConfig *tls.Config
-	var tlsPort = "6666" // TLS port from docker-compose.yml
+	var tlsPort = "6666" // TLS port from compose.yml
 
 	BeforeEach(func() {
 		var err error
