@@ -1,0 +1,41 @@
+name: Go
+
+on:
+  push:
+    branches: [master, v9, 'v9.*']
+  pull_request:
+    branches: [master, v9, v9.7, v9.8, 'ndyakov/**', 'ofekshenawa/**', 'ce/**']
+
+permissions:
+  contents: read
+
+jobs:
+
+  # Six legs, not fifteen. The pool here is a fixed set of runners shared by
+  # every org on this forge, so a matrix is a claim on capacity rather than a
+  # free dimension. Redis is sampled at the ends and the middle of the supported
+  # range, and Go at the two versions the module is expected to build under;
+  # a break specific to 8.6 or 8.2 is the kind this sampling can miss.
+  test-redis-ce:
+    name: test-redis-ce
+    runs-on: hanzo-build-linux-amd64
+    strategy:
+        fail-fast: false
+        matrix:
+          redis-version:
+            - "8.8.x" # Redis CE 8.8
+            - "8.4.x" # Redis CE 8.4
+            - "8.0.x" # Redis CE 8.0
+          go-version:
+            - oldstable
+            - stable
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Run tests
+        uses: ./.github/actions/run-tests
+        with:
+          go-version: ${{matrix.go-version}}
+          redis-version: ${{ matrix.redis-version }}

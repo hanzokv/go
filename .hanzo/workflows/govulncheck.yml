@@ -1,4 +1,3 @@
-# .github/workflows/govulncheck.yml
 name: govulncheck
 
 on:
@@ -29,7 +28,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: "1.26.4.x"
+          go-version-file: go.mod
           cache: true
 
       - name: Install govulncheck
