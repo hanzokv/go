@@ -30,13 +30,15 @@ jobs:
         go-version: ["1.25"]
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      # After checkout, so setup-go's module cache can key off go.mod. Ahead of
+      # it the file is not on disk yet and the cache silently degrades to a miss.
       - name: Set up ${{ matrix.go-version }}
         uses: actions/setup-go@v6
         with:
           go-version: ${{ matrix.go-version }}
-
-      - name: Checkout code
-        uses: actions/checkout@v6
 
       - name: Test doc examples
         working-directory: ./doctests
