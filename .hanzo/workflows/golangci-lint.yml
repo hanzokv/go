@@ -21,8 +21,14 @@ jobs:
     runs-on: hanzo-build-linux-amd64
     steps:
       - uses: actions/checkout@v6
+      # golangci-lint shells out to `go` to load packages, and the job image
+      # here does not ship a toolchain on PATH the way GitHub's hosted image
+      # does. Without this the linter exits on "go command required, not found"
+      # before it reads a single file.
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9.2.1
         with:
-          verify: true 
-
+          verify: true
