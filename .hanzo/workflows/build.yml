@@ -5,6 +5,10 @@ on:
     branches: [master, v9, 'v9.*']
   pull_request:
     branches: [master, v9, v9.7, v9.8, 'ndyakov/**', 'ofekshenawa/**', 'ce/**']
+  # The suite talks to real Redis containers, so a leg can fail on the
+  # environment rather than on the code. Being able to re-run it without an
+  # empty commit is the difference between confirming that and guessing.
+  workflow_dispatch:
 
 permissions:
   contents: read
