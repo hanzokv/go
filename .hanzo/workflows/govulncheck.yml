@@ -18,7 +18,7 @@ concurrency:
 jobs:
   govulncheck:
     name: govulncheck
-    runs-on: hanzo-build-linux-amd64
+    runs-on: linux-amd64
     timeout-minutes: 15
 
     steps:

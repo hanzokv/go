@@ -18,7 +18,7 @@ permissions:
 jobs:
   golangci:
     name: lint
-    runs-on: hanzo-build-linux-amd64
+    runs-on: linux-amd64
     steps:
       - uses: actions/checkout@v6
       # golangci-lint shells out to `go` to load packages, and the job image

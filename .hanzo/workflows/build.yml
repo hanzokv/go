@@ -22,7 +22,7 @@ jobs:
   # a break specific to 8.6 or 8.2 is the kind this sampling can miss.
   test-redis-ce:
     name: test-redis-ce
-    runs-on: hanzo-build-linux-amd64
+    runs-on: linux-amd64
     strategy:
         fail-fast: false
         matrix:
